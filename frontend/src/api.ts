@@ -11,6 +11,7 @@ export async function fetchRunList(date: string): Promise<string[]> {
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0)
+    .reverse()
 }
 
 export interface RunMetadata {
