@@ -1,3 +1,7 @@
+import { useState, useMemo } from 'react'
+import type { RunMetadata } from '../api'
+import { getStageStatus } from '../api'
+
 interface RunInfo {
   slug: string
   benchmark: string
@@ -10,6 +14,35 @@ interface RunListViewProps {
   loading: boolean
   error: string | null
   onSelectRun: (slug: string) => void
+  runMetadataMap: Record<string, RunMetadata>
+  loadingMetadataList: boolean
+}
+
+type StatusType = 'pending' | 'running-infer' | 'running-eval' | 'completed' | 'error'
+
+const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?: string }> = {
+  pending: {
+    label: 'Pending',
+    className: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  },
+  'running-infer': {
+    label: 'Running Inference',
+    className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    dot: 'bg-blue-400 animate-pulse',
+  },
+  'running-eval': {
+    label: 'Running Eval',
+    className: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    dot: 'bg-amber-400 animate-pulse',
+  },
+  completed: {
+    label: 'Completed',
+    className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  },
+  error: {
+    label: 'Error',
+    className: 'bg-red-500/20 text-red-400 border-red-500/30',
+  },
 }
 
 const BENCHMARK_COLORS: Record<string, string> = {
@@ -18,6 +51,26 @@ const BENCHMARK_COLORS: Record<string, string> = {
   swtbench: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
   gaia: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   commit0: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+}
+
+function StatusBadge({ status }: { status: StatusType }) {
+  const config = STATUS_CONFIG[status]
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.className}`}>
+      {config.dot && <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />}
+      {status === 'completed' && (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+      {status === 'error' && (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      )}
+      {config.label}
+    </span>
+  )
 }
 
 function BenchmarkBadge({ name }: { name: string }) {
@@ -29,7 +82,61 @@ function BenchmarkBadge({ name }: { name: string }) {
   )
 }
 
-export default function RunListView({ runs, loading, error, onSelectRun }: RunListViewProps) {
+function extractTriggeredBy(metadata: RunMetadata | undefined): string {
+  if (!metadata?.init) return '—'
+  const init = metadata.init as Record<string, unknown>
+  // Check common fields that might contain the trigger actor
+  for (const key of ['triggered_by', 'actor', 'user', 'github_actor', 'sender']) {
+    if (init[key] && typeof init[key] === 'string') return init[key] as string
+  }
+  return '—'
+}
+
+export default function RunListView({ runs, loading, error, onSelectRun, runMetadataMap, loadingMetadataList }: RunListViewProps) {
+  const [filterBenchmark, setFilterBenchmark] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterText, setFilterText] = useState('')
+
+  // Compute statuses and triggered-by
+  const runsWithStatus = useMemo(() => {
+    return runs.map(run => {
+      const metadata = runMetadataMap[run.slug]
+      const status: StatusType = metadata ? getStageStatus(metadata) : 'pending'
+      const triggeredBy = extractTriggeredBy(metadata)
+      return { ...run, status, triggeredBy }
+    })
+  }, [runs, runMetadataMap])
+
+  const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
+  const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
+
+  // Apply filters
+  const filteredRuns = useMemo(() => {
+    return runsWithStatus.filter(run => {
+      if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
+      if (filterStatus !== 'all' && run.status !== filterStatus) return false
+      if (filterText) {
+        const search = filterText.toLowerCase()
+        if (
+          !run.model.toLowerCase().includes(search) &&
+          !run.jobId.toLowerCase().includes(search) &&
+          !run.benchmark.toLowerCase().includes(search) &&
+          !run.triggeredBy.toLowerCase().includes(search)
+        ) return false
+      }
+      return true
+    })
+  }, [runsWithStatus, filterBenchmark, filterStatus, filterText])
+
+  // Status counts for summary
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    runsWithStatus.forEach(r => {
+      counts[r.status] = (counts[r.status] || 0) + 1
+    })
+    return counts
+  }, [runsWithStatus])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -67,55 +174,136 @@ export default function RunListView({ runs, loading, error, onSelectRun }: RunLi
     )
   }
 
-  // Group runs by benchmark
-  const grouped = runs.reduce<Record<string, RunInfo[]>>((acc, run) => {
-    const key = run.benchmark
-    if (!acc[key]) acc[key] = []
-    acc[key].push(run)
-    return acc
-  }, {})
-
-  const benchmarks = Object.keys(grouped).sort()
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Summary bar */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-sm font-medium text-oh-text-muted">
           {runs.length} evaluation run{runs.length !== 1 ? 's' : ''}
+          {loadingMetadataList && (
+            <span className="ml-2 inline-flex items-center gap-1 text-xs text-oh-text-muted">
+              <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              loading statuses…
+            </span>
+          )}
         </h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          {benchmarks.map(b => (
-            <BenchmarkBadge key={b} name={b} />
+        <div className="flex items-center gap-3 flex-wrap">
+          {Object.entries(statusCounts).map(([status, count]) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
+              className={`text-xs px-2 py-1 rounded transition-colors ${filterStatus === status ? 'ring-1 ring-oh-primary' : 'opacity-70 hover:opacity-100'}`}
+            >
+              <StatusBadge status={status as StatusType} />
+              <span className="ml-1 text-oh-text-muted">{count}</span>
+            </button>
           ))}
         </div>
       </div>
 
-      <div className="space-y-2">
-        {runs.map((run) => (
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <input
+          type="text"
+          placeholder="Search model, job ID, benchmark…"
+          value={filterText}
+          onChange={e => setFilterText(e.target.value)}
+          className="bg-oh-surface border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text placeholder-oh-text-muted focus:outline-none focus:ring-1 focus:ring-oh-primary w-64"
+        />
+        <select
+          value={filterBenchmark}
+          onChange={e => setFilterBenchmark(e.target.value)}
+          className="bg-oh-surface border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text focus:outline-none focus:ring-1 focus:ring-oh-primary"
+        >
+          <option value="all">All benchmarks</option>
+          {benchmarks.map(b => (
+            <option key={b} value={b}>{b}</option>
+          ))}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="bg-oh-surface border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text focus:outline-none focus:ring-1 focus:ring-oh-primary"
+        >
+          <option value="all">All statuses</option>
+          {statuses.map(s => (
+            <option key={s} value={s}>{STATUS_CONFIG[s as StatusType]?.label || s}</option>
+          ))}
+        </select>
+        {(filterText || filterBenchmark !== 'all' || filterStatus !== 'all') && (
           <button
-            key={run.slug}
-            onClick={() => onSelectRun(run.slug)}
-            className="w-full text-left bg-oh-surface hover:bg-oh-surface-hover border border-oh-border rounded-lg p-4 transition-all duration-150 group"
+            onClick={() => { setFilterText(''); setFilterBenchmark('all'); setFilterStatus('all') }}
+            className="text-xs text-oh-text-muted hover:text-oh-text transition-colors"
           >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <BenchmarkBadge name={run.benchmark} />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-oh-text truncate">
-                    {run.model || run.slug}
-                  </p>
-                  <p className="text-xs text-oh-text-muted mt-0.5">
-                    Job #{run.jobId}
-                  </p>
-                </div>
-              </div>
-              <svg className="w-4 h-4 text-oh-text-muted group-hover:text-oh-text transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
+            Clear filters
           </button>
-        ))}
+        )}
       </div>
+
+      {/* Table */}
+      <div className="bg-oh-surface border border-oh-border rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-oh-border">
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Status</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Benchmark</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Model</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Job ID</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Triggered By</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-oh-border">
+              {filteredRuns.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-oh-text-muted">
+                    No runs match the current filters.
+                  </td>
+                </tr>
+              ) : (
+                filteredRuns.map(run => (
+                  <tr
+                    key={run.slug}
+                    onClick={() => onSelectRun(run.slug)}
+                    className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <StatusBadge status={run.status} />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <BenchmarkBadge name={run.benchmark} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-medium text-oh-text group-hover:text-oh-primary transition-colors">
+                        {run.model || run.slug}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-oh-text-muted font-mono">
+                        #{run.jobId}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-oh-text-muted">
+                        {run.triggeredBy}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {filteredRuns.length !== runs.length && (
+        <p className="text-xs text-oh-text-muted text-center">
+          Showing {filteredRuns.length} of {runs.length} runs
+        </p>
+      )}
     </div>
   )
 }
