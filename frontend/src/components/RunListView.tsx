@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import type { RunMetadata } from '../api'
+import React, { useState, useEffect, useMemo } from 'react'
+import type { RunMetadata, DayRunGroup } from '../api'
 import { getStageStatus, getRuntime, isFinished, extractTriggeredBy } from '../api'
 
 interface RunInfo {
@@ -16,6 +16,7 @@ interface RunListViewProps {
   onSelectRun: (slug: string) => void
   runMetadataMap: Record<string, RunMetadata>
   loadingMetadataList: boolean
+  dayGroups: DayRunGroup[]
 }
 
 type StatusType = 'pending' | 'running-infer' | 'running-eval' | 'completed' | 'error'
@@ -83,7 +84,19 @@ function BenchmarkBadge({ name }: { name: string }) {
 }
 
 
-export default function RunListView({ runs, loading, error, onSelectRun, runMetadataMap, loadingMetadataList }: RunListViewProps) {
+export default function RunListView({ runs, loading, error, onSelectRun, runMetadataMap, loadingMetadataList, dayGroups }: RunListViewProps) {
+  const showMultipleDays = dayGroups.length > 1
+
+  // Build a slug-to-date mapping for date grouping
+  const slugToDate = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const group of dayGroups) {
+      for (const slug of group.runs) {
+        map[slug] = group.date
+      }
+    }
+    return map
+  }, [dayGroups])
   const [filterBenchmark, setFilterBenchmark] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterText, setFilterText] = useState('')
@@ -274,45 +287,61 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                   </td>
                 </tr>
               ) : (
-                filteredRuns.map(run => (
-                  <tr
-                    key={run.slug}
-                    onClick={() => onSelectRun(run.slug)}
-                    className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <StatusBadge status={run.status} />
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <BenchmarkBadge name={run.benchmark} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-oh-text group-hover:text-oh-primary transition-colors">
-                        {run.model || run.slug}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-oh-text-muted font-mono">
-                        #{run.jobId}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {run.runtime ? (
-                        <span className={`text-sm font-mono ${run.runFinished ? 'text-oh-text-muted' : 'text-oh-primary'}`}>
-                          {run.runtime}
-                          {!run.runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-oh-text-muted">—</span>
+                filteredRuns.map((run, index) => {
+                  const runDate = slugToDate[run.slug]
+                  const prevRunDate = index > 0 ? slugToDate[filteredRuns[index - 1].slug] : null
+                  const showDateHeader = showMultipleDays && runDate && runDate !== prevRunDate
+
+                  return (
+                    <React.Fragment key={run.slug}>
+                      {showDateHeader && (
+                        <tr className="bg-oh-bg">
+                          <td colSpan={6} className="px-4 py-2">
+                            <span className="text-xs font-semibold text-oh-text-muted uppercase tracking-wider">
+                              {runDate}
+                            </span>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-oh-text-muted">
-                        {run.triggeredBy}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                      <tr
+                        onClick={() => onSelectRun(run.slug)}
+                        className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <StatusBadge status={run.status} />
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <BenchmarkBadge name={run.benchmark} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm font-medium text-oh-text group-hover:text-oh-primary transition-colors">
+                            {run.model || run.slug}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-oh-text-muted font-mono">
+                            #{run.jobId}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {run.runtime ? (
+                            <span className={`text-sm font-mono ${run.runFinished ? 'text-oh-text-muted' : 'text-oh-primary'}`}>
+                              {run.runtime}
+                              {!run.runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-oh-text-muted">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-oh-text-muted">
+                            {run.triggeredBy}
+                          </span>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  )
+                })
               )}
             </tbody>
           </table>
