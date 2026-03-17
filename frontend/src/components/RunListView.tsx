@@ -82,21 +82,31 @@ function BenchmarkBadge({ name }: { name: string }) {
   )
 }
 
+function extractTriggeredBy(metadata: RunMetadata | undefined): string {
+  if (!metadata?.init) return '—'
+  const init = metadata.init as Record<string, unknown>
+  // Check common fields that might contain the trigger actor
+  for (const key of ['triggered_by', 'actor', 'user', 'github_actor', 'sender']) {
+    if (init[key] && typeof init[key] === 'string') return init[key] as string
+  }
+  return '—'
+}
+
 export default function RunListView({ runs, loading, error, onSelectRun, runMetadataMap, loadingMetadataList }: RunListViewProps) {
   const [filterBenchmark, setFilterBenchmark] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterText, setFilterText] = useState('')
 
-  // Compute statuses
+  // Compute statuses and triggered-by
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
       const status: StatusType = metadata ? getStageStatus(metadata) : 'pending'
-      return { ...run, status }
+      const triggeredBy = extractTriggeredBy(metadata)
+      return { ...run, status, triggeredBy }
     })
   }, [runs, runMetadataMap])
 
-  // Get unique benchmarks and statuses for filters
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
 
@@ -110,7 +120,8 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
         if (
           !run.model.toLowerCase().includes(search) &&
           !run.jobId.toLowerCase().includes(search) &&
-          !run.benchmark.toLowerCase().includes(search)
+          !run.benchmark.toLowerCase().includes(search) &&
+          !run.triggeredBy.toLowerCase().includes(search)
         ) return false
       }
       return true
@@ -242,12 +253,13 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Benchmark</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Model</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Job ID</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Triggered By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-oh-border">
               {filteredRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-oh-text-muted">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-oh-text-muted">
                     No runs match the current filters.
                   </td>
                 </tr>
@@ -272,6 +284,11 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-oh-text-muted font-mono">
                         #{run.jobId}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-oh-text-muted">
+                        {run.triggeredBy}
                       </span>
                     </td>
                   </tr>

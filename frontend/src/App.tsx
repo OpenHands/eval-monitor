@@ -47,7 +47,7 @@ export default function App() {
   const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null)
   const [loadingMetadata, setLoadingMetadata] = useState(false)
 
-  // Metadata map for all runs (used by the list view)
+  // Metadata map for all runs (used by the list view for status)
   const [runMetadataMap, setRunMetadataMap] = useState<Record<string, RunMetadata>>({})
   const [loadingMetadataList, setLoadingMetadataList] = useState(false)
 
@@ -95,9 +95,6 @@ export default function App() {
   const loadAllMetadata = useCallback(async (runSlugs: string[]) => {
     if (runSlugs.length === 0) return
     setLoadingMetadataList(true)
-    const map: Record<string, RunMetadata> = {}
-
-    // Fetch in batches of 10 to avoid overwhelming the browser
     const batchSize = 10
     for (let i = 0; i < runSlugs.length; i += batchSize) {
       const batch = runSlugs.slice(i, i + batchSize)
@@ -111,11 +108,11 @@ export default function App() {
           }
         })
       )
+      const batchMap: Record<string, RunMetadata> = {}
       results.forEach(({ slug, metadata }) => {
-        if (metadata) map[slug] = metadata
+        if (metadata) batchMap[slug] = metadata
       })
-      // Update progressively so the UI updates as batches complete
-      setRunMetadataMap(prev => ({ ...prev, ...map }))
+      setRunMetadataMap(prev => ({ ...prev, ...batchMap }))
     }
     setLoadingMetadataList(false)
   }, [])
@@ -150,13 +147,14 @@ export default function App() {
 
   const handleSelectRun = async (slug: string) => {
     setSelectedRun(slug)
-    setRunMetadata(null)
     setLoadingMetadata(true)
+    // Use cached metadata if available
     const cached = runMetadataMap[slug]
     if (cached) {
       setRunMetadata(cached)
       setLoadingMetadata(false)
     } else {
+      setRunMetadata(null)
       try {
         const metadata = await fetchRunMetadata(slug)
         setRunMetadata(metadata)
@@ -181,7 +179,6 @@ export default function App() {
     }
   }
 
-  // Derive quick status summaries for the run list
   const runSummaries = runs.map(slug => {
     const parsed = parseRunSlug(slug)
     return { slug, ...parsed }
