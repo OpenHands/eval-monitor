@@ -19,11 +19,16 @@ export default function App() {
   const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null)
   const [loadingMetadata, setLoadingMetadata] = useState(false)
 
+  // Metadata map for all runs (used by the list view for status)
+  const [runMetadataMap, setRunMetadataMap] = useState<Record<string, RunMetadata>>({})
+  const [loadingMetadataList, setLoadingMetadataList] = useState(false)
+
   const loadRuns = useCallback(async () => {
     setLoading(true)
     setError(null)
     setSelectedRun(null)
     setRunMetadata(null)
+    setRunMetadataMap({})
     try {
       const list = await fetchRunList(date)
       setRuns(list)
@@ -35,21 +40,61 @@ export default function App() {
     }
   }, [date])
 
+  // Fetch metadata for all runs to show status in the list
+  const loadAllMetadata = useCallback(async (runSlugs: string[]) => {
+    if (runSlugs.length === 0) return
+    setLoadingMetadataList(true)
+    const batchSize = 10
+    for (let i = 0; i < runSlugs.length; i += batchSize) {
+      const batch = runSlugs.slice(i, i + batchSize)
+      const results = await Promise.all(
+        batch.map(async slug => {
+          try {
+            const metadata = await fetchRunMetadata(slug)
+            return { slug, metadata }
+          } catch {
+            return { slug, metadata: null }
+          }
+        })
+      )
+      const batchMap: Record<string, RunMetadata> = {}
+      results.forEach(({ slug, metadata }) => {
+        if (metadata) batchMap[slug] = metadata
+      })
+      setRunMetadataMap(prev => ({ ...prev, ...batchMap }))
+    }
+    setLoadingMetadataList(false)
+  }, [])
+
   useEffect(() => {
     loadRuns()
   }, [loadRuns])
 
+  // When runs are loaded, fetch all their metadata
+  useEffect(() => {
+    if (runs.length > 0 && !selectedRun) {
+      loadAllMetadata(runs)
+    }
+  }, [runs, selectedRun, loadAllMetadata])
+
   const handleSelectRun = async (slug: string) => {
     setSelectedRun(slug)
     setLoadingMetadata(true)
-    setRunMetadata(null)
-    try {
-      const metadata = await fetchRunMetadata(slug)
-      setRunMetadata(metadata)
-    } catch {
-      setRunMetadata(null)
-    } finally {
+    // Use cached metadata if available
+    const cached = runMetadataMap[slug]
+    if (cached) {
+      setRunMetadata(cached)
       setLoadingMetadata(false)
+    } else {
+      setRunMetadata(null)
+      try {
+        const metadata = await fetchRunMetadata(slug)
+        setRunMetadata(metadata)
+      } catch {
+        setRunMetadata(null)
+      } finally {
+        setLoadingMetadata(false)
+      }
     }
   }
 
@@ -66,7 +111,6 @@ export default function App() {
     }
   }
 
-  // Derive quick status summaries for the run list
   const runSummaries = runs.map(slug => {
     const parsed = parseRunSlug(slug)
     return { slug, ...parsed }
@@ -96,6 +140,8 @@ export default function App() {
             loading={loading}
             error={error}
             onSelectRun={handleSelectRun}
+            runMetadataMap={runMetadataMap}
+            loadingMetadataList={loadingMetadataList}
           />
         )}
       </main>
