@@ -91,39 +91,52 @@ function getTimestampMs(data: Record<string, unknown> | null): number | null {
   return isNaN(ms) ? null : ms
 }
 
-export function formatRuntime(diffMs: number): string {
-  if (diffMs < 0) return '—'
-  const totalMinutes = Math.floor(diffMs / 60000)
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
+export function getStartTimestamp(metadata: RunMetadata): number | null {
+  return getTimestampMs(metadata.init)
+    ?? getTimestampMs(metadata.runInferStart)
+    ?? null
 }
 
-export function computeRuntime(metadata: RunMetadata, now?: number): string | null {
+export function getEndTimestamp(metadata: RunMetadata): number | null {
   const status = getStageStatus(metadata)
-  if (status === 'pending') return null
-
-  // Find the earliest start time
-  const startMs =
-    getTimestampMs(metadata.init) ??
-    getTimestampMs(metadata.runInferStart) ??
-    getTimestampMs(metadata.evalInferStart)
-  if (startMs == null) return null
-
-  // For completed or errored jobs, use the latest available end timestamp
-  if (status === 'completed' || status === 'error') {
-    const endMs =
-      getTimestampMs(metadata.evalInferEnd) ??
-      getTimestampMs(metadata.runInferEnd) ??
-      getTimestampMs(metadata.error) ??
-      getTimestampMs(metadata.evalInferStart) ??
-      getTimestampMs(metadata.runInferStart)
-    if (endMs == null) return null
-    return formatRuntime(endMs - startMs)
+  if (status === 'completed') {
+    return getTimestampMs(metadata.evalInferEnd) ?? null
   }
+  if (status === 'error') {
+    return getTimestampMs(metadata.error)
+      ?? getTimestampMs(metadata.evalInferStart)
+      ?? getTimestampMs(metadata.runInferEnd)
+      ?? getTimestampMs(metadata.runInferStart)
+      ?? getTimestampMs(metadata.init)
+      ?? null
+  }
+  return null
+}
 
-  // For running jobs, compute elapsed time from now
-  const currentMs = now ?? Date.now()
-  return formatRuntime(currentMs - startMs)
+export function isFinished(metadata: RunMetadata): boolean {
+  const status = getStageStatus(metadata)
+  return status === 'completed' || status === 'error'
+}
+
+export function formatDurationMs(ms: number): string {
+  if (ms < 0) return '—'
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return `${hours}h ${remainingMinutes}m`
+}
+
+export function getRuntime(metadata: RunMetadata, now: number = Date.now()): string | null {
+  const start = getStartTimestamp(metadata)
+  if (start === null) return null
+
+  const finished = isFinished(metadata)
+  const end = finished ? getEndTimestamp(metadata) : now
+  if (end === null) return null
+
+  return formatDurationMs(end - start)
 }

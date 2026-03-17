@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { formatRuntime, computeRuntime } from './api'
+import {
+  getRuntime,
+  getStartTimestamp,
+  getEndTimestamp,
+  isFinished,
+  formatDurationMs,
+  getStageStatus,
+} from './api'
 import type { RunMetadata } from './api'
 
 function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
@@ -15,109 +22,217 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
   }
 }
 
-function ts(isoString: string): Record<string, unknown> {
-  return { timestamp: isoString }
-}
+const ts = (iso: string) => ({ timestamp: iso })
 
-describe('formatRuntime', () => {
-  it('returns dash for negative diff', () => {
-    expect(formatRuntime(-1000)).toBe('—')
+describe('formatDurationMs', () => {
+  it('returns — for negative durations', () => {
+    expect(formatDurationMs(-1000)).toBe('—')
   })
 
-  it('returns 0m for zero diff', () => {
-    expect(formatRuntime(0)).toBe('0m')
+  it('formats seconds', () => {
+    expect(formatDurationMs(45_000)).toBe('45s')
   })
 
-  it('returns minutes only when less than an hour', () => {
-    expect(formatRuntime(30 * 60_000)).toBe('30m')
+  it('formats minutes and seconds', () => {
+    expect(formatDurationMs(125_000)).toBe('2m 5s')
   })
 
-  it('returns hours and minutes for longer durations', () => {
-    expect(formatRuntime(90 * 60_000)).toBe('1h 30m')
+  it('formats hours and minutes', () => {
+    expect(formatDurationMs(3_723_000)).toBe('1h 2m')
   })
 
-  it('returns hours and 0m for exact hours', () => {
-    expect(formatRuntime(2 * 3600_000)).toBe('2h 0m')
-  })
-
-  it('truncates seconds (does not round)', () => {
-    // 59 seconds = 0m
-    expect(formatRuntime(59_000)).toBe('0m')
-    // 61 seconds = 1m
-    expect(formatRuntime(61_000)).toBe('1m')
+  it('returns 0s for zero', () => {
+    expect(formatDurationMs(0)).toBe('0s')
   })
 })
 
-describe('computeRuntime', () => {
-  it('returns null for pending jobs (no start metadata)', () => {
-    const meta = makeMetadata({ init: { timestamp: '2025-01-01T00:00:00Z' } })
-    expect(computeRuntime(meta)).toBeNull()
+describe('getStartTimestamp', () => {
+  it('returns init timestamp when available', () => {
+    const m = makeMetadata({ init: ts('2025-01-01T10:00:00Z') })
+    expect(getStartTimestamp(m)).toBe(new Date('2025-01-01T10:00:00Z').getTime())
   })
 
-  it('returns null when no metadata at all', () => {
-    const meta = makeMetadata()
-    expect(computeRuntime(meta)).toBeNull()
+  it('falls back to runInferStart when init has no timestamp', () => {
+    const m = makeMetadata({
+      init: { foo: 'bar' },
+      runInferStart: ts('2025-01-01T11:00:00Z'),
+    })
+    expect(getStartTimestamp(m)).toBe(new Date('2025-01-01T11:00:00Z').getTime())
   })
 
-  it('computes total runtime for a completed job', () => {
-    const meta = makeMetadata({
+  it('returns null when no timestamps exist', () => {
+    const m = makeMetadata()
+    expect(getStartTimestamp(m)).toBeNull()
+  })
+})
+
+describe('getEndTimestamp', () => {
+  it('returns evalInferEnd for completed runs', () => {
+    const m = makeMetadata({
       init: ts('2025-01-01T10:00:00Z'),
       runInferStart: ts('2025-01-01T10:05:00Z'),
       runInferEnd: ts('2025-01-01T11:00:00Z'),
       evalInferStart: ts('2025-01-01T11:05:00Z'),
-      evalInferEnd: ts('2025-01-01T12:30:00Z'),
+      evalInferEnd: ts('2025-01-01T12:00:00Z'),
     })
-    // 2h 30m from init to evalInferEnd
-    expect(computeRuntime(meta)).toBe('2h 30m')
+    expect(getEndTimestamp(m)).toBe(new Date('2025-01-01T12:00:00Z').getTime())
   })
 
-  it('computes total runtime for an errored job', () => {
-    const meta = makeMetadata({
+  it('returns error timestamp for errored runs', () => {
+    const m = makeMetadata({
       init: ts('2025-01-01T10:00:00Z'),
       runInferStart: ts('2025-01-01T10:05:00Z'),
-      error: ts('2025-01-01T10:45:00Z'),
+      error: ts('2025-01-01T10:30:00Z'),
     })
-    // 45m from init to error
-    expect(computeRuntime(meta)).toBe('45m')
+    expect(getEndTimestamp(m)).toBe(new Date('2025-01-01T10:30:00Z').getTime())
   })
 
-  it('computes elapsed time for a running job (running-infer)', () => {
-    const meta = makeMetadata({
+  it('returns null for running-infer (not finished)', () => {
+    const m = makeMetadata({
       init: ts('2025-01-01T10:00:00Z'),
       runInferStart: ts('2025-01-01T10:05:00Z'),
     })
-    const fakeNow = new Date('2025-01-01T11:30:00Z').getTime()
-    // 1h 30m from init to now
-    expect(computeRuntime(meta, fakeNow)).toBe('1h 30m')
+    expect(getEndTimestamp(m)).toBeNull()
   })
 
-  it('computes elapsed time for a running job (running-eval)', () => {
-    const meta = makeMetadata({
-      init: ts('2025-01-01T08:00:00Z'),
-      runInferStart: ts('2025-01-01T08:05:00Z'),
-      runInferEnd: ts('2025-01-01T09:00:00Z'),
-      evalInferStart: ts('2025-01-01T09:10:00Z'),
+  it('returns null for running-eval (not finished)', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      runInferEnd: ts('2025-01-01T11:00:00Z'),
+      evalInferStart: ts('2025-01-01T11:05:00Z'),
     })
-    const fakeNow = new Date('2025-01-01T10:15:00Z').getTime()
-    // 2h 15m from init to now
-    expect(computeRuntime(meta, fakeNow)).toBe('2h 15m')
+    expect(getEndTimestamp(m)).toBeNull()
+  })
+})
+
+describe('isFinished', () => {
+  it('returns true for completed', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      evalInferEnd: ts('2025-01-01T12:00:00Z'),
+    })
+    expect(isFinished(m)).toBe(true)
   })
 
-  it('uses runInferStart as start time when init is missing', () => {
-    const meta = makeMetadata({
-      runInferStart: ts('2025-01-01T10:00:00Z'),
-      runInferEnd: ts('2025-01-01T10:30:00Z'),
-      evalInferStart: ts('2025-01-01T10:35:00Z'),
-      evalInferEnd: ts('2025-01-01T11:00:00Z'),
+  it('returns true for error', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      error: ts('2025-01-01T10:30:00Z'),
     })
-    // 1h from runInferStart to evalInferEnd
-    expect(computeRuntime(meta)).toBe('1h 0m')
+    expect(isFinished(m)).toBe(true)
   })
 
-  it('returns null when timestamp field is missing from data', () => {
-    const meta = makeMetadata({
-      runInferStart: { someOtherField: 'value' },
+  it('returns false for running-infer', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
     })
-    expect(computeRuntime(meta)).toBeNull()
+    expect(isFinished(m)).toBe(false)
+  })
+
+  it('returns false for pending', () => {
+    const m = makeMetadata({ init: ts('2025-01-01T10:00:00Z') })
+    expect(isFinished(m)).toBe(false)
+  })
+})
+
+describe('getRuntime', () => {
+  it('returns formatted duration for completed run', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      runInferEnd: ts('2025-01-01T11:00:00Z'),
+      evalInferStart: ts('2025-01-01T11:05:00Z'),
+      evalInferEnd: ts('2025-01-01T12:00:00Z'),
+    })
+    expect(getRuntime(m)).toBe('2h 0m')
+  })
+
+  it('returns formatted duration for errored run', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      error: ts('2025-01-01T10:30:00Z'),
+    })
+    expect(getRuntime(m)).toBe('30m 0s')
+  })
+
+  it('uses current time (now param) for non-finished runs', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+    })
+    const fakeNow = new Date('2025-01-01T10:20:00Z').getTime()
+    expect(getRuntime(m, fakeNow)).toBe('20m 0s')
+  })
+
+  it('uses current time for pending runs with init', () => {
+    const m = makeMetadata({ init: ts('2025-01-01T10:00:00Z') })
+    const fakeNow = new Date('2025-01-01T10:03:00Z').getTime()
+    expect(getRuntime(m, fakeNow)).toBe('3m 0s')
+  })
+
+  it('uses current time for running-eval', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      runInferEnd: ts('2025-01-01T11:00:00Z'),
+      evalInferStart: ts('2025-01-01T11:05:00Z'),
+    })
+    const fakeNow = new Date('2025-01-01T12:30:00Z').getTime()
+    expect(getRuntime(m, fakeNow)).toBe('2h 30m')
+  })
+
+  it('returns null when no start timestamp exists', () => {
+    const m = makeMetadata()
+    expect(getRuntime(m)).toBeNull()
+  })
+
+  it('returns null for metadata with no timestamps at all', () => {
+    const m = makeMetadata({ init: { foo: 'bar' } })
+    expect(getRuntime(m)).toBeNull()
+  })
+})
+
+describe('getStageStatus', () => {
+  it('returns error when error exists', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      error: ts('2025-01-01T10:30:00Z'),
+    })
+    expect(getStageStatus(m)).toBe('error')
+  })
+
+  it('returns completed when evalInferEnd exists', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      evalInferEnd: ts('2025-01-01T12:00:00Z'),
+    })
+    expect(getStageStatus(m)).toBe('completed')
+  })
+
+  it('returns running-infer when only runInferStart', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+    })
+    expect(getStageStatus(m)).toBe('running-infer')
+  })
+
+  it('returns running-eval when evalInferStart exists', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      runInferEnd: ts('2025-01-01T11:00:00Z'),
+      evalInferStart: ts('2025-01-01T11:05:00Z'),
+    })
+    expect(getStageStatus(m)).toBe('running-eval')
+  })
+
+  it('returns pending when only init', () => {
+    const m = makeMetadata({ init: ts('2025-01-01T10:00:00Z') })
+    expect(getStageStatus(m)).toBe('pending')
   })
 })

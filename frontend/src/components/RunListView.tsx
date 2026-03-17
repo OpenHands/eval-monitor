@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { RunMetadata } from '../api'
-import { getStageStatus, computeRuntime } from '../api'
+import { getStageStatus, getRuntime, isFinished } from '../api'
 
 interface RunInfo {
   slug: string
@@ -99,23 +99,32 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
   const [filterText, setFilterText] = useState('')
   const [now, setNow] = useState(Date.now())
 
-  // Tick every 60s so running job runtimes update live
+  // Check if any run is non-finished to decide whether to tick the timer
+  const hasNonFinished = useMemo(() => {
+    return runs.some(run => {
+      const metadata = runMetadataMap[run.slug]
+      return metadata && !isFinished(metadata)
+    })
+  }, [runs, runMetadataMap])
+
+  // Tick every 1s so elapsed time updates for non-finished runs
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(id)
-  }, [])
+    if (!hasNonFinished) return
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [hasNonFinished])
 
   // Compute statuses, runtimes, and triggered-by
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
       const status: StatusType = metadata ? getStageStatus(metadata) : 'pending'
-      const runtime: string | null = metadata ? computeRuntime(metadata, now) : null
+      const runtime: string | null = metadata ? getRuntime(metadata, now) : null
+      const runFinished = metadata ? isFinished(metadata) : true
       const triggeredBy = extractTriggeredBy(metadata)
-      return { ...run, status, runtime, triggeredBy }
+      return { ...run, status, runtime, runFinished, triggeredBy }
     })
   }, [runs, runMetadataMap, now])
-
 
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
@@ -298,9 +307,14 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-oh-text-muted font-mono">
-                        {run.runtime ?? '—'}
-                      </span>
+                      {run.runtime ? (
+                        <span className={`text-sm font-mono ${run.runFinished ? 'text-oh-text-muted' : 'text-oh-primary'}`}>
+                          {run.runtime}
+                          {!run.runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-oh-text-muted">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-oh-text-muted">
