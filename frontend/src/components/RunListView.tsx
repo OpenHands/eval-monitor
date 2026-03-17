@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { RunMetadata } from '../api'
-import { getStageStatus, getRuntime, isFinished } from '../api'
+import { getStageStatus, getRuntime, isFinished, extractTriggeredBy } from '../api'
 
 interface RunInfo {
   slug: string
@@ -80,16 +80,6 @@ function BenchmarkBadge({ name }: { name: string }) {
       {name}
     </span>
   )
-}
-
-function extractTriggeredBy(metadata: RunMetadata | undefined): string {
-  if (!metadata?.init) return '—'
-  const init = metadata.init as Record<string, unknown>
-  // Check common fields that might contain the trigger actor
-  for (const key of ['triggered_by', 'actor', 'user', 'github_actor', 'sender']) {
-    if (init[key] && typeof init[key] === 'string') return init[key] as string
-  }
-  return '—'
 }
 
 
