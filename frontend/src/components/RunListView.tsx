@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import type { RunMetadata } from '../api'
-import { getStageStatus } from '../api'
+import type { RunMetadata, StageStatuses, StageItemStatus } from '../api'
+import { getStageStatus, getStageStatuses } from '../api'
 
 interface RunInfo {
   slug: string
@@ -79,6 +79,45 @@ function BenchmarkBadge({ name }: { name: string }) {
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
       {name}
     </span>
+  )
+}
+
+const STAGE_DOT_COLORS: Record<StageItemStatus, string> = {
+  completed: 'bg-emerald-400',
+  active: 'bg-blue-400 animate-pulse',
+  pending: 'bg-gray-600',
+  error: 'bg-red-400',
+}
+
+const STAGE_LABELS: { key: keyof StageStatuses; label: string }[] = [
+  { key: 'init', label: 'Init' },
+  { key: 'runInferStart', label: 'Run Infer Start' },
+  { key: 'runInferEnd', label: 'Run Infer End' },
+  { key: 'evalInferStart', label: 'Eval Infer Start' },
+  { key: 'evalInferEnd', label: 'Eval Infer End' },
+]
+
+function StagesIndicator({ stages }: { stages: StageStatuses | null }) {
+  if (!stages) {
+    return (
+      <div className="flex items-center gap-1">
+        {STAGE_LABELS.map(({ key }) => (
+          <span key={key} className="w-2 h-2 rounded-full bg-gray-600" title={key} />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      {STAGE_LABELS.map(({ key, label }) => (
+        <span
+          key={key}
+          className={`w-2 h-2 rounded-full ${STAGE_DOT_COLORS[stages[key]]}`}
+          title={`${label}: ${stages[key]}`}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -239,6 +278,7 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
             <thead>
               <tr className="border-b border-oh-border">
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Status</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Stages</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Benchmark</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Model</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Job ID</th>
@@ -247,35 +287,42 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
             <tbody className="divide-y divide-oh-border">
               {filteredRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-oh-text-muted">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-oh-text-muted">
                     No runs match the current filters.
                   </td>
                 </tr>
               ) : (
-                filteredRuns.map(run => (
-                  <tr
-                    key={run.slug}
-                    onClick={() => onSelectRun(run.slug)}
-                    className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <StatusBadge status={run.status} />
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <BenchmarkBadge name={run.benchmark} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-oh-text group-hover:text-oh-primary transition-colors">
-                        {run.model || run.slug}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-oh-text-muted font-mono">
-                        #{run.jobId}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                filteredRuns.map(run => {
+                  const metadata = runMetadataMap[run.slug]
+                  const stages = metadata ? getStageStatuses(metadata) : null
+                  return (
+                    <tr
+                      key={run.slug}
+                      onClick={() => onSelectRun(run.slug)}
+                      className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <StatusBadge status={run.status} />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <StagesIndicator stages={stages} />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <BenchmarkBadge name={run.benchmark} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm font-medium text-oh-text group-hover:text-oh-primary transition-colors">
+                          {run.model || run.slug}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-sm text-oh-text-muted font-mono">
+                          #{run.jobId}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

@@ -81,3 +81,61 @@ export function getStageStatus(metadata: RunMetadata): 'pending' | 'running-infe
   if (metadata.init) return 'pending'
   return 'pending'
 }
+
+export type StageItemStatus = 'completed' | 'active' | 'pending' | 'error'
+
+export interface StageStatuses {
+  init: StageItemStatus
+  runInferStart: StageItemStatus
+  runInferEnd: StageItemStatus
+  evalInferStart: StageItemStatus
+  evalInferEnd: StageItemStatus
+}
+
+const STAGE_KEYS: (keyof StageStatuses)[] = [
+  'init',
+  'runInferStart',
+  'runInferEnd',
+  'evalInferStart',
+  'evalInferEnd',
+]
+
+export function getStageStatuses(metadata: RunMetadata): StageStatuses {
+  const hasError = !!metadata.error
+  const metadataKeys: Record<keyof StageStatuses, keyof RunMetadata> = {
+    init: 'init',
+    runInferStart: 'runInferStart',
+    runInferEnd: 'runInferEnd',
+    evalInferStart: 'evalInferStart',
+    evalInferEnd: 'evalInferEnd',
+  }
+
+  // Find the last present stage to determine which is "active"
+  let lastPresentIndex = -1
+  for (let i = STAGE_KEYS.length - 1; i >= 0; i--) {
+    if (metadata[metadataKeys[STAGE_KEYS[i]]] !== null) {
+      lastPresentIndex = i
+      break
+    }
+  }
+
+  const statuses: Partial<StageStatuses> = {}
+  for (let i = 0; i < STAGE_KEYS.length; i++) {
+    const key = STAGE_KEYS[i]
+    const present = metadata[metadataKeys[key]] !== null
+
+    if (present) {
+      // If this is the last present stage and the overall run is not completed, it's "active"
+      // unless there's an error
+      if (i === lastPresentIndex && !metadata.evalInferEnd) {
+        statuses[key] = hasError ? 'error' : 'active'
+      } else {
+        statuses[key] = 'completed'
+      }
+    } else {
+      statuses[key] = 'pending'
+    }
+  }
+
+  return statuses as StageStatuses
+}
