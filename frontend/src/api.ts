@@ -1,4 +1,5 @@
 const BASE_URL = '/api'
+const RESULTS_BASE_URL = 'https://results.eval.all-hands.dev'
 
 export async function fetchRunList(date: string): Promise<string[]> {
   const cacheBust = Math.floor(Date.now() / 1000)
@@ -99,6 +100,65 @@ const STAGE_KEYS: (keyof StageStatuses)[] = [
   'evalInferStart',
   'evalInferEnd',
 ]
+
+export function getResultsUrl(slug: string, file: string): string {
+  return `${RESULTS_BASE_URL}/${slug.replace(/\/$/, '')}/${file}`
+}
+
+export interface OutputReport {
+  scalarFields: Record<string, unknown>
+  hasListFields: boolean
+  fullUrl: string
+}
+
+export async function fetchOutputReport(slug: string): Promise<OutputReport | null> {
+  const cleanSlug = slug.replace(/\/$/, '')
+  const data = await fetchJson(`${BASE_URL}/${cleanSlug}/output.report.json`)
+  if (!data) return null
+  const scalarFields: Record<string, unknown> = {}
+  let hasListFields = false
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      hasListFields = true
+    } else {
+      scalarFields[key] = value
+    }
+  }
+  return { scalarFields, hasListFields, fullUrl: getResultsUrl(cleanSlug, 'output.report.json') }
+}
+
+export interface CostReportSummary {
+  total_cost: number
+  total_duration: number
+  only_main_output_cost: number
+  sum_critic_files: number
+}
+
+export interface CostReport {
+  summary: CostReportSummary | null
+  fullUrl: string
+}
+
+export async function fetchCostReport(slug: string): Promise<CostReport | null> {
+  const cleanSlug = slug.replace(/\/$/, '')
+  const data = await fetchJson(`${BASE_URL}/${cleanSlug}/cost_report.jsonl`)
+  if (!data) return null
+  const summary = (data.summary as CostReportSummary) || null
+  return { summary, fullUrl: getResultsUrl(cleanSlug, 'cost_report.jsonl') }
+}
+
+export function filterScalarFields(data: Record<string, unknown>): { scalarFields: Record<string, unknown>; hasListFields: boolean } {
+  const scalarFields: Record<string, unknown> = {}
+  let hasListFields = false
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value)) {
+      hasListFields = true
+    } else {
+      scalarFields[key] = value
+    }
+  }
+  return { scalarFields, hasListFields }
+}
 
 export function getStageStatuses(metadata: RunMetadata): StageStatuses {
   const hasError = !!metadata.error

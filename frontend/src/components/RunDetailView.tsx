@@ -2,6 +2,7 @@ import { parseRunSlug } from '../api'
 import type { RunMetadata } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
+import CompletedRunResults from './CompletedRunResults'
 
 interface RunDetailViewProps {
   slug: string
@@ -42,6 +43,9 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
           <StatusBadge status={status} />
         </div>
       </div>
+
+      {/* Completed Run Results */}
+      {status === 'completed' && <CompletedRunResults slug={slug} />}
 
       {/* Status Timeline */}
       {metadata && <StatusTimeline metadata={metadata} />}
