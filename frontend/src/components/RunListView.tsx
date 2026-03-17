@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { RunMetadata } from '../api'
-import { getStageStatus } from '../api'
+import { getStageStatus, computeRuntime } from '../api'
 
 interface RunInfo {
   slug: string
@@ -92,20 +92,30 @@ function extractTriggeredBy(metadata: RunMetadata | undefined): string {
   return '—'
 }
 
+
 export default function RunListView({ runs, loading, error, onSelectRun, runMetadataMap, loadingMetadataList }: RunListViewProps) {
   const [filterBenchmark, setFilterBenchmark] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterText, setFilterText] = useState('')
+  const [now, setNow] = useState(Date.now())
 
-  // Compute statuses and triggered-by
+  // Tick every 60s so running job runtimes update live
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Compute statuses, runtimes, and triggered-by
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
       const status: StatusType = metadata ? getStageStatus(metadata) : 'pending'
+      const runtime: string | null = metadata ? computeRuntime(metadata, now) : null
       const triggeredBy = extractTriggeredBy(metadata)
-      return { ...run, status, triggeredBy }
+      return { ...run, status, runtime, triggeredBy }
     })
-  }, [runs, runMetadataMap])
+  }, [runs, runMetadataMap, now])
+
 
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
@@ -253,13 +263,14 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Benchmark</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Model</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Job ID</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Runtime</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Triggered By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-oh-border">
               {filteredRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-oh-text-muted">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-oh-text-muted">
                     No runs match the current filters.
                   </td>
                 </tr>
@@ -284,6 +295,11 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-oh-text-muted font-mono">
                         #{run.jobId}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-oh-text-muted font-mono">
+                        {run.runtime ?? '—'}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">

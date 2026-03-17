@@ -82,3 +82,48 @@ export function getStageStatus(metadata: RunMetadata): 'pending' | 'running-infe
   if (metadata.init) return 'pending'
   return 'pending'
 }
+
+function getTimestampMs(data: Record<string, unknown> | null): number | null {
+  if (!data) return null
+  const ts = data.timestamp as string | undefined
+  if (!ts) return null
+  const ms = new Date(ts).getTime()
+  return isNaN(ms) ? null : ms
+}
+
+export function formatRuntime(diffMs: number): string {
+  if (diffMs < 0) return '—'
+  const totalMinutes = Math.floor(diffMs / 60000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
+export function computeRuntime(metadata: RunMetadata, now?: number): string | null {
+  const status = getStageStatus(metadata)
+  if (status === 'pending') return null
+
+  // Find the earliest start time
+  const startMs =
+    getTimestampMs(metadata.init) ??
+    getTimestampMs(metadata.runInferStart) ??
+    getTimestampMs(metadata.evalInferStart)
+  if (startMs == null) return null
+
+  // For completed or errored jobs, use the latest available end timestamp
+  if (status === 'completed' || status === 'error') {
+    const endMs =
+      getTimestampMs(metadata.evalInferEnd) ??
+      getTimestampMs(metadata.runInferEnd) ??
+      getTimestampMs(metadata.error) ??
+      getTimestampMs(metadata.evalInferStart) ??
+      getTimestampMs(metadata.runInferStart)
+    if (endMs == null) return null
+    return formatRuntime(endMs - startMs)
+  }
+
+  // For running jobs, compute elapsed time from now
+  const currentMs = now ?? Date.now()
+  return formatRuntime(currentMs - startMs)
+}
