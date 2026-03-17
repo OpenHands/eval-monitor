@@ -10,12 +10,40 @@ function getTodayUTC(): string {
   return now.toISOString().split('T')[0]
 }
 
+export function parseSearchParams(search: string, defaultDate: string): { date: string; run: string | null } {
+  const params = new URLSearchParams(search)
+  const date = params.get('date') || defaultDate
+  const run = params.get('run') || null
+  return { date, run }
+}
+
+export function buildSearchString(date: string, run: string | null, todayDate: string): string {
+  const params = new URLSearchParams()
+  if (date !== todayDate) {
+    params.set('date', date)
+  }
+  if (run) {
+    params.set('run', run)
+  }
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
+function parseUrlState(): { date: string; run: string | null } {
+  return parseSearchParams(window.location.search, getTodayUTC())
+}
+
+function buildUrl(date: string, run: string | null): string {
+  const qs = buildSearchString(date, run, getTodayUTC())
+  return qs || window.location.pathname
+}
+
 export default function App() {
-  const [date, setDate] = useState(getTodayUTC)
+  const [date, setDate] = useState(() => parseUrlState().date)
   const [runs, setRuns] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedRun, setSelectedRun] = useState<string | null>(null)
+  const [selectedRun, setSelectedRun] = useState<string | null>(() => parseUrlState().run)
   const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null)
   const [loadingMetadata, setLoadingMetadata] = useState(false)
 
@@ -23,11 +51,34 @@ export default function App() {
   const [runMetadataMap, setRunMetadataMap] = useState<Record<string, RunMetadata>>({})
   const [loadingMetadataList, setLoadingMetadataList] = useState(false)
 
+  // Sync URL when date or selectedRun changes (skip on initial mount)
+  const [initialized, setInitialized] = useState(false)
+  useEffect(() => {
+    if (!initialized) {
+      setInitialized(true)
+      return
+    }
+    const url = buildUrl(date, selectedRun)
+    window.history.pushState({ date, run: selectedRun }, '', url)
+  }, [date, selectedRun]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const state = parseUrlState()
+      setDate(state.date)
+      setSelectedRun(state.run)
+      if (!state.run) {
+        setRunMetadata(null)
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
   const loadRuns = useCallback(async () => {
     setLoading(true)
     setError(null)
-    setSelectedRun(null)
-    setRunMetadata(null)
     setRunMetadataMap({})
     try {
       const list = await fetchRunList(date)
@@ -76,6 +127,23 @@ export default function App() {
       loadAllMetadata(runs)
     }
   }, [runs, selectedRun, loadAllMetadata])
+
+  // If we have a run from URL but haven't loaded its metadata yet, fetch it
+  useEffect(() => {
+    if (selectedRun && !runMetadata && !loadingMetadata) {
+      setLoadingMetadata(true)
+      const cached = runMetadataMap[selectedRun]
+      if (cached) {
+        setRunMetadata(cached)
+        setLoadingMetadata(false)
+      } else {
+        fetchRunMetadata(selectedRun)
+          .then(metadata => setRunMetadata(metadata))
+          .catch(() => setRunMetadata(null))
+          .finally(() => setLoadingMetadata(false))
+      }
+    }
+  }, [selectedRun]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectRun = async (slug: string) => {
     setSelectedRun(slug)
