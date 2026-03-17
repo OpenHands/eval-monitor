@@ -13,6 +13,7 @@ export async function fetchRunList(date: string): Promise<string[]> {
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0)
+    .reverse()
 }
 
 export interface RunMetadata {
@@ -83,24 +84,6 @@ export function getStageStatus(metadata: RunMetadata): 'pending' | 'running-infe
   return 'pending'
 }
 
-export type StageItemStatus = 'completed' | 'active' | 'pending' | 'error'
-
-export interface StageStatuses {
-  init: StageItemStatus
-  runInferStart: StageItemStatus
-  runInferEnd: StageItemStatus
-  evalInferStart: StageItemStatus
-  evalInferEnd: StageItemStatus
-}
-
-const STAGE_KEYS: (keyof StageStatuses)[] = [
-  'init',
-  'runInferStart',
-  'runInferEnd',
-  'evalInferStart',
-  'evalInferEnd',
-]
-
 export function getResultsUrl(slug: string, file: string): string {
   return `${RESULTS_BASE_URL}/${slug.replace(/\/$/, '')}/${file}`
 }
@@ -160,42 +143,60 @@ export function filterScalarFields(data: Record<string, unknown>): { scalarField
   return { scalarFields, hasListFields }
 }
 
-export function getStageStatuses(metadata: RunMetadata): StageStatuses {
-  const hasError = !!metadata.error
-  const metadataKeys: Record<keyof StageStatuses, keyof RunMetadata> = {
-    init: 'init',
-    runInferStart: 'runInferStart',
-    runInferEnd: 'runInferEnd',
-    evalInferStart: 'evalInferStart',
-    evalInferEnd: 'evalInferEnd',
+function getTimestampMs(data: Record<string, unknown> | null): number | null {
+  if (!data) return null
+  const ts = data.timestamp as string | undefined
+  if (!ts) return null
+  const ms = new Date(ts).getTime()
+  return isNaN(ms) ? null : ms
+}
+
+export function getStartTimestamp(metadata: RunMetadata): number | null {
+  return getTimestampMs(metadata.init)
+    ?? getTimestampMs(metadata.runInferStart)
+    ?? null
+}
+
+export function getEndTimestamp(metadata: RunMetadata): number | null {
+  const status = getStageStatus(metadata)
+  if (status === 'completed') {
+    return getTimestampMs(metadata.evalInferEnd) ?? null
   }
-
-  // Find the last present stage to determine which is "active"
-  let lastPresentIndex = -1
-  for (let i = STAGE_KEYS.length - 1; i >= 0; i--) {
-    if (metadata[metadataKeys[STAGE_KEYS[i]]] !== null) {
-      lastPresentIndex = i
-      break
-    }
+  if (status === 'error') {
+    return getTimestampMs(metadata.error)
+      ?? getTimestampMs(metadata.evalInferStart)
+      ?? getTimestampMs(metadata.runInferEnd)
+      ?? getTimestampMs(metadata.runInferStart)
+      ?? getTimestampMs(metadata.init)
+      ?? null
   }
+  return null
+}
 
-  const statuses: Partial<StageStatuses> = {}
-  for (let i = 0; i < STAGE_KEYS.length; i++) {
-    const key = STAGE_KEYS[i]
-    const present = metadata[metadataKeys[key]] !== null
+export function isFinished(metadata: RunMetadata): boolean {
+  const status = getStageStatus(metadata)
+  return status === 'completed' || status === 'error'
+}
 
-    if (present) {
-      // If this is the last present stage and the overall run is not completed, it's "active"
-      // unless there's an error
-      if (i === lastPresentIndex && !metadata.evalInferEnd) {
-        statuses[key] = hasError ? 'error' : 'active'
-      } else {
-        statuses[key] = 'completed'
-      }
-    } else {
-      statuses[key] = 'pending'
-    }
-  }
+export function formatDurationMs(ms: number): string {
+  if (ms < 0) return '—'
+  const seconds = Math.floor(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return `${hours}h ${remainingMinutes}m`
+}
 
-  return statuses as StageStatuses
+export function getRuntime(metadata: RunMetadata, now: number = Date.now()): string | null {
+  const start = getStartTimestamp(metadata)
+  if (start === null) return null
+
+  const finished = isFinished(metadata)
+  const end = finished ? getEndTimestamp(metadata) : now
+  if (end === null) return null
+
+  return formatDurationMs(end - start)
 }

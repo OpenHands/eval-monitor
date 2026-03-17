@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
-import type { RunMetadata, StageStatuses, StageItemStatus } from '../api'
-import { getStageStatus, getStageStatuses } from '../api'
+import { useState, useEffect, useMemo } from 'react'
+import type { RunMetadata } from '../api'
+import { getStageStatus, getRuntime, isFinished } from '../api'
 
 interface RunInfo {
   slug: string
@@ -82,60 +82,50 @@ function BenchmarkBadge({ name }: { name: string }) {
   )
 }
 
-const STAGE_DOT_COLORS: Record<StageItemStatus, string> = {
-  completed: 'bg-emerald-400',
-  active: 'bg-blue-400 animate-pulse',
-  pending: 'bg-gray-600',
-  error: 'bg-red-400',
-}
-
-const STAGE_LABELS: { key: keyof StageStatuses; label: string }[] = [
-  { key: 'init', label: 'Init' },
-  { key: 'runInferStart', label: 'Run Infer Start' },
-  { key: 'runInferEnd', label: 'Run Infer End' },
-  { key: 'evalInferStart', label: 'Eval Infer Start' },
-  { key: 'evalInferEnd', label: 'Eval Infer End' },
-]
-
-function StagesIndicator({ stages }: { stages: StageStatuses | null }) {
-  if (!stages) {
-    return (
-      <div className="flex items-center gap-1">
-        {STAGE_LABELS.map(({ key }) => (
-          <span key={key} className="w-2 h-2 rounded-full bg-gray-600" title={key} />
-        ))}
-      </div>
-    )
+function extractTriggeredBy(metadata: RunMetadata | undefined): string {
+  if (!metadata?.init) return '—'
+  const init = metadata.init as Record<string, unknown>
+  // Check common fields that might contain the trigger actor
+  for (const key of ['triggered_by', 'actor', 'user', 'github_actor', 'sender']) {
+    if (init[key] && typeof init[key] === 'string') return init[key] as string
   }
-
-  return (
-    <div className="flex items-center gap-1">
-      {STAGE_LABELS.map(({ key, label }) => (
-        <span
-          key={key}
-          className={`w-2 h-2 rounded-full ${STAGE_DOT_COLORS[stages[key]]}`}
-          title={`${label}: ${stages[key]}`}
-        />
-      ))}
-    </div>
-  )
+  return '—'
 }
+
 
 export default function RunListView({ runs, loading, error, onSelectRun, runMetadataMap, loadingMetadataList }: RunListViewProps) {
   const [filterBenchmark, setFilterBenchmark] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterText, setFilterText] = useState('')
+  const [now, setNow] = useState(Date.now())
 
-  // Compute statuses
+  // Check if any run is non-finished to decide whether to tick the timer
+  const hasNonFinished = useMemo(() => {
+    return runs.some(run => {
+      const metadata = runMetadataMap[run.slug]
+      return metadata && !isFinished(metadata)
+    })
+  }, [runs, runMetadataMap])
+
+  // Tick every 1s so elapsed time updates for non-finished runs
+  useEffect(() => {
+    if (!hasNonFinished) return
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [hasNonFinished])
+
+  // Compute statuses, runtimes, and triggered-by
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
       const status: StatusType = metadata ? getStageStatus(metadata) : 'pending'
-      return { ...run, status }
+      const runtime: string | null = metadata ? getRuntime(metadata, now) : null
+      const runFinished = metadata ? isFinished(metadata) : true
+      const triggeredBy = extractTriggeredBy(metadata)
+      return { ...run, status, runtime, runFinished, triggeredBy }
     })
-  }, [runs, runMetadataMap])
+  }, [runs, runMetadataMap, now])
 
-  // Get unique benchmarks and statuses for filters
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
 
@@ -149,7 +139,8 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
         if (
           !run.model.toLowerCase().includes(search) &&
           !run.jobId.toLowerCase().includes(search) &&
-          !run.benchmark.toLowerCase().includes(search)
+          !run.benchmark.toLowerCase().includes(search) &&
+          !run.triggeredBy.toLowerCase().includes(search)
         ) return false
       }
       return true
@@ -278,51 +269,60 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
             <thead>
               <tr className="border-b border-oh-border">
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Status</th>
-                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Stages</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Benchmark</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Model</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Job ID</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Runtime</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Triggered By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-oh-border">
               {filteredRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-oh-text-muted">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-oh-text-muted">
                     No runs match the current filters.
                   </td>
                 </tr>
               ) : (
-                filteredRuns.map(run => {
-                  const metadata = runMetadataMap[run.slug]
-                  const stages = metadata ? getStageStatuses(metadata) : null
-                  return (
-                    <tr
-                      key={run.slug}
-                      onClick={() => onSelectRun(run.slug)}
-                      className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <StatusBadge status={run.status} />
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <StagesIndicator stages={stages} />
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <BenchmarkBadge name={run.benchmark} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-oh-text group-hover:text-oh-primary transition-colors">
-                          {run.model || run.slug}
+                filteredRuns.map(run => (
+                  <tr
+                    key={run.slug}
+                    onClick={() => onSelectRun(run.slug)}
+                    className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <StatusBadge status={run.status} />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <BenchmarkBadge name={run.benchmark} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-medium text-oh-text group-hover:text-oh-primary transition-colors">
+                        {run.model || run.slug}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-oh-text-muted font-mono">
+                        #{run.jobId}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {run.runtime ? (
+                        <span className={`text-sm font-mono ${run.runFinished ? 'text-oh-text-muted' : 'text-oh-primary'}`}>
+                          {run.runtime}
+                          {!run.runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-sm text-oh-text-muted font-mono">
-                          #{run.jobId}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })
+                      ) : (
+                        <span className="text-sm text-oh-text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-oh-text-muted">
+                        {run.triggeredBy}
+                      </span>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
