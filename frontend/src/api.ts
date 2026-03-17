@@ -190,6 +190,18 @@ export function formatDurationMs(ms: number): string {
   return `${hours}h ${remainingMinutes}m`
 }
 
+export function extractTriggeredBy(metadata: RunMetadata | undefined): string {
+  if (!metadata) return '—'
+  const TRIGGER_KEYS = ['triggered_by', 'actor', 'user', 'github_actor', 'sender']
+  for (const source of [metadata.params, metadata.init]) {
+    if (!source) continue
+    for (const key of TRIGGER_KEYS) {
+      if (source[key] && typeof source[key] === 'string') return source[key] as string
+    }
+  }
+  return '—'
+}
+
 export function getRuntime(metadata: RunMetadata, now: number = Date.now()): string | null {
   const start = getStartTimestamp(metadata)
   if (start === null) return null
