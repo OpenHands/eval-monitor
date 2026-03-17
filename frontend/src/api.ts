@@ -1,7 +1,8 @@
 const BASE_URL = '/api'
 
 export async function fetchRunList(date: string): Promise<string[]> {
-  const res = await fetch(`${BASE_URL}/metadata/${date}.txt`)
+  const cacheBust = Math.floor(Date.now() / 1000)
+  const res = await fetch(`${BASE_URL}/metadata/${date}.txt?${cacheBust}`)
   if (!res.ok) {
     if (res.status === 404) return []
     throw new Error(`Failed to fetch run list: ${res.status}`)
