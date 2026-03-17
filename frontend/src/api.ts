@@ -16,6 +16,40 @@ export async function fetchRunList(date: string): Promise<string[]> {
     .reverse()
 }
 
+export function getDateNDaysAgo(baseDate: string, n: number): string {
+  const d = new Date(baseDate + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() - n)
+  return d.toISOString().split('T')[0]
+}
+
+export function getDatesForRange(baseDate: string, numDays: number): string[] {
+  const dates: string[] = []
+  for (let i = 0; i < numDays; i++) {
+    dates.push(getDateNDaysAgo(baseDate, i))
+  }
+  return dates
+}
+
+export interface DayRunGroup {
+  date: string
+  runs: string[]
+}
+
+export async function fetchMultiDayRunList(baseDate: string, numDays: number): Promise<DayRunGroup[]> {
+  const dates = getDatesForRange(baseDate, numDays)
+  const results = await Promise.all(
+    dates.map(async (date) => {
+      try {
+        const runs = await fetchRunList(date)
+        return { date, runs }
+      } catch {
+        return { date, runs: [] }
+      }
+    })
+  )
+  return results
+}
+
 export interface RunMetadata {
   init: Record<string, unknown> | null
   params: Record<string, unknown> | null

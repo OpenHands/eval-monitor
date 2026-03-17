@@ -4,9 +4,11 @@ interface HeaderProps {
   onRefresh: () => void
   selectedRun: string | null
   onBack: () => void
+  numDays: number
+  onNumDaysChange: (days: number) => void
 }
 
-export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack }: HeaderProps) {
+export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack, numDays, onNumDaysChange }: HeaderProps) {
   const handlePrevDay = () => {
     const d = new Date(date + 'T00:00:00Z')
     d.setUTCDate(d.getUTCDate() - 1)
@@ -46,7 +48,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
             </div>
           </div>
 
-          {/* Center: Date Navigation */}
+          {/* Center: Date Navigation + Days Selector */}
           {!selectedRun && (
             <div className="flex items-center gap-2">
               <button
@@ -73,6 +75,18 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
+              <select
+                value={numDays}
+                onChange={(e) => onNumDaysChange(parseInt(e.target.value, 10))}
+                className="bg-oh-bg border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text focus:outline-none focus:border-oh-primary transition-colors ml-2"
+                title="Number of days to display"
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? 'day' : 'days'}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 

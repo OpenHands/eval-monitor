@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchRunList, fetchRunMetadata, parseRunSlug, getStageStatus } from './api'
-import type { RunMetadata } from './api'
+import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus } from './api'
+import type { RunMetadata, DayRunGroup } from './api'
 import RunListView from './components/RunListView'
 import RunDetailView from './components/RunDetailView'
 import Header from './components/Header'
@@ -10,14 +10,16 @@ function getTodayUTC(): string {
   return now.toISOString().split('T')[0]
 }
 
-export function parseSearchParams(search: string, defaultDate: string): { date: string; run: string | null } {
+export function parseSearchParams(search: string, defaultDate: string): { date: string; run: string | null; numDays: number } {
   const params = new URLSearchParams(search)
   const date = params.get('date') || defaultDate
   const run = params.get('run') || null
-  return { date, run }
+  const numDaysParam = parseInt(params.get('days') || '1', 10)
+  const numDays = numDaysParam >= 1 && numDaysParam <= 7 ? numDaysParam : 1
+  return { date, run, numDays }
 }
 
-export function buildSearchString(date: string, run: string | null, todayDate: string): string {
+export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 1): string {
   const params = new URLSearchParams()
   if (date !== todayDate) {
     params.set('date', date)
@@ -25,22 +27,27 @@ export function buildSearchString(date: string, run: string | null, todayDate: s
   if (run) {
     params.set('run', run)
   }
+  if (numDays > 1) {
+    params.set('days', String(numDays))
+  }
   const qs = params.toString()
   return qs ? `?${qs}` : ''
 }
 
-function parseUrlState(): { date: string; run: string | null } {
+function parseUrlState(): { date: string; run: string | null; numDays: number } {
   return parseSearchParams(window.location.search, getTodayUTC())
 }
 
-function buildUrl(date: string, run: string | null): string {
-  const qs = buildSearchString(date, run, getTodayUTC())
+function buildUrl(date: string, run: string | null, numDays: number): string {
+  const qs = buildSearchString(date, run, getTodayUTC(), numDays)
   return qs || window.location.pathname
 }
 
 export default function App() {
   const [date, setDate] = useState(() => parseUrlState().date)
+  const [numDays, setNumDays] = useState(() => parseUrlState().numDays)
   const [runs, setRuns] = useState<string[]>([])
+  const [dayGroups, setDayGroups] = useState<DayRunGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedRun, setSelectedRun] = useState<string | null>(() => parseUrlState().run)
@@ -51,16 +58,16 @@ export default function App() {
   const [runMetadataMap, setRunMetadataMap] = useState<Record<string, RunMetadata>>({})
   const [loadingMetadataList, setLoadingMetadataList] = useState(false)
 
-  // Sync URL when date or selectedRun changes (skip on initial mount)
+  // Sync URL when date, selectedRun, or numDays changes (skip on initial mount)
   const [initialized, setInitialized] = useState(false)
   useEffect(() => {
     if (!initialized) {
       setInitialized(true)
       return
     }
-    const url = buildUrl(date, selectedRun)
-    window.history.pushState({ date, run: selectedRun }, '', url)
-  }, [date, selectedRun]) // eslint-disable-line react-hooks/exhaustive-deps
+    const url = buildUrl(date, selectedRun, numDays)
+    window.history.pushState({ date, run: selectedRun, numDays }, '', url)
+  }, [date, selectedRun, numDays]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -68,6 +75,7 @@ export default function App() {
       const state = parseUrlState()
       setDate(state.date)
       setSelectedRun(state.run)
+      setNumDays(state.numDays)
       if (!state.run) {
         setRunMetadata(null)
       }
@@ -81,15 +89,18 @@ export default function App() {
     setError(null)
     setRunMetadataMap({})
     try {
-      const list = await fetchRunList(date)
-      setRuns(list)
+      const groups = await fetchMultiDayRunList(date, numDays)
+      setDayGroups(groups)
+      const allRuns = groups.flatMap(g => g.runs)
+      setRuns(allRuns)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load runs')
       setRuns([])
+      setDayGroups([])
     } finally {
       setLoading(false)
     }
-  }, [date])
+  }, [date, numDays])
 
   // Fetch metadata for all runs to show status in the list
   const loadAllMetadata = useCallback(async (runSlugs: string[]) => {
@@ -192,6 +203,8 @@ export default function App() {
         onRefresh={handleRefresh}
         selectedRun={selectedRun}
         onBack={handleBack}
+        numDays={numDays}
+        onNumDaysChange={setNumDays}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -210,6 +223,7 @@ export default function App() {
             onSelectRun={handleSelectRun}
             runMetadataMap={runMetadataMap}
             loadingMetadataList={loadingMetadataList}
+            dayGroups={dayGroups}
           />
         )}
       </main>

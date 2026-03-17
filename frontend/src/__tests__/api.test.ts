@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, getDateNDaysAgo, getDatesForRange } from '../api'
 import type { RunMetadata } from '../api'
 
 describe('getResultsUrl', () => {
@@ -161,5 +161,57 @@ describe('extractTriggeredBy', () => {
       init: { triggered_by: '' },
     })
     expect(extractTriggeredBy(metadata)).toBe('—')
+  })
+})
+
+describe('getDateNDaysAgo', () => {
+  it('returns the same date for n=0', () => {
+    expect(getDateNDaysAgo('2025-03-17', 0)).toBe('2025-03-17')
+  })
+
+  it('returns yesterday for n=1', () => {
+    expect(getDateNDaysAgo('2025-03-17', 1)).toBe('2025-03-16')
+  })
+
+  it('handles month boundary', () => {
+    expect(getDateNDaysAgo('2025-03-01', 1)).toBe('2025-02-28')
+  })
+
+  it('handles year boundary', () => {
+    expect(getDateNDaysAgo('2025-01-01', 1)).toBe('2024-12-31')
+  })
+
+  it('returns 7 days ago correctly', () => {
+    expect(getDateNDaysAgo('2025-03-17', 7)).toBe('2025-03-10')
+  })
+})
+
+describe('getDatesForRange', () => {
+  it('returns single date for numDays=1', () => {
+    expect(getDatesForRange('2025-03-17', 1)).toEqual(['2025-03-17'])
+  })
+
+  it('returns 3 dates in order (most recent first)', () => {
+    expect(getDatesForRange('2025-03-17', 3)).toEqual([
+      '2025-03-17',
+      '2025-03-16',
+      '2025-03-15',
+    ])
+  })
+
+  it('returns 7 dates for a full week', () => {
+    const dates = getDatesForRange('2025-03-17', 7)
+    expect(dates).toHaveLength(7)
+    expect(dates[0]).toBe('2025-03-17')
+    expect(dates[6]).toBe('2025-03-11')
+  })
+
+  it('handles month boundary across range', () => {
+    const dates = getDatesForRange('2025-03-02', 3)
+    expect(dates).toEqual([
+      '2025-03-02',
+      '2025-03-01',
+      '2025-02-28',
+    ])
   })
 })
