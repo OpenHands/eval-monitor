@@ -95,4 +95,54 @@ describe('RunDetailView', () => {
     const el = screen.getByTestId('runtime')
     expect(el.textContent).not.toContain('⏱')
   })
+
+  it('renders error section before pipeline progress and after run header', () => {
+    const metadata = makeMetadata({
+      error: { message: 'Something went wrong', code: 'FAIL' },
+      params: { timestamp: '2025-03-15T10:00:00Z' },
+      runInferStart: { timestamp: '2025-03-15T10:01:00Z' },
+    })
+    const { container } = render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="error" />
+    )
+
+    // Error section should be present
+    const errorSection = screen.getByTestId('error-section')
+    expect(errorSection).toBeTruthy()
+    expect(errorSection.textContent).toContain('Something went wrong')
+
+    // Verify ordering: error section appears before the StatusTimeline
+    // and after the run header in the DOM
+    const topLevelChildren = container.querySelector('.space-y-6')!.children
+    const childArray = Array.from(topLevelChildren)
+
+    // Find indices of key sections
+    const headerIdx = childArray.findIndex(el =>
+      el.querySelector('h2')?.textContent?.includes('claude-sonnet')
+    )
+    const errorIdx = childArray.findIndex(el =>
+      el.getAttribute('data-testid') === 'error-section'
+    )
+    const timelineIdx = childArray.findIndex(el =>
+      el.textContent?.includes('Pipeline Progress')
+    )
+
+    expect(headerIdx).toBeGreaterThanOrEqual(0)
+    expect(errorIdx).toBeGreaterThanOrEqual(0)
+    expect(timelineIdx).toBeGreaterThanOrEqual(0)
+
+    // Error should come after header and before timeline
+    expect(errorIdx).toBeGreaterThan(headerIdx)
+    expect(errorIdx).toBeLessThan(timelineIdx)
+  })
+
+  it('does not render error section when there is no error', () => {
+    const metadata = makeMetadata({
+      params: { timestamp: '2025-03-15T10:00:00Z' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+    )
+    expect(screen.queryByTestId('error-section')).toBeNull()
+  })
 })
