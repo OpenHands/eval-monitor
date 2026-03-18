@@ -90,6 +90,32 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
         <JsonCard title="Eval Infer Start" data={metadata?.evalInferStart} icon="🔍" />
         <JsonCard title="Eval Infer End" data={metadata?.evalInferEnd} icon="✅" />
       </div>
+
+      {/* Cancel Evaluation Section */}
+      {!runFinished && parsed.jobId && (
+        <CancelEvaluationSection jobId={parsed.jobId} />
+      )}
+    </div>
+  )
+}
+
+const KILL_WORKFLOW_URL = 'https://github.com/OpenHands/evaluation/actions/workflows/kill-eval-job.yml'
+
+function CancelEvaluationSection({ jobId }: { jobId: string }) {
+  const handleClick = async () => {
+    await navigator.clipboard.writeText(jobId)
+    window.open(KILL_WORKFLOW_URL, '_blank')
+  }
+
+  return (
+    <div data-testid="cancel-evaluation-section" className="bg-oh-surface border border-oh-border rounded-lg p-5">
+      <h3 className="text-lg font-semibold text-oh-text mb-3">Cancel Evaluation</h3>
+      <button
+        onClick={handleClick}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white transition-colors cursor-pointer"
+      >
+        Copy Id and Open Cancel Action
+      </button>
     </div>
   )
 }
