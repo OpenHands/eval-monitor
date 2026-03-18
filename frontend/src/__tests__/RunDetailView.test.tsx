@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import RunDetailView from '../components/RunDetailView'
 import type { RunMetadata } from '../api'
 
@@ -207,5 +207,97 @@ describe('RunDetailView', () => {
     )
     const badges = screen.getAllByText('Building Images')
     expect(badges.length).toBeGreaterThanOrEqual(1)
+  })
+
+  describe('Kill Job section', () => {
+    it('shows kill job section when the run is not finished', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+        runInferStart: { timestamp: '2025-03-15T10:01:00Z' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="running-infer" />
+      )
+      const section = screen.getByTestId('kill-job-section')
+      expect(section).toBeTruthy()
+      expect(section.textContent).toContain('Kill Job')
+      expect(section.textContent).toContain('Copy id and go to kill action')
+    })
+
+    it('does not show kill job section when the run is completed', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+        evalInferEnd: { timestamp: '2025-03-15T11:30:00Z' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="completed" />
+      )
+      expect(screen.queryByTestId('kill-job-section')).toBeNull()
+    })
+
+    it('does not show kill job section when the run has an error', () => {
+      const metadata = makeMetadata({
+        error: { message: 'Something went wrong' },
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="error" />
+      )
+      expect(screen.queryByTestId('kill-job-section')).toBeNull()
+    })
+
+    it('does not show kill job section when metadata is null', () => {
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+      expect(screen.queryByTestId('kill-job-section')).toBeNull()
+    })
+
+    it('copies job id to clipboard and opens kill workflow on button click', async () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+        runInferStart: { timestamp: '2025-03-15T10:01:00Z' },
+      })
+
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="running-infer" />
+      )
+
+      const button = screen.getByText('Copy id and go to kill action')
+      await fireEvent.click(button)
+
+      expect(writeText).toHaveBeenCalledWith('123')
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://github.com/OpenHands/evaluation/actions/workflows/kill-eval-job.yml',
+        '_blank'
+      )
+
+      openSpy.mockRestore()
+    })
+
+    it('shows kill job section for building status', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="building" />
+      )
+      expect(screen.getByTestId('kill-job-section')).toBeTruthy()
+    })
+
+    it('shows kill job section for pending status with params', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+        init: { timestamp: '2025-03-15T10:01:00Z' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+      )
+      expect(screen.getByTestId('kill-job-section')).toBeTruthy()
+    })
   })
 })
