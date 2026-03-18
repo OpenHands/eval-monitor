@@ -112,7 +112,7 @@ function CancelEvaluationSection({ jobId }: { jobId: string }) {
       <h3 className="text-lg font-semibold text-oh-text mb-3">Cancel Evaluation</h3>
       <button
         onClick={handleClick}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white transition-colors cursor-pointer"
       >
         Copy Id and Open Cancel Action
       </button>
