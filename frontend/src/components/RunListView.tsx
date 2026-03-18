@@ -149,7 +149,8 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
           !run.model.toLowerCase().includes(search) &&
           !run.jobId.toLowerCase().includes(search) &&
           !run.benchmark.toLowerCase().includes(search) &&
-          !run.triggeredBy.toLowerCase().includes(search)
+          !run.triggeredBy.toLowerCase().includes(search) &&
+          !run.triggerReason.toLowerCase().includes(search)
         ) return false
       }
       return true
@@ -236,7 +237,7 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
       <div className="flex items-center gap-3 flex-wrap">
         <input
           type="text"
-          placeholder="Search model, job ID, benchmark…"
+          placeholder="Search model, job ID, trigger reason…"
           value={filterText}
           onChange={e => setFilterText(e.target.value)}
           className="bg-oh-surface border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text placeholder-oh-text-muted focus:outline-none focus:ring-1 focus:ring-oh-primary w-64"
