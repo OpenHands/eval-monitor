@@ -11,7 +11,7 @@ interface Stage {
 }
 
 const STAGES: Stage[] = [
-  { label: 'Init', startKey: 'init' },
+  { label: 'Building Images', startKey: 'params', endKey: 'init' },
   { label: 'Run Inference', startKey: 'runInferStart', endKey: 'runInferEnd' },
   { label: 'Run Evaluation', startKey: 'evalInferStart', endKey: 'evalInferEnd' },
 ]

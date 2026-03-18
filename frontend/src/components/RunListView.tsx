@@ -19,12 +19,17 @@ interface RunListViewProps {
   dayGroups: DayRunGroup[]
 }
 
-type StatusType = 'pending' | 'running-infer' | 'running-eval' | 'completed' | 'error'
+type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error'
 
 const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?: string }> = {
   pending: {
     label: 'Pending',
     className: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  },
+  building: {
+    label: 'Building Images',
+    className: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+    dot: 'bg-violet-400 animate-pulse',
   },
   'running-infer': {
     label: 'Running Inference',

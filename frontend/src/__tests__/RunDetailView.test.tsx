@@ -145,4 +145,37 @@ describe('RunDetailView', () => {
     )
     expect(screen.queryByTestId('error-section')).toBeNull()
   })
+
+  it('shows Building Images stage in Pipeline Progress instead of Init', () => {
+    const metadata = makeMetadata({
+      params: { timestamp: '2025-03-15T10:00:00Z' },
+      init: { timestamp: '2025-03-15T10:05:00Z' },
+      runInferStart: { timestamp: '2025-03-15T10:06:00Z' },
+    })
+    const { container } = render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="running-infer" />
+    )
+    // Find the Pipeline Progress section specifically
+    const pipelineHeading = Array.from(container.querySelectorAll('h3')).find(
+      el => el.textContent === 'Pipeline Progress'
+    )
+    expect(pipelineHeading).toBeTruthy()
+    const pipelineSection = pipelineHeading!.parentElement!
+    // Stage labels use specific classes; select only the label elements
+    const stageLabels = Array.from(pipelineSection.querySelectorAll('p.text-xs.font-medium'))
+      .map(p => p.textContent)
+    expect(stageLabels).toContain('Building Images')
+    expect(stageLabels).not.toContain('Init')
+  })
+
+  it('shows Building Images badge for building status', () => {
+    const metadata = makeMetadata({
+      params: { timestamp: '2025-03-15T10:00:00Z' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="building" />
+    )
+    const badges = screen.getAllByText('Building Images')
+    expect(badges.length).toBeGreaterThanOrEqual(1)
+  })
 })
