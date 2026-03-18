@@ -14,12 +14,12 @@ export function parseSearchParams(search: string, defaultDate: string): { date: 
   const params = new URLSearchParams(search)
   const date = params.get('date') || defaultDate
   const run = params.get('run') || null
-  const numDaysParam = parseInt(params.get('days') || '1', 10)
-  const numDays = numDaysParam >= 1 && numDaysParam <= 7 ? numDaysParam : 1
+  const numDaysParam = parseInt(params.get('days') || '2', 10)
+  const numDays = numDaysParam >= 1 && numDaysParam <= 7 ? numDaysParam : 2
   return { date, run, numDays }
 }
 
-export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 1): string {
+export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 2): string {
   const params = new URLSearchParams()
   if (date !== todayDate) {
     params.set('date', date)
@@ -27,7 +27,7 @@ export function buildSearchString(date: string, run: string | null, todayDate: s
   if (run) {
     params.set('run', run)
   }
-  if (numDays > 1) {
+  if (numDays !== 2) {
     params.set('days', String(numDays))
   }
   const qs = params.toString()
