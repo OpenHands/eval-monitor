@@ -1,4 +1,4 @@
-import { parseRunSlug, extractTriggeredBy, getRuntime, isFinished } from '../api'
+import { parseRunSlug, extractTriggeredBy, extractTriggerReason, getRuntime, isFinished } from '../api'
 import type { RunMetadata } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
@@ -29,6 +29,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
   }
 
   const triggeredBy = metadata ? extractTriggeredBy(metadata) : '—'
+  const triggerReason = metadata ? extractTriggerReason(metadata) : '—'
   const runFinished = metadata ? isFinished(metadata) : true
   const runtime = metadata ? getRuntime(metadata) : null
 
@@ -43,7 +44,10 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
               <span className="font-medium">{parsed.benchmark}</span>
               {parsed.jobId && <span> · Job #{parsed.jobId}</span>}
             </p>
-            <div className="flex items-center gap-4 mt-2 text-sm text-oh-text-muted">
+            <div className="flex items-center gap-4 mt-2 text-sm text-oh-text-muted flex-wrap">
+              <span data-testid="trigger-reason">
+                <span className="font-medium">Trigger reason:</span> {triggerReason}
+              </span>
               <span data-testid="triggered-by">
                 <span className="font-medium">Triggered by:</span> {triggeredBy}
               </span>
