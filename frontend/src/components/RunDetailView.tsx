@@ -8,7 +8,7 @@ interface RunDetailViewProps {
   slug: string
   metadata: RunMetadata | null
   loading: boolean
-  status: 'pending' | 'running-infer' | 'running-eval' | 'completed' | 'error'
+  status: 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error'
 }
 
 export default function RunDetailView({ slug, metadata, loading, status }: RunDetailViewProps) {
@@ -93,6 +93,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     'pending': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+    'building': 'bg-violet-500/20 text-violet-400 border-violet-500/30',
     'running-infer': 'bg-oh-primary/20 text-oh-primary border-oh-primary/30',
     'running-eval': 'bg-oh-warning/20 text-oh-warning border-oh-warning/30',
     'completed': 'bg-oh-success/20 text-oh-success border-oh-success/30',
@@ -101,6 +102,7 @@ function StatusBadge({ status }: { status: string }) {
 
   const labels: Record<string, string> = {
     'pending': 'Pending',
+    'building': 'Building Images',
     'running-infer': 'Running Inference',
     'running-eval': 'Running Evaluation',
     'completed': 'Completed',
@@ -109,7 +111,7 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${styles[status] || styles['pending']}`}>
-      {(status === 'running-infer' || status === 'running-eval') && (
+      {(status === 'building' || status === 'running-infer' || status === 'running-eval') && (
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-current" />

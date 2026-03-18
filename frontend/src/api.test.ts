@@ -245,4 +245,14 @@ describe('getStageStatus', () => {
     const m = makeMetadata({ init: ts('2025-01-01T10:00:00Z') })
     expect(getStageStatus(m)).toBe('pending')
   })
+
+  it('returns building when only params exists (no init yet)', () => {
+    const m = makeMetadata({ params: ts('2025-01-01T10:00:00Z') })
+    expect(getStageStatus(m)).toBe('building')
+  })
+
+  it('returns pending when nothing exists', () => {
+    const m = makeMetadata()
+    expect(getStageStatus(m)).toBe('pending')
+  })
 })

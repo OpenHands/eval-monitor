@@ -108,13 +108,14 @@ export function parseRunSlug(slug: string) {
   return { benchmark: slug, model: '', jobId: '' }
 }
 
-export function getStageStatus(metadata: RunMetadata): 'pending' | 'running-infer' | 'running-eval' | 'completed' | 'error' {
+export function getStageStatus(metadata: RunMetadata): 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' {
   if (metadata.error) return 'error'
   if (metadata.evalInferEnd) return 'completed'
   if (metadata.evalInferStart) return 'running-eval'
   if (metadata.runInferEnd) return 'running-eval'
   if (metadata.runInferStart) return 'running-infer'
   if (metadata.init) return 'pending'
+  if (metadata.params) return 'building'
   return 'pending'
 }
 
