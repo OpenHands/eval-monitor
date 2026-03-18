@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, getDateNDaysAgo, getDatesForRange } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange } from '../api'
 import type { RunMetadata } from '../api'
 
 describe('getResultsUrl', () => {
@@ -161,6 +161,74 @@ describe('extractTriggeredBy', () => {
       init: { triggered_by: '' },
     })
     expect(extractTriggeredBy(metadata)).toBe('—')
+  })
+})
+
+describe('extractTriggerReason', () => {
+  it('returns dash when metadata is undefined', () => {
+    expect(extractTriggerReason(undefined)).toBe('—')
+  })
+
+  it('returns dash when both init and params are null', () => {
+    expect(extractTriggerReason(makeMetadata())).toBe('—')
+  })
+
+  it('extracts trigger_reason from params.json', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 'testing SDK: fix/issue-2375', triggered_by: 'user1' },
+    })
+    expect(extractTriggerReason(metadata)).toBe('testing SDK: fix/issue-2375')
+  })
+
+  it('extracts trigger_reason from init.json as fallback', () => {
+    const metadata = makeMetadata({
+      init: { trigger_reason: 'scheduled run' },
+    })
+    expect(extractTriggerReason(metadata)).toBe('scheduled run')
+  })
+
+  it('prefers params over init when both have trigger_reason', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 'from-params' },
+      init: { trigger_reason: 'from-init' },
+    })
+    expect(extractTriggerReason(metadata)).toBe('from-params')
+  })
+
+  it('falls back to init when params has no reason keys', () => {
+    const metadata = makeMetadata({
+      params: { llm_config: 'gpt-5' },
+      init: { trigger_reason: 'nightly' },
+    })
+    expect(extractTriggerReason(metadata)).toBe('nightly')
+  })
+
+  it('recognizes alternative reason keys like event_name and event_type', () => {
+    expect(extractTriggerReason(makeMetadata({ params: { event_name: 'workflow_dispatch' } }))).toBe('workflow_dispatch')
+    expect(extractTriggerReason(makeMetadata({ init: { event_type: 'push' } }))).toBe('push')
+  })
+
+  it('ignores non-string reason values', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 123 },
+      init: { trigger_reason: 'fallback-reason' },
+    })
+    expect(extractTriggerReason(metadata)).toBe('fallback-reason')
+  })
+
+  it('returns dash when trigger_reason is null', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: null },
+    })
+    expect(extractTriggerReason(metadata)).toBe('—')
+  })
+
+  it('returns dash when reason keys exist but are empty strings', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: '' },
+      init: { trigger_reason: '' },
+    })
+    expect(extractTriggerReason(metadata)).toBe('—')
   })
 })
 

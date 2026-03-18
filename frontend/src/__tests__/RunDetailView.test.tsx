@@ -62,6 +62,36 @@ describe('RunDetailView', () => {
     expect(el.textContent).toContain('—')
   })
 
+  it('shows trigger reason from metadata', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 'testing SDK: fix/issue-2375', triggered_by: 'user1', timestamp: '2025-03-15T10:00:00Z' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+    )
+    const el = screen.getByTestId('trigger-reason')
+    expect(el.textContent).toContain('testing SDK: fix/issue-2375')
+  })
+
+  it('shows dash for trigger reason when metadata has no reason info', () => {
+    const metadata = makeMetadata({
+      params: { llm_config: 'gpt-5' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+    )
+    const el = screen.getByTestId('trigger-reason')
+    expect(el.textContent).toContain('—')
+  })
+
+  it('shows dash for trigger reason when metadata is null', () => {
+    render(
+      <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+    )
+    const el = screen.getByTestId('trigger-reason')
+    expect(el.textContent).toContain('—')
+  })
+
   it('shows dash for triggered by and runtime when metadata is null', () => {
     render(
       <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />

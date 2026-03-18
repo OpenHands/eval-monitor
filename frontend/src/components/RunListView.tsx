@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import type { RunMetadata, DayRunGroup } from '../api'
-import { getStageStatus, getRuntime, isFinished, extractTriggeredBy } from '../api'
+import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason } from '../api'
 
 interface RunInfo {
   slug: string
@@ -130,7 +130,8 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
       const runtime: string | null = metadata ? getRuntime(metadata, now) : null
       const runFinished = metadata ? isFinished(metadata) : true
       const triggeredBy = extractTriggeredBy(metadata)
-      return { ...run, status, runtime, runFinished, triggeredBy }
+      const triggerReason = extractTriggerReason(metadata)
+      return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
     })
   }, [runs, runMetadataMap, now])
 
@@ -281,13 +282,14 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Model</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Job ID</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Runtime</th>
+                <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Trigger Reason</th>
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Triggered By</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-oh-border">
               {filteredRuns.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-oh-text-muted">
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-oh-text-muted">
                     No runs match the current filters.
                   </td>
                 </tr>
@@ -301,7 +303,7 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                     <React.Fragment key={run.slug}>
                       {showDateHeader && (
                         <tr className="bg-oh-bg">
-                          <td colSpan={6} className="px-4 py-2">
+                          <td colSpan={7} className="px-4 py-2">
                             <span className="text-xs font-semibold text-oh-text-muted uppercase tracking-wider">
                               {runDate}
                             </span>
@@ -337,6 +339,11 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
                           ) : (
                             <span className="text-sm text-oh-text-muted">—</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-oh-text-muted truncate max-w-[200px] inline-block" title={run.triggerReason}>
+                            {run.triggerReason}
+                          </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-oh-text-muted">
