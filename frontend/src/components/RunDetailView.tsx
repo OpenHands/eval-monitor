@@ -64,6 +64,13 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
         </div>
       </div>
 
+      {/* Error Section */}
+      {metadata?.error && (
+        <div data-testid="error-section">
+          <JsonCard title="Error" data={metadata.error} icon="❌" isError />
+        </div>
+      )}
+
       {/* Completed Run Results */}
       {status === 'completed' && <CompletedRunResults slug={slug} />}
 
@@ -78,11 +85,6 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
         <JsonCard title="Run Infer End" data={metadata?.runInferEnd} icon="⏹️" />
         <JsonCard title="Eval Infer Start" data={metadata?.evalInferStart} icon="🔍" />
         <JsonCard title="Eval Infer End" data={metadata?.evalInferEnd} icon="✅" />
-        {metadata?.error && (
-          <div className="lg:col-span-2">
-            <JsonCard title="Error" data={metadata.error} icon="❌" isError />
-          </div>
-        )}
       </div>
     </div>
   )
