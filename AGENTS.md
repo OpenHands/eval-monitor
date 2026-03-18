@@ -5,12 +5,32 @@
 - `frontend/src/api.ts` — Data fetching layer (uses `/api/` prefix, proxied to bucket)
 - `frontend/src/components/` — React components (Header, RunListView, RunDetailView, StatusTimeline, JsonCard)
 - `vercel.json` — Vercel deployment config with rewrites for API proxy
+- `Makefile` — Common development commands (see below)
 
-## Build & Dev Commands
+## Makefile Commands
+Use `make help` to see all available commands. Key commands:
+
+```bash
+make install      # Install all npm dependencies
+make dev          # Start dev server (http://localhost:5173)
+make build        # Build production bundle (output: frontend/dist/)
+make test         # Run test suite (vitest)
+make lint         # Run ESLint
+make format       # Format code with ESLint --fix
+make typecheck    # Run TypeScript type checking
+make preview      # Preview production build (http://localhost:4173)
+make clean        # Remove build artifacts and caches
+make clean-all    # Full clean including node_modules
+```
+
+## Alternative npm Commands
+If you prefer using npm directly:
 ```bash
 cd frontend && npm install    # install deps
 cd frontend && npm run dev    # dev server with proxy
 cd frontend && npm run build  # production build (tsc + vite)
+cd frontend && npm run test   # run tests
+cd frontend && npm run lint   # run eslint
 ```
 
 ## Key Architecture Decisions
@@ -23,6 +43,18 @@ cd frontend && npm run build  # production build (tsc + vite)
 - Tailwind CSS for styling with custom `oh-*` color theme (defined in `tailwind.config.js`)
 - Minimal dependencies — no state management library, no routing library
 
+## Testing
+- Test framework: Vitest with React Testing Library
+- Test files: `frontend/src/**/*.test.{ts,tsx}`
+- Run with `make test` or `cd frontend && npm run test`
+
 ## Deployment
 - Vercel auto-deploys from the repo
 - `vercel.json` specifies build command, output directory, and API rewrites
+
+## Dev Server Ports
+- Dev server: http://localhost:5173 (Vite)
+- Preview server: http://localhost:4173 (Vite preview)
+- Work hosts (production proxies):
+  - https://work-1-bhopzzxslmgoxlht.prod-runtime.all-hands.dev/ (port 12000)
+  - https://work-2-bhopzzxslmgoxlht.prod-runtime.all-hands.dev/ (port 12001)
