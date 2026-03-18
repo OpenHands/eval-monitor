@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import type { RunMetadata, DayRunGroup } from '../api'
+import type { RunMetadata, DayRunGroup, StageStatus } from '../api'
 import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason } from '../api'
 
 interface RunInfo {
@@ -19,9 +19,7 @@ interface RunListViewProps {
   dayGroups: DayRunGroup[]
 }
 
-type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error'
-
-const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?: string }> = {
+const STATUS_CONFIG: Record<StageStatus, { label: string; className: string; dot?: string }> = {
   pending: {
     label: 'Pending',
     className: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
@@ -49,6 +47,10 @@ const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?
     label: 'Error',
     className: 'bg-red-500/20 text-red-400 border-red-500/30',
   },
+  dead: {
+    label: 'Dead',
+    className: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  },
 }
 
 const BENCHMARK_COLORS: Record<string, string> = {
@@ -59,7 +61,7 @@ const BENCHMARK_COLORS: Record<string, string> = {
   commit0: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
 }
 
-function StatusBadge({ status }: { status: StatusType }) {
+function StatusBadge({ status }: { status: StageStatus }) {
   const config = STATUS_CONFIG[status]
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.className}`}>
@@ -72,6 +74,11 @@ function StatusBadge({ status }: { status: StatusType }) {
       {status === 'error' && (
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      )}
+      {status === 'dead' && (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       )}
       {config.label}
@@ -111,9 +118,9 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
   const hasNonFinished = useMemo(() => {
     return runs.some(run => {
       const metadata = runMetadataMap[run.slug]
-      return metadata && !isFinished(metadata)
+      return metadata && !isFinished(metadata, now)
     })
-  }, [runs, runMetadataMap])
+  }, [runs, runMetadataMap, now])
 
   // Tick every 1s so elapsed time updates for non-finished runs
   useEffect(() => {
@@ -126,9 +133,9 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
-      const status: StatusType = metadata ? getStageStatus(metadata) : 'pending'
+      const status: StageStatus = metadata ? getStageStatus(metadata, now) : 'pending'
       const runtime: string | null = metadata ? getRuntime(metadata, now) : null
-      const runFinished = metadata ? isFinished(metadata) : true
+      const runFinished = metadata ? isFinished(metadata, now) : true
       const triggeredBy = extractTriggeredBy(metadata)
       const triggerReason = extractTriggerReason(metadata)
       return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
@@ -226,7 +233,7 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
               onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
               className={`text-xs px-2 py-1 rounded transition-colors ${filterStatus === status ? 'ring-1 ring-oh-primary' : 'opacity-70 hover:opacity-100'}`}
             >
-              <StatusBadge status={status as StatusType} />
+              <StatusBadge status={status as StageStatus} />
               <span className="ml-1 text-oh-text-muted">{count}</span>
             </button>
           ))}
@@ -259,7 +266,7 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
         >
           <option value="all">All statuses</option>
           {statuses.map(s => (
-            <option key={s} value={s}>{STATUS_CONFIG[s as StatusType]?.label || s}</option>
+            <option key={s} value={s}>{STATUS_CONFIG[s as StageStatus]?.label || s}</option>
           ))}
         </select>
         {(filterText || filterBenchmark !== 'all' || filterStatus !== 'all') && (

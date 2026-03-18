@@ -6,6 +6,8 @@ import {
   isFinished,
   formatDurationMs,
   getStageStatus,
+  getLatestTimestamp,
+  STALE_THRESHOLD_MS,
 } from './api'
 import type { RunMetadata } from './api'
 
@@ -254,5 +256,215 @@ describe('getStageStatus', () => {
   it('returns pending when nothing exists', () => {
     const m = makeMetadata()
     expect(getStageStatus(m)).toBe('pending')
+  })
+})
+
+describe('STALE_THRESHOLD_MS', () => {
+  it('is 5 hours in milliseconds', () => {
+    expect(STALE_THRESHOLD_MS).toBe(5 * 60 * 60 * 1000)
+  })
+})
+
+describe('getLatestTimestamp', () => {
+  it('returns null when no metadata has timestamps', () => {
+    const m = makeMetadata()
+    expect(getLatestTimestamp(m)).toBeNull()
+  })
+
+  it('returns the params timestamp when only params exists', () => {
+    const m = makeMetadata({ params: ts('2025-01-01T10:00:00Z') })
+    expect(getLatestTimestamp(m)).toBe(new Date('2025-01-01T10:00:00Z').getTime())
+  })
+
+  it('returns the most recent timestamp (evalInferEnd)', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      init: ts('2025-01-01T10:05:00Z'),
+      runInferStart: ts('2025-01-01T10:06:00Z'),
+      runInferEnd: ts('2025-01-01T11:00:00Z'),
+      evalInferStart: ts('2025-01-01T11:05:00Z'),
+      evalInferEnd: ts('2025-01-01T12:00:00Z'),
+    })
+    expect(getLatestTimestamp(m)).toBe(new Date('2025-01-01T12:00:00Z').getTime())
+  })
+
+  it('returns runInferStart when it is the latest', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      init: ts('2025-01-01T10:05:00Z'),
+      runInferStart: ts('2025-01-01T10:06:00Z'),
+    })
+    expect(getLatestTimestamp(m)).toBe(new Date('2025-01-01T10:06:00Z').getTime())
+  })
+
+  it('ignores metadata entries without timestamps', () => {
+    const m = makeMetadata({
+      params: { no_timestamp: true },
+      init: ts('2025-01-01T10:05:00Z'),
+    })
+    expect(getLatestTimestamp(m)).toBe(new Date('2025-01-01T10:05:00Z').getTime())
+  })
+
+  it('returns null when all metadata entries lack timestamps', () => {
+    const m = makeMetadata({
+      params: { no_timestamp: true },
+      init: { no_timestamp: true },
+    })
+    expect(getLatestTimestamp(m)).toBeNull()
+  })
+})
+
+describe('getStageStatus with dead detection', () => {
+  it('returns dead for a running-infer run that is stale', () => {
+    const startTime = new Date('2025-01-01T10:00:00Z').getTime()
+    const m = makeMetadata({
+      params: ts('2025-01-01T09:55:00Z'),
+      init: ts('2025-01-01T09:58:00Z'),
+      runInferStart: ts('2025-01-01T10:00:00Z'),
+    })
+    const now = startTime + STALE_THRESHOLD_MS + 1
+    expect(getStageStatus(m, now)).toBe('dead')
+  })
+
+  it('returns running-infer for a recent run with now provided', () => {
+    const startTime = new Date('2025-01-01T10:00:00Z').getTime()
+    const m = makeMetadata({
+      params: ts('2025-01-01T09:55:00Z'),
+      init: ts('2025-01-01T09:58:00Z'),
+      runInferStart: ts('2025-01-01T10:00:00Z'),
+    })
+    const now = startTime + STALE_THRESHOLD_MS - 1000 // just under threshold
+    expect(getStageStatus(m, now)).toBe('running-infer')
+  })
+
+  it('returns dead for a running-eval run that is stale', () => {
+    const latestTime = new Date('2025-01-01T11:05:00Z').getTime()
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      init: ts('2025-01-01T10:05:00Z'),
+      runInferStart: ts('2025-01-01T10:06:00Z'),
+      runInferEnd: ts('2025-01-01T11:00:00Z'),
+      evalInferStart: ts('2025-01-01T11:05:00Z'),
+    })
+    const now = latestTime + STALE_THRESHOLD_MS + 1
+    expect(getStageStatus(m, now)).toBe('dead')
+  })
+
+  it('returns dead for a building run that is stale', () => {
+    const paramTime = new Date('2025-01-01T10:00:00Z').getTime()
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+    })
+    const now = paramTime + STALE_THRESHOLD_MS + 1
+    expect(getStageStatus(m, now)).toBe('dead')
+  })
+
+  it('returns dead for a pending run (init only) that is stale', () => {
+    const initTime = new Date('2025-01-01T10:00:00Z').getTime()
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+    })
+    const now = initTime + STALE_THRESHOLD_MS + 1
+    expect(getStageStatus(m, now)).toBe('dead')
+  })
+
+  it('does not return dead for completed runs regardless of age', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      init: ts('2025-01-01T10:05:00Z'),
+      evalInferEnd: ts('2025-01-01T12:00:00Z'),
+    })
+    const veryLateNow = new Date('2025-06-01T00:00:00Z').getTime()
+    expect(getStageStatus(m, veryLateNow)).toBe('completed')
+  })
+
+  it('does not return dead for error runs regardless of age', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      error: ts('2025-01-01T10:30:00Z'),
+    })
+    const veryLateNow = new Date('2025-06-01T00:00:00Z').getTime()
+    expect(getStageStatus(m, veryLateNow)).toBe('error')
+  })
+
+  it('does not return dead when now is not provided even for old timestamps', () => {
+    const m = makeMetadata({
+      params: ts('2020-01-01T10:00:00Z'),
+      init: ts('2020-01-01T10:05:00Z'),
+      runInferStart: ts('2020-01-01T10:06:00Z'),
+    })
+    // Without now parameter, staleness detection is not active
+    expect(getStageStatus(m)).toBe('running-infer')
+  })
+
+  it('does not return dead for empty metadata even with now', () => {
+    const m = makeMetadata()
+    const now = Date.now()
+    expect(getStageStatus(m, now)).toBe('pending')
+  })
+})
+
+describe('isFinished with dead detection', () => {
+  it('returns true for dead runs', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+    })
+    const now = new Date('2025-01-01T10:05:00Z').getTime() + STALE_THRESHOLD_MS + 1
+    expect(isFinished(m, now)).toBe(true)
+  })
+
+  it('returns false for active runs that are not stale', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+    })
+    const now = new Date('2025-01-01T10:10:00Z').getTime()
+    expect(isFinished(m, now)).toBe(false)
+  })
+})
+
+describe('getEndTimestamp with dead detection', () => {
+  it('returns latest timestamp for dead runs', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      init: ts('2025-01-01T10:05:00Z'),
+      runInferStart: ts('2025-01-01T10:06:00Z'),
+    })
+    const now = new Date('2025-01-01T10:06:00Z').getTime() + STALE_THRESHOLD_MS + 1
+    expect(getEndTimestamp(m, now)).toBe(new Date('2025-01-01T10:06:00Z').getTime())
+  })
+
+  it('returns null for active non-stale runs', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+    })
+    const now = new Date('2025-01-01T10:10:00Z').getTime()
+    expect(getEndTimestamp(m, now)).toBeNull()
+  })
+})
+
+describe('getRuntime with dead detection', () => {
+  it('returns fixed runtime for dead runs', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      init: ts('2025-01-01T10:05:00Z'),
+      runInferStart: ts('2025-01-01T10:06:00Z'),
+    })
+    // now is well past stale threshold
+    const now = new Date('2025-01-01T10:06:00Z').getTime() + STALE_THRESHOLD_MS + 60000
+    const runtime = getRuntime(m, now)
+    // Runtime should be from params to runInferStart (latest), not to "now"
+    expect(runtime).toBe('6m 0s') // 10:00 -> 10:06
+  })
+
+  it('returns live runtime for active non-stale runs', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+    })
+    const now = new Date('2025-01-01T10:20:00Z').getTime()
+    expect(getRuntime(m, now)).toBe('20m 0s')
   })
 })

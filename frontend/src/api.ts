@@ -1,6 +1,8 @@
 const BASE_URL = '/api'
 const RESULTS_BASE_URL = 'https://results.eval.all-hands.dev'
 
+export const STALE_THRESHOLD_MS = 5 * 60 * 60 * 1000 // 5 hours
+
 export async function fetchRunList(date: string): Promise<string[]> {
   const cacheBust = Math.floor(Date.now() / 1000)
   const res = await fetch(`${BASE_URL}/metadata/${date}.txt?${cacheBust}`)
@@ -108,15 +110,43 @@ export function parseRunSlug(slug: string) {
   return { benchmark: slug, model: '', jobId: '' }
 }
 
-export function getStageStatus(metadata: RunMetadata): 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' {
+export type StageStatus = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'dead'
+
+export function getLatestTimestamp(metadata: RunMetadata): number | null {
+  const keys: (keyof RunMetadata)[] = ['evalInferEnd', 'evalInferStart', 'runInferEnd', 'runInferStart', 'init', 'params']
+  for (const key of keys) {
+    const data = metadata[key]
+    if (!data) continue
+    const ts = data.timestamp as string | undefined
+    if (!ts) continue
+    const ms = new Date(ts).getTime()
+    if (!isNaN(ms)) return ms
+  }
+  return null
+}
+
+export function getStageStatus(metadata: RunMetadata, now?: number): StageStatus {
   if (metadata.error) return 'error'
   if (metadata.evalInferEnd) return 'completed'
-  if (metadata.evalInferStart) return 'running-eval'
-  if (metadata.runInferEnd) return 'running-eval'
-  if (metadata.runInferStart) return 'running-infer'
-  if (metadata.init) return 'pending'
-  if (metadata.params) return 'building'
-  return 'pending'
+
+  // For non-terminal states, check if the run is stale (dead)
+  const baseStatus: StageStatus =
+    metadata.evalInferStart ? 'running-eval' :
+    metadata.runInferEnd ? 'running-eval' :
+    metadata.runInferStart ? 'running-infer' :
+    metadata.init ? 'pending' :
+    metadata.params ? 'building' :
+    'pending'
+
+  // Check if the run appears stale (no progress for too long)
+  if (now !== undefined) {
+    const latest = getLatestTimestamp(metadata)
+    if (latest !== null && (now - latest) > STALE_THRESHOLD_MS) {
+      return 'dead'
+    }
+  }
+
+  return baseStatus
 }
 
 export function getResultsUrl(slug: string, file: string): string {
@@ -190,8 +220,8 @@ export function getStartTimestamp(metadata: RunMetadata): number | null {
   return getTimestampMs(metadata.params)
 }
 
-export function getEndTimestamp(metadata: RunMetadata): number | null {
-  const status = getStageStatus(metadata)
+export function getEndTimestamp(metadata: RunMetadata, now?: number): number | null {
+  const status = getStageStatus(metadata, now)
   if (status === 'completed') {
     return getTimestampMs(metadata.evalInferEnd) ?? null
   }
@@ -203,12 +233,15 @@ export function getEndTimestamp(metadata: RunMetadata): number | null {
       ?? getTimestampMs(metadata.init)
       ?? null
   }
+  if (status === 'dead') {
+    return getLatestTimestamp(metadata)
+  }
   return null
 }
 
-export function isFinished(metadata: RunMetadata): boolean {
-  const status = getStageStatus(metadata)
-  return status === 'completed' || status === 'error'
+export function isFinished(metadata: RunMetadata, now?: number): boolean {
+  const status = getStageStatus(metadata, now)
+  return status === 'completed' || status === 'error' || status === 'dead'
 }
 
 export function formatDurationMs(ms: number): string {
@@ -251,8 +284,8 @@ export function getRuntime(metadata: RunMetadata, now: number = Date.now()): str
   const start = getStartTimestamp(metadata)
   if (start === null) return null
 
-  const finished = isFinished(metadata)
-  const end = finished ? getEndTimestamp(metadata) : now
+  const finished = isFinished(metadata, now)
+  const end = finished ? getEndTimestamp(metadata, now) : now
   if (end === null) return null
 
   return formatDurationMs(end - start)

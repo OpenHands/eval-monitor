@@ -4,11 +4,13 @@ import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
 import CompletedRunResults from './CompletedRunResults'
 
+import type { StageStatus } from '../api'
+
 interface RunDetailViewProps {
   slug: string
   metadata: RunMetadata | null
   loading: boolean
-  status: 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error'
+  status: StageStatus
 }
 
 export default function RunDetailView({ slug, metadata, loading, status }: RunDetailViewProps) {
@@ -102,6 +104,7 @@ function StatusBadge({ status }: { status: string }) {
     'running-eval': 'bg-oh-warning/20 text-oh-warning border-oh-warning/30',
     'completed': 'bg-oh-success/20 text-oh-success border-oh-success/30',
     'error': 'bg-oh-error/20 text-oh-error border-oh-error/30',
+    'dead': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
   }
 
   const labels: Record<string, string> = {
@@ -111,6 +114,7 @@ function StatusBadge({ status }: { status: string }) {
     'running-eval': 'Running Evaluation',
     'completed': 'Completed',
     'error': 'Error',
+    'dead': 'Dead',
   }
 
   return (

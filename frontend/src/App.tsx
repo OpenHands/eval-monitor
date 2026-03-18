@@ -213,7 +213,7 @@ export default function App() {
             slug={selectedRun}
             metadata={runMetadata}
             loading={loadingMetadata}
-            status={runMetadata ? getStageStatus(runMetadata) : 'pending'}
+            status={runMetadata ? getStageStatus(runMetadata, Date.now()) : 'pending'}
           />
         ) : (
           <RunListView

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { RunMetadata } from '../api'
+import { getStageStatus } from '../api'
 
 interface StatusTimelineProps {
   metadata: RunMetadata
@@ -43,6 +44,7 @@ export function formatStageDuration(startStr: string | null, endStr: string | nu
 
 export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelineProps) {
   const hasError = !!metadata.error
+  const isDead = getStageStatus(metadata, nowProp ?? Date.now()) === 'dead'
   const [currentTime, setCurrentTime] = useState(nowProp ?? Date.now())
 
   useEffect(() => {
@@ -68,8 +70,9 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
           const isActive = !!startData && !endData && stage.endKey !== undefined
           const isPending = !startData
 
-          let stageStatus: 'completed' | 'active' | 'pending' | 'error' = 'pending'
+          let stageStatus: 'completed' | 'active' | 'pending' | 'error' | 'dead' = 'pending'
           if (hasError && isActive) stageStatus = 'error'
+          else if (isDead && isActive) stageStatus = 'dead'
           else if (isCompleted) stageStatus = 'completed'
           else if (isActive) stageStatus = 'active'
           else stageStatus = 'pending'
@@ -79,6 +82,7 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
             active: 'bg-oh-primary',
             pending: 'bg-oh-border',
             error: 'bg-oh-error',
+            dead: 'bg-gray-500',
           }
 
           const lineColors = {
@@ -86,14 +90,15 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
             active: 'bg-oh-primary/40',
             pending: 'bg-oh-border',
             error: 'bg-oh-error/40',
+            dead: 'bg-gray-500/40',
           }
 
-          const showDuration = isCompleted || isActive || (hasError && !!startData)
+          const showDuration = isCompleted || isActive || (hasError && !!startData) || (isDead && !!startData)
           const durationText = showDuration
-            ? formatStageDuration(startTs, endTs, isActive, currentTime)
+            ? formatStageDuration(startTs, endTs, isActive && !isDead, currentTime)
             : null
 
-          const durationColor = isCompleted ? 'text-oh-success' : isActive ? 'text-oh-primary' : 'text-oh-text-muted'
+          const durationColor = isCompleted ? 'text-oh-success' : stageStatus === 'dead' ? 'text-gray-400' : isActive ? 'text-oh-primary' : 'text-oh-text-muted'
 
           return (
             <div key={stage.label} className="flex items-center flex-1">
