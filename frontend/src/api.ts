@@ -186,9 +186,7 @@ function getTimestampMs(data: Record<string, unknown> | null): number | null {
 }
 
 export function getStartTimestamp(metadata: RunMetadata): number | null {
-  return getTimestampMs(metadata.init)
-    ?? getTimestampMs(metadata.runInferStart)
-    ?? null
+  return getTimestampMs(metadata.params)
 }
 
 export function getEndTimestamp(metadata: RunMetadata): number | null {
