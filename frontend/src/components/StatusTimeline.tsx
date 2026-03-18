@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import type { RunMetadata } from '../api'
 
 interface StatusTimelineProps {
   metadata: RunMetadata
+  now?: number
 }
 
 interface Stage {
@@ -21,9 +23,12 @@ function getTimestamp(data: Record<string, unknown> | null): string | null {
   return (data.timestamp as string) || null
 }
 
-function formatDuration(startStr: string, endStr: string): string {
+export function formatStageDuration(startStr: string | null, endStr: string | null, isActive: boolean, now: number): string {
+  if (!startStr) return '—'
   const start = new Date(startStr).getTime()
-  const end = new Date(endStr).getTime()
+  if (isNaN(start)) return '—'
+  const end = isActive ? now : (endStr ? new Date(endStr).getTime() : NaN)
+  if (isNaN(end)) return '—'
   const diffMs = end - start
   if (diffMs < 0) return '—'
   const seconds = Math.floor(diffMs / 1000)
@@ -36,18 +41,18 @@ function formatDuration(startStr: string, endStr: string): string {
   return `${hours}h ${remainingMinutes}m`
 }
 
-function formatTime(ts: string): string {
-  return new Date(ts).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: 'UTC',
-  }) + ' UTC'
-}
-
-export default function StatusTimeline({ metadata }: StatusTimelineProps) {
+export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelineProps) {
   const hasError = !!metadata.error
+  const [currentTime, setCurrentTime] = useState(nowProp ?? Date.now())
+
+  useEffect(() => {
+    if (nowProp !== undefined) {
+      setCurrentTime(nowProp)
+      return
+    }
+    const interval = setInterval(() => setCurrentTime(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [nowProp])
 
   return (
     <div className="bg-oh-surface border border-oh-border rounded-lg p-5">
@@ -83,16 +88,20 @@ export default function StatusTimeline({ metadata }: StatusTimelineProps) {
             error: 'bg-oh-error/40',
           }
 
+          const showDuration = isCompleted || isActive || (hasError && !!startData)
+          const durationText = showDuration
+            ? formatStageDuration(startTs, endTs, isActive, currentTime)
+            : null
+
+          const durationColor = isCompleted ? 'text-oh-success' : isActive ? 'text-oh-primary' : 'text-oh-text-muted'
+
           return (
             <div key={stage.label} className="flex items-center flex-1">
               <div className="flex flex-col items-center">
                 <div className={`w-3 h-3 rounded-full ${dotColors[stageStatus]} ${stageStatus === 'active' ? 'ring-4 ring-oh-primary/20' : ''}`} />
                 <p className="text-xs font-medium text-oh-text mt-2 whitespace-nowrap">{stage.label}</p>
-                {startTs && (
-                  <p className="text-[10px] text-oh-text-muted mt-0.5">{formatTime(startTs)}</p>
-                )}
-                {startTs && endTs && stage.endKey && isCompleted && (
-                  <p className="text-[10px] text-oh-success mt-0.5">{formatDuration(startTs, endTs)}</p>
+                {durationText && (
+                  <p className={`text-[10px] ${durationColor} mt-0.5`}>{durationText}</p>
                 )}
               </div>
               {i < STAGES.length - 1 && (
