@@ -91,9 +91,9 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
         <JsonCard title="Eval Infer End" data={metadata?.evalInferEnd} icon="✅" />
       </div>
 
-      {/* Kill Job Section */}
+      {/* Cancel Evaluation Section */}
       {!runFinished && parsed.jobId && (
-        <KillJobSection jobId={parsed.jobId} />
+        <CancelEvaluationSection jobId={parsed.jobId} />
       )}
     </div>
   )
@@ -101,23 +101,20 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
 
 const KILL_WORKFLOW_URL = 'https://github.com/OpenHands/evaluation/actions/workflows/kill-eval-job.yml'
 
-function KillJobSection({ jobId }: { jobId: string }) {
+function CancelEvaluationSection({ jobId }: { jobId: string }) {
   const handleClick = async () => {
     await navigator.clipboard.writeText(jobId)
     window.open(KILL_WORKFLOW_URL, '_blank')
   }
 
   return (
-    <div data-testid="kill-job-section" className="bg-oh-surface border border-oh-border rounded-lg p-5">
-      <h3 className="text-lg font-semibold text-oh-text mb-2">Kill Job</h3>
-      <p className="text-sm text-oh-text-muted mb-4">
-        We can redirect you to an action to kill this job. You will need the id, we will copy it to clipboard.
-      </p>
+    <div data-testid="cancel-evaluation-section" className="bg-oh-surface border border-oh-border rounded-lg p-5">
+      <h3 className="text-lg font-semibold text-oh-text mb-3">Cancel Evaluation</h3>
       <button
         onClick={handleClick}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer"
       >
-        Copy id and go to kill action
+        Copy Id and Open Cancel Action
       </button>
     </div>
   )
