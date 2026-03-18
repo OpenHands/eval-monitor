@@ -1,4 +1,4 @@
-import { parseRunSlug } from '../api'
+import { parseRunSlug, extractTriggeredBy, getRuntime, isFinished } from '../api'
 import type { RunMetadata } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
@@ -28,6 +28,10 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
     )
   }
 
+  const triggeredBy = metadata ? extractTriggeredBy(metadata) : '—'
+  const runFinished = metadata ? isFinished(metadata) : true
+  const runtime = metadata ? getRuntime(metadata) : null
+
   return (
     <div className="space-y-6">
       {/* Run Header */}
@@ -39,6 +43,22 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
               <span className="font-medium">{parsed.benchmark}</span>
               {parsed.jobId && <span> · Job #{parsed.jobId}</span>}
             </p>
+            <div className="flex items-center gap-4 mt-2 text-sm text-oh-text-muted">
+              <span data-testid="triggered-by">
+                <span className="font-medium">Triggered by:</span> {triggeredBy}
+              </span>
+              <span data-testid="runtime">
+                <span className="font-medium">Runtime:</span>{' '}
+                {runtime ? (
+                  <span className={`font-mono ${runFinished ? '' : 'text-oh-primary'}`}>
+                    {runtime}
+                    {!runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </span>
+            </div>
           </div>
           <StatusBadge status={status} />
         </div>
