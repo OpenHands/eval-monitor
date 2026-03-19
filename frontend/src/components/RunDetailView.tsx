@@ -46,37 +46,35 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
     <div className="space-y-6">
       {/* Run Header */}
       <div className="bg-oh-surface border border-oh-border rounded-lg p-5">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-xl font-semibold text-oh-text">{parsed.model}</h2>
-          <StatusBadge status={status} />
-        </div>
-        <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <BenchmarkBadge name={parsed.benchmark} />
-          {parsed.jobId && (
-            <span className="flex items-center gap-1 text-sm text-oh-text-muted font-mono">
-              <span data-testid="job-id">Job {parsed.jobId}</span>
-              <CopyButton text={parsed.jobId} />
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4 mt-2 text-sm text-oh-text-muted flex-wrap">
-          <span data-testid="trigger-reason">
-            <span className="font-medium">Trigger reason:</span> {triggerReason}
-          </span>
-          <span data-testid="triggered-by">
-            <span className="font-medium">Triggered by:</span> {triggeredBy}
-          </span>
-          <span data-testid="runtime">
-            <span className="font-medium">Runtime:</span>{' '}
-            {runtime ? (
-              <span className={`font-mono ${runFinished ? '' : 'text-oh-primary'}`}>
-                {runtime}
-                {!runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
+        <div className="flex items-start justify-between gap-4">
+          {/* Left: model, benchmark + job id, trigger reason */}
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold text-oh-text">{parsed.model}</h2>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <BenchmarkBadge name={parsed.benchmark} />
+              {parsed.jobId && <CopyJobId jobId={parsed.jobId} />}
+            </div>
+            <div className="mt-2 text-sm text-oh-text-muted">
+              <span data-testid="trigger-reason">
+                <span className="font-medium">Trigger reason:</span> {triggerReason}
               </span>
-            ) : (
-              '—'
-            )}
-          </span>
+            </div>
+          </div>
+          {/* Right: status, runtime, triggered by */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <StatusBadge status={status} />
+            <span data-testid="runtime" className="text-sm text-oh-text-muted">
+              {runtime ? (
+                <span className={`font-mono ${runFinished ? '' : 'text-oh-primary'}`}>
+                  {runtime}
+                  {!runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
+                </span>
+              ) : '—'}
+            </span>
+            <span data-testid="triggered-by" className="text-sm text-oh-text-muted text-right">
+              {triggeredBy}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -177,11 +175,11 @@ function BenchmarkBadge({ name }: { name: string }) {
   )
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyJobId({ jobId }: { jobId: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(jobId)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -190,15 +188,16 @@ function CopyButton({ text }: { text: string }) {
     <button
       data-testid="copy-job-id"
       onClick={handleCopy}
-      className="inline-flex items-center justify-center w-5 h-5 rounded text-oh-text-muted hover:text-oh-text hover:bg-oh-surface-hover transition-colors"
+      className="flex items-center gap-1 text-sm text-oh-text-muted font-mono hover:text-oh-text transition-colors cursor-pointer"
       title="Copy to clipboard"
     >
+      <span data-testid="job-id">Job {jobId}</span>
       {copied ? (
-        <svg className="w-3 h-3 text-oh-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3 h-3 text-oh-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       ) : (
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
       )}

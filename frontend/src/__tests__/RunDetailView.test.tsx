@@ -57,12 +57,14 @@ describe('RunDetailView', () => {
       expect(screen.getByTestId('copy-job-id')).toBeTruthy()
     })
 
-    it('shows job ID text next to copy button', () => {
+    it('shows job ID text inside copy button', () => {
       render(
         <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
       )
       const jobIdEl = screen.getByTestId('job-id')
       expect(jobIdEl.textContent).toContain('123')
+      // job-id span must be inside the copy button
+      expect(screen.getByTestId('copy-job-id').contains(jobIdEl)).toBe(true)
     })
 
     it('copies job ID to clipboard when copy button is clicked', async () => {
@@ -75,6 +77,21 @@ describe('RunDetailView', () => {
 
       await act(async () => {
         fireEvent.click(screen.getByTestId('copy-job-id'))
+      })
+
+      expect(writeText).toHaveBeenCalledWith('123')
+    })
+
+    it('copies job ID to clipboard when the ID text itself is clicked', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('job-id'))
       })
 
       expect(writeText).toHaveBeenCalledWith('123')
