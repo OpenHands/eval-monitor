@@ -19,7 +19,7 @@ interface RunListViewProps {
   dayGroups: DayRunGroup[]
 }
 
-type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error'
+type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
 
 const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?: string }> = {
   pending: {
@@ -48,6 +48,10 @@ const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?
   error: {
     label: 'Error',
     className: 'bg-red-500/20 text-red-400 border-red-500/30',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    className: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   },
 }
 

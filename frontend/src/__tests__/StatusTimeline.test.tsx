@@ -12,6 +12,7 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
     runInferEnd: null,
     evalInferStart: null,
     evalInferEnd: null,
+    cancelEval: null,
     ...overrides,
   }
 }

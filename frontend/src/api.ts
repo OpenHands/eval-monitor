@@ -58,6 +58,7 @@ export interface RunMetadata {
   runInferEnd: Record<string, unknown> | null
   evalInferStart: Record<string, unknown> | null
   evalInferEnd: Record<string, unknown> | null
+  cancelEval: Record<string, unknown> | null
 }
 
 const METADATA_FILES = [
@@ -68,6 +69,7 @@ const METADATA_FILES = [
   ['runInferEnd', 'run-infer-end.json'],
   ['evalInferStart', 'eval-infer-start.json'],
   ['evalInferEnd', 'eval-infer-end.json'],
+  ['cancelEval', 'cancel-eval.json'],
 ] as const
 
 async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
@@ -108,7 +110,8 @@ export function parseRunSlug(slug: string) {
   return { benchmark: slug, model: '', jobId: '' }
 }
 
-export function getStageStatus(metadata: RunMetadata): 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' {
+export function getStageStatus(metadata: RunMetadata): 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled' {
+  if (metadata.cancelEval) return 'cancelled'
   if (metadata.error) return 'error'
   if (metadata.evalInferEnd) return 'completed'
   if (metadata.evalInferStart) return 'running-eval'
@@ -195,6 +198,9 @@ export function getEndTimestamp(metadata: RunMetadata): number | null {
   if (status === 'completed') {
     return getTimestampMs(metadata.evalInferEnd) ?? null
   }
+  if (status === 'cancelled') {
+    return getTimestampMs(metadata.cancelEval) ?? null
+  }
   if (status === 'error') {
     return getTimestampMs(metadata.error)
       ?? getTimestampMs(metadata.evalInferStart)
@@ -208,7 +214,16 @@ export function getEndTimestamp(metadata: RunMetadata): number | null {
 
 export function isFinished(metadata: RunMetadata): boolean {
   const status = getStageStatus(metadata)
-  return status === 'completed' || status === 'error'
+  return status === 'completed' || status === 'error' || status === 'cancelled'
+}
+
+export function extractCancelledBy(cancelEval: Record<string, unknown> | null): string {
+  if (!cancelEval) return '—'
+  const CANCEL_KEYS = ['cancelled_by', 'actor', 'user', 'github_actor', 'sender']
+  for (const key of CANCEL_KEYS) {
+    if (cancelEval[key] && typeof cancelEval[key] === 'string') return cancelEval[key] as string
+  }
+  return '—'
 }
 
 export function formatDurationMs(ms: number): string {

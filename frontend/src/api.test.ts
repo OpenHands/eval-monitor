@@ -6,6 +6,7 @@ import {
   isFinished,
   formatDurationMs,
   getStageStatus,
+  extractCancelledBy,
 } from './api'
 import type { RunMetadata } from './api'
 
@@ -18,6 +19,7 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
     runInferEnd: null,
     evalInferStart: null,
     evalInferEnd: null,
+    cancelEval: null,
     ...overrides,
   }
 }
@@ -109,6 +111,22 @@ describe('getEndTimestamp', () => {
     })
     expect(getEndTimestamp(m)).toBeNull()
   })
+
+  it('returns cancelEval timestamp for cancelled runs', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      cancelEval: ts('2025-01-01T10:45:00Z'),
+    })
+    expect(getEndTimestamp(m)).toBe(new Date('2025-01-01T10:45:00Z').getTime())
+  })
+
+  it('returns null for cancelled run with no timestamp in cancelEval', () => {
+    const m = makeMetadata({
+      cancelEval: { cancelled_by: 'alice' },
+    })
+    expect(getEndTimestamp(m)).toBeNull()
+  })
 })
 
 describe('isFinished', () => {
@@ -139,6 +157,15 @@ describe('isFinished', () => {
   it('returns false for pending', () => {
     const m = makeMetadata({ init: ts('2025-01-01T10:00:00Z') })
     expect(isFinished(m)).toBe(false)
+  })
+
+  it('returns true for cancelled', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      cancelEval: ts('2025-01-01T10:45:00Z'),
+    })
+    expect(isFinished(m)).toBe(true)
   })
 })
 
@@ -203,6 +230,15 @@ describe('getRuntime', () => {
     const m = makeMetadata({ init: ts('2025-01-01T10:00:00Z') })
     expect(getRuntime(m)).toBeNull()
   })
+
+  it('returns formatted duration for cancelled run', () => {
+    const m = makeMetadata({
+      params: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      cancelEval: ts('2025-01-01T10:45:00Z'),
+    })
+    expect(getRuntime(m)).toBe('45m 0s')
+  })
 })
 
 describe('getStageStatus', () => {
@@ -254,5 +290,60 @@ describe('getStageStatus', () => {
   it('returns pending when nothing exists', () => {
     const m = makeMetadata()
     expect(getStageStatus(m)).toBe('pending')
+  })
+
+  it('returns cancelled when cancelEval exists', () => {
+    const m = makeMetadata({
+      init: ts('2025-01-01T10:00:00Z'),
+      runInferStart: ts('2025-01-01T10:05:00Z'),
+      cancelEval: { timestamp: '2025-01-01T10:45:00Z', cancelled_by: 'alice' },
+    })
+    expect(getStageStatus(m)).toBe('cancelled')
+  })
+
+  it('returns cancelled even when error also exists (cancelEval takes priority)', () => {
+    const m = makeMetadata({
+      cancelEval: { timestamp: '2025-01-01T10:45:00Z' },
+      error: { message: 'some error' },
+    })
+    expect(getStageStatus(m)).toBe('cancelled')
+  })
+})
+
+describe('extractCancelledBy', () => {
+  it('returns dash when cancelEval is null', () => {
+    expect(extractCancelledBy(null)).toBe('—')
+  })
+
+  it('extracts cancelled_by field', () => {
+    expect(extractCancelledBy({ cancelled_by: 'alice', timestamp: '2025-01-01T10:45:00Z' })).toBe('alice')
+  })
+
+  it('falls back to actor field', () => {
+    expect(extractCancelledBy({ actor: 'bob' })).toBe('bob')
+  })
+
+  it('falls back to user field', () => {
+    expect(extractCancelledBy({ user: 'carol' })).toBe('carol')
+  })
+
+  it('falls back to github_actor field', () => {
+    expect(extractCancelledBy({ github_actor: 'ci-bot' })).toBe('ci-bot')
+  })
+
+  it('falls back to sender field', () => {
+    expect(extractCancelledBy({ sender: 'webhook' })).toBe('webhook')
+  })
+
+  it('returns dash when no known key is present', () => {
+    expect(extractCancelledBy({ some_other_field: 'value' })).toBe('—')
+  })
+
+  it('ignores non-string values', () => {
+    expect(extractCancelledBy({ cancelled_by: 123, actor: 'fallback' })).toBe('fallback')
+  })
+
+  it('returns dash when all known keys are empty strings', () => {
+    expect(extractCancelledBy({ cancelled_by: '', actor: '' })).toBe('—')
   })
 })

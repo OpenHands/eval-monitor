@@ -12,6 +12,7 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
     runInferEnd: null,
     evalInferStart: null,
     evalInferEnd: null,
+    cancelEval: null,
     ...overrides,
   }
 }
@@ -298,6 +299,87 @@ describe('RunDetailView', () => {
         <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
       )
       expect(screen.getByTestId('cancel-evaluation-section')).toBeTruthy()
+    })
+  })
+
+  describe('Cancelled section', () => {
+    it('shows cancelled section when cancelEval exists with timestamp and cancelled_by', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+        runInferStart: { timestamp: '2025-03-15T10:05:00Z' },
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const section = screen.getByTestId('cancelled-section')
+      expect(section).toBeTruthy()
+      expect(section.textContent).toContain('Evaluation Cancelled')
+    })
+
+    it('shows cancelled by name in cancelled section', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const cancelledByEl = screen.getByTestId('cancelled-by')
+      expect(cancelledByEl.textContent).toContain('alice')
+    })
+
+    it('shows dash for cancelled by when no known key in cancelEval', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const cancelledByEl = screen.getByTestId('cancelled-by')
+      expect(cancelledByEl.textContent).toContain('—')
+    })
+
+    it('shows timestamp in cancelled section when timestamp is present', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'bob' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const timestampEl = screen.getByTestId('cancelled-timestamp')
+      expect(timestampEl).toBeTruthy()
+    })
+
+    it('does not show cancelled section when cancelEval is null', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+        evalInferEnd: { timestamp: '2025-03-15T11:30:00Z' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="completed" />
+      )
+      expect(screen.queryByTestId('cancelled-section')).toBeNull()
+    })
+
+    it('shows Cancelled badge for cancelled status', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      expect(screen.getByText('Cancelled')).toBeTruthy()
+    })
+
+    it('does not show cancel evaluation button for cancelled run', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: '2025-03-15T10:00:00Z' },
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      expect(screen.queryByTestId('cancel-evaluation-section')).toBeNull()
     })
   })
 })
