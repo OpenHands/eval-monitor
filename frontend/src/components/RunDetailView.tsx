@@ -76,7 +76,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
             <div>
               <h3 className="text-base font-semibold text-orange-400 mb-1">Evaluation Cancelled</h3>
               <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-oh-text-muted">
-                {metadata.cancelEval.timestamp && (
+                {!!metadata.cancelEval.timestamp && (
                   <span data-testid="cancelled-timestamp">
                     <span className="font-medium">Cancelled at:</span>{' '}
                     {new Date(metadata.cancelEval.timestamp as string).toLocaleString()}
