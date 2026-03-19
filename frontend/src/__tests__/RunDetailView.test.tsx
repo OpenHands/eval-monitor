@@ -381,5 +381,67 @@ describe('RunDetailView', () => {
       )
       expect(screen.queryByTestId('cancel-evaluation-section')).toBeNull()
     })
+
+    it('shows kubernetes_jobs_found when present in cancelEval', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice', kubernetes_jobs_found: 3 },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const el = screen.getByTestId('kubernetes-jobs-found')
+      expect(el.textContent).toContain('Kubernetes jobs found:')
+      expect(el.textContent).toContain('3')
+    })
+
+    it('shows helm_releases_found when present in cancelEval', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice', helm_releases_found: 5 },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const el = screen.getByTestId('helm-releases-found')
+      expect(el.textContent).toContain('Helm releases found:')
+      expect(el.textContent).toContain('5')
+    })
+
+    it('does not show kubernetes_jobs_found when absent from cancelEval', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      expect(screen.queryByTestId('kubernetes-jobs-found')).toBeNull()
+    })
+
+    it('does not show helm_releases_found when absent from cancelEval', () => {
+      const metadata = makeMetadata({
+        cancelEval: { timestamp: '2025-03-15T10:45:00Z', cancelled_by: 'alice' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      expect(screen.queryByTestId('helm-releases-found')).toBeNull()
+    })
+
+    it('shows both kubernetes_jobs_found and helm_releases_found when both present', () => {
+      const metadata = makeMetadata({
+        cancelEval: {
+          timestamp: '2025-03-15T10:45:00Z',
+          cancelled_by: 'alice',
+          kubernetes_jobs_found: 2,
+          helm_releases_found: 4,
+        },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const k8sEl = screen.getByTestId('kubernetes-jobs-found')
+      expect(k8sEl.textContent).toContain('2')
+      const helmEl = screen.getByTestId('helm-releases-found')
+      expect(helmEl.textContent).toContain('4')
+    })
   })
 })

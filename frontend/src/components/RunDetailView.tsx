@@ -86,6 +86,18 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
                   <span className="font-medium">Cancelled by:</span>{' '}
                   {extractCancelledBy(metadata.cancelEval)}
                 </span>
+                {metadata.cancelEval.kubernetes_jobs_found !== undefined && (
+                  <span data-testid="kubernetes-jobs-found">
+                    <span className="font-medium">Kubernetes jobs found:</span>{' '}
+                    {String(metadata.cancelEval.kubernetes_jobs_found)}
+                  </span>
+                )}
+                {metadata.cancelEval.helm_releases_found !== undefined && (
+                  <span data-testid="helm-releases-found">
+                    <span className="font-medium">Helm releases found:</span>{' '}
+                    {String(metadata.cancelEval.helm_releases_found)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
