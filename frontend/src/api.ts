@@ -53,6 +53,7 @@ export async function fetchMultiDayRunList(baseDate: string, numDays: number): P
 export interface RunMetadata {
   init: Record<string, unknown> | null
   params: Record<string, unknown> | null
+  benchmarksParams: Record<string, unknown> | null
   error: Record<string, unknown> | null
   runInferStart: Record<string, unknown> | null
   runInferEnd: Record<string, unknown> | null
@@ -63,6 +64,7 @@ export interface RunMetadata {
 const METADATA_FILES = [
   ['init', 'init.json'],
   ['params', 'params.json'],
+  ['benchmarksParams', 'benchmarks-params.json'],
   ['error', 'error.json'],
   ['runInferStart', 'run-infer-start.json'],
   ['runInferEnd', 'run-infer-end.json'],

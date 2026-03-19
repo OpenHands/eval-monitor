@@ -93,6 +93,7 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
   return {
     init: null,
     params: null,
+    benchmarksParams: null,
     error: null,
     runInferStart: null,
     runInferEnd: null,

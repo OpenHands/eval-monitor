@@ -7,6 +7,7 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
   return {
     init: null,
     params: null,
+    benchmarksParams: null,
     error: null,
     runInferStart: null,
     runInferEnd: null,
@@ -207,6 +208,53 @@ describe('RunDetailView', () => {
     )
     const badges = screen.getAllByText('Building Images')
     expect(badges.length).toBeGreaterThanOrEqual(1)
+  })
+
+  describe('Benchmarks Parameters card', () => {
+    it('renders Benchmarks Parameters card when benchmarksParams data is present', () => {
+      const metadata = makeMetadata({
+        benchmarksParams: { benchmark_suite: 'swebench', max_tasks: 100 },
+      })
+      const { container } = render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+      )
+      const headings = Array.from(container.querySelectorAll('h3'))
+      const benchmarksHeading = headings.find(h => h.textContent === 'Benchmarks Parameters')
+      expect(benchmarksHeading).toBeTruthy()
+    })
+
+    it('renders Benchmarks Parameters card as "Not available yet" when benchmarksParams is null', () => {
+      const metadata = makeMetadata({ benchmarksParams: null })
+      const { container } = render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+      )
+      const headings = Array.from(container.querySelectorAll('h3'))
+      const benchmarksHeading = headings.find(h => h.textContent === 'Benchmarks Parameters')
+      expect(benchmarksHeading).toBeTruthy()
+      const card = benchmarksHeading!.closest('div')!.parentElement!
+      expect(card.textContent).toContain('Not available yet')
+    })
+
+    it('renders Benchmarks Parameters card between Parameters and Init', () => {
+      const metadata = makeMetadata({
+        params: { model: 'claude-sonnet' },
+        benchmarksParams: { benchmark_suite: 'swebench' },
+        init: { version: '1.0' },
+      })
+      const { container } = render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+      )
+      const headings = Array.from(container.querySelectorAll('h3')).map(h => h.textContent)
+      const paramsIdx = headings.indexOf('Parameters')
+      const benchmarksIdx = headings.indexOf('Benchmarks Parameters')
+      const initIdx = headings.indexOf('Init')
+
+      expect(paramsIdx).toBeGreaterThanOrEqual(0)
+      expect(benchmarksIdx).toBeGreaterThanOrEqual(0)
+      expect(initIdx).toBeGreaterThanOrEqual(0)
+      expect(benchmarksIdx).toBeGreaterThan(paramsIdx)
+      expect(benchmarksIdx).toBeLessThan(initIdx)
+    })
   })
 
   describe('Cancel Evaluation section', () => {
