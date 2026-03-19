@@ -39,9 +39,12 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
               </button>
             )}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-oh-primary flex items-center justify-center text-white font-bold text-sm">
-                OH
-              </div>
+              <img
+                src="/openhands-logo.svg"
+                alt="OpenHands"
+                className="w-8 h-8"
+                data-testid="openhands-logo"
+              />
               <h1 className="text-lg font-semibold text-oh-text hidden sm:block">
                 Eval Monitor
               </h1>
