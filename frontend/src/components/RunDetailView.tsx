@@ -1,4 +1,4 @@
-import { parseRunSlug, extractTriggeredBy, extractTriggerReason, getRuntime, isFinished } from '../api'
+import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished } from '../api'
 import type { RunMetadata } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
@@ -8,7 +8,7 @@ interface RunDetailViewProps {
   slug: string
   metadata: RunMetadata | null
   loading: boolean
-  status: 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error'
+  status: 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
 }
 
 export default function RunDetailView({ slug, metadata, loading, status }: RunDetailViewProps) {
@@ -67,6 +67,30 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
           <StatusBadge status={status} />
         </div>
       </div>
+
+      {/* Cancelled Section */}
+      {metadata?.cancelEval && (
+        <div data-testid="cancelled-section" className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-5">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">🚫</span>
+            <div>
+              <h3 className="text-base font-semibold text-orange-400 mb-1">Evaluation Cancelled</h3>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-oh-text-muted">
+                {metadata.cancelEval.timestamp && (
+                  <span data-testid="cancelled-timestamp">
+                    <span className="font-medium">Cancelled at:</span>{' '}
+                    {new Date(metadata.cancelEval.timestamp as string).toLocaleString()}
+                  </span>
+                )}
+                <span data-testid="cancelled-by">
+                  <span className="font-medium">Cancelled by:</span>{' '}
+                  {extractCancelledBy(metadata.cancelEval)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Section */}
       {metadata?.error && (
@@ -128,6 +152,7 @@ function StatusBadge({ status }: { status: string }) {
     'running-eval': 'bg-oh-warning/20 text-oh-warning border-oh-warning/30',
     'completed': 'bg-oh-success/20 text-oh-success border-oh-success/30',
     'error': 'bg-oh-error/20 text-oh-error border-oh-error/30',
+    'cancelled': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   }
 
   const labels: Record<string, string> = {
@@ -137,6 +162,7 @@ function StatusBadge({ status }: { status: string }) {
     'running-eval': 'Running Evaluation',
     'completed': 'Completed',
     'error': 'Error',
+    'cancelled': 'Cancelled',
   }
 
   return (
