@@ -1,8 +1,17 @@
+import { useState } from 'react'
 import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished } from '../api'
 import type { RunMetadata } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
 import CompletedRunResults from './CompletedRunResults'
+
+const BENCHMARK_COLORS: Record<string, string> = {
+  swebench: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  swebenchmultimodal: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  swtbench: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+  gaia: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  commit0: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+}
 
 interface RunDetailViewProps {
   slug: string
@@ -37,34 +46,37 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
     <div className="space-y-6">
       {/* Run Header */}
       <div className="bg-oh-surface border border-oh-border rounded-lg p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-oh-text">{parsed.model}</h2>
-            <p className="text-sm text-oh-text-muted mt-1">
-              <span className="font-medium">{parsed.benchmark}</span>
-              {parsed.jobId && <span> · Job {parsed.jobId}</span>}
-            </p>
-            <div className="flex items-center gap-4 mt-2 text-sm text-oh-text-muted flex-wrap">
-              <span data-testid="trigger-reason">
-                <span className="font-medium">Trigger reason:</span> {triggerReason}
-              </span>
-              <span data-testid="triggered-by">
-                <span className="font-medium">Triggered by:</span> {triggeredBy}
-              </span>
-              <span data-testid="runtime">
-                <span className="font-medium">Runtime:</span>{' '}
-                {runtime ? (
-                  <span className={`font-mono ${runFinished ? '' : 'text-oh-primary'}`}>
-                    {runtime}
-                    {!runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
-                  </span>
-                ) : (
-                  '—'
-                )}
-              </span>
-            </div>
-          </div>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-xl font-semibold text-oh-text">{parsed.model}</h2>
           <StatusBadge status={status} />
+        </div>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <BenchmarkBadge name={parsed.benchmark} />
+          {parsed.jobId && (
+            <span className="flex items-center gap-1 text-sm text-oh-text-muted font-mono">
+              <span data-testid="job-id">Job {parsed.jobId}</span>
+              <CopyButton text={parsed.jobId} />
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4 mt-2 text-sm text-oh-text-muted flex-wrap">
+          <span data-testid="trigger-reason">
+            <span className="font-medium">Trigger reason:</span> {triggerReason}
+          </span>
+          <span data-testid="triggered-by">
+            <span className="font-medium">Triggered by:</span> {triggeredBy}
+          </span>
+          <span data-testid="runtime">
+            <span className="font-medium">Runtime:</span>{' '}
+            {runtime ? (
+              <span className={`font-mono ${runFinished ? '' : 'text-oh-primary'}`}>
+                {runtime}
+                {!runFinished && <span className="ml-1 text-xs opacity-60">⏱</span>}
+              </span>
+            ) : (
+              '—'
+            )}
+          </span>
         </div>
       </div>
 
@@ -153,6 +165,44 @@ function CancelEvaluationSection({ jobId }: { jobId: string }) {
         Copy Id and Open Cancel Action
       </button>
     </div>
+  )
+}
+
+function BenchmarkBadge({ name }: { name: string }) {
+  const colorClass = BENCHMARK_COLORS[name] || 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+  return (
+    <span data-testid="benchmark-badge" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
+      {name}
+    </span>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <button
+      data-testid="copy-job-id"
+      onClick={handleCopy}
+      className="inline-flex items-center justify-center w-5 h-5 rounded text-oh-text-muted hover:text-oh-text hover:bg-oh-surface-hover transition-colors"
+      title="Copy to clipboard"
+    >
+      {copied ? (
+        <svg className="w-3 h-3 text-oh-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      )}
+    </button>
   )
 }
 
