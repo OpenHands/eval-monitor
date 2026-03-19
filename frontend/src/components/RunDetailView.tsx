@@ -42,7 +42,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
             <h2 className="text-xl font-semibold text-oh-text">{parsed.model}</h2>
             <p className="text-sm text-oh-text-muted mt-1">
               <span className="font-medium">{parsed.benchmark}</span>
-              {parsed.jobId && <span> · Job #{parsed.jobId}</span>}
+              {parsed.jobId && <span> · Job {parsed.jobId}</span>}
             </p>
             <div className="flex items-center gap-4 mt-2 text-sm text-oh-text-muted flex-wrap">
               <span data-testid="trigger-reason">
