@@ -40,7 +40,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
             )}
             <div className="flex items-center gap-2">
               <img
-                src="/openhands-logo-white.svg"
+                src="/openhands-logo.svg"
                 alt="OpenHands"
                 className="w-8 h-8"
                 data-testid="openhands-logo"
