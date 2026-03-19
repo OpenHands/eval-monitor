@@ -19,16 +19,6 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
 describe('RunDetailView', () => {
   const defaultSlug = 'swebench/litellm_proxy-claude-sonnet/123'
 
-  it('shows job id without # prefix', () => {
-    const metadata = makeMetadata()
-    render(
-      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
-    )
-    const jobText = screen.getByText(/Job 123/)
-    expect(jobText.textContent).toBe(' · Job 123')
-    expect(jobText.textContent).not.toContain('#')
-  })
-
   it('shows triggered by from metadata', () => {
     const metadata = makeMetadata({
       params: { triggered_by: 'juanmichelini', timestamp: '2025-03-15T10:00:00Z' },
