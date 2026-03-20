@@ -17,6 +17,12 @@ interface RunListViewProps {
   runMetadataMap: Record<string, RunMetadata>
   loadingMetadataList: boolean
   dayGroups: DayRunGroup[]
+  filterBenchmark: string
+  setFilterBenchmark: (value: string) => void
+  filterStatus: string
+  setFilterStatus: (value: string) => void
+  filterText: string
+  setFilterText: (value: string) => void
 }
 
 type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
@@ -93,7 +99,21 @@ function BenchmarkBadge({ name }: { name: string }) {
 }
 
 
-export default function RunListView({ runs, loading, error, onSelectRun, runMetadataMap, loadingMetadataList, dayGroups }: RunListViewProps) {
+export default function RunListView({
+  runs,
+  loading,
+  error,
+  onSelectRun,
+  runMetadataMap,
+  loadingMetadataList,
+  dayGroups,
+  filterBenchmark,
+  setFilterBenchmark,
+  filterStatus,
+  setFilterStatus,
+  filterText,
+  setFilterText
+}: RunListViewProps) {
   const showMultipleDays = dayGroups.length > 1
 
   // Build a slug-to-date mapping for date grouping
@@ -106,9 +126,6 @@ export default function RunListView({ runs, loading, error, onSelectRun, runMeta
     }
     return map
   }, [dayGroups])
-  const [filterBenchmark, setFilterBenchmark] = useState<string>('all')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterText, setFilterText] = useState('')
   const [now, setNow] = useState(Date.now())
 
   // Check if any run is non-finished to decide whether to tick the timer
