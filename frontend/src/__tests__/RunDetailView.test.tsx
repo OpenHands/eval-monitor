@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import RunDetailView from '../components/RunDetailView'
 import type { RunMetadata } from '../api'
 
@@ -19,6 +19,91 @@ function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
 
 describe('RunDetailView', () => {
   const defaultSlug = 'swebench/litellm_proxy-claude-sonnet/123'
+
+  describe('Benchmark badge', () => {
+    it('renders benchmark badge with known color for swebench', () => {
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+      const badge = screen.getByTestId('benchmark-badge')
+      expect(badge.textContent).toBe('swebench')
+      expect(badge.className).toContain('text-blue-400')
+    })
+
+    it('renders benchmark badge with gray fallback for unknown benchmark', () => {
+      render(
+        <RunDetailView slug="unknown-bench/some-model/123" metadata={null} loading={false} status="pending" />
+      )
+      const badge = screen.getByTestId('benchmark-badge')
+      expect(badge.textContent).toBe('unknown-bench')
+      expect(badge.className).toContain('text-gray-400')
+    })
+
+    it('renders benchmark badge with correct color for gaia', () => {
+      render(
+        <RunDetailView slug="gaia/some-model/123" metadata={null} loading={false} status="pending" />
+      )
+      const badge = screen.getByTestId('benchmark-badge')
+      expect(badge.textContent).toBe('gaia')
+      expect(badge.className).toContain('text-emerald-400')
+    })
+  })
+
+  describe('Copy job ID button', () => {
+    it('renders copy button when job ID is present', () => {
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+      expect(screen.getByTestId('copy-job-id')).toBeTruthy()
+    })
+
+    it('shows job ID text inside copy button', () => {
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+      const jobIdEl = screen.getByTestId('job-id')
+      expect(jobIdEl.textContent).toContain('123')
+      // job-id span must be inside the copy button
+      expect(screen.getByTestId('copy-job-id').contains(jobIdEl)).toBe(true)
+    })
+
+    it('copies job ID to clipboard when copy button is clicked', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('copy-job-id'))
+      })
+
+      expect(writeText).toHaveBeenCalledWith('123')
+    })
+
+    it('copies job ID to clipboard when the ID text itself is clicked', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('job-id'))
+      })
+
+      expect(writeText).toHaveBeenCalledWith('123')
+    })
+
+    it('does not render copy button when slug has no job ID', () => {
+      render(
+        <RunDetailView slug="swebench/some-model" metadata={null} loading={false} status="pending" />
+      )
+      expect(screen.queryByTestId('copy-job-id')).toBeNull()
+    })
+  })
 
   it('shows triggered by from metadata', () => {
     const metadata = makeMetadata({
