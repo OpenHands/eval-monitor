@@ -333,7 +333,22 @@ export default function RunListView({
                         </tr>
                       )}
                       <tr
-                        onClick={() => onSelectRun(run.slug)}
+                        onClick={(e) => {
+                          if (e.altKey || e.ctrlKey || e.metaKey) {
+                            const url = new URL(window.location.href)
+                            url.searchParams.set('run', run.slug)
+                            window.open(url.toString(), '_blank')
+                          } else {
+                            onSelectRun(run.slug)
+                          }
+                        }}
+                        onAuxClick={(e) => {
+                          if (e.button === 1) {
+                            const url = new URL(window.location.href)
+                            url.searchParams.set('run', run.slug)
+                            window.open(url.toString(), '_blank')
+                          }
+                        }}
                         className="hover:bg-oh-surface-hover cursor-pointer transition-colors group"
                       >
                         <td className="px-4 py-3 whitespace-nowrap">
