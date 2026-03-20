@@ -17,7 +17,7 @@ describe('Header', () => {
     render(<Header {...defaultProps} />)
     const logo = screen.getByTestId('openhands-logo')
     expect(logo.tagName).toBe('IMG')
-    expect((logo as HTMLImageElement).src).toContain('openhands-logo-white.svg')
+    expect((logo as HTMLImageElement).src).toContain('openhands-logo.svg')
     expect((logo as HTMLImageElement).alt).toBe('OpenHands')
   })
 

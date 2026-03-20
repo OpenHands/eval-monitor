@@ -10,16 +10,19 @@ function getTodayUTC(): string {
   return now.toISOString().split('T')[0]
 }
 
-export function parseSearchParams(search: string, defaultDate: string): { date: string; run: string | null; numDays: number } {
+export function parseSearchParams(search: string, defaultDate: string): { date: string; run: string | null; numDays: number; filterBenchmark: string; filterStatus: string; filterText: string } {
   const params = new URLSearchParams(search)
   const date = params.get('date') || defaultDate
   const run = params.get('run') || null
-  const numDaysParam = parseInt(params.get('days') || '2', 10)
-  const numDays = numDaysParam >= 1 && numDaysParam <= 7 ? numDaysParam : 2
-  return { date, run, numDays }
+  const numDaysParam = parseInt(params.get('days') || '3', 10)
+  const numDays = numDaysParam >= 1 && numDaysParam <= 7 ? numDaysParam : 3
+  const filterBenchmark = params.get('benchmark') || 'all'
+  const filterStatus = params.get('status') || 'all'
+  const filterText = params.get('text') || ''
+  return { date, run, numDays, filterBenchmark, filterStatus, filterText }
 }
 
-export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 2): string {
+export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 3, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = ''): string {
   const params = new URLSearchParams()
   if (date !== todayDate) {
     params.set('date', date)
@@ -27,30 +30,44 @@ export function buildSearchString(date: string, run: string | null, todayDate: s
   if (run) {
     params.set('run', run)
   }
-  if (numDays !== 2) {
+  if (numDays !== 3) {
     params.set('days', String(numDays))
+  }
+  if (filterBenchmark !== 'all') {
+    params.set('benchmark', filterBenchmark)
+  }
+  if (filterStatus !== 'all') {
+    params.set('status', filterStatus)
+  }
+  if (filterText) {
+    params.set('text', filterText)
   }
   const qs = params.toString()
   return qs ? `?${qs}` : ''
 }
 
-function parseUrlState(): { date: string; run: string | null; numDays: number } {
+function parseUrlState() {
   return parseSearchParams(window.location.search, getTodayUTC())
 }
 
-function buildUrl(date: string, run: string | null, numDays: number): string {
-  const qs = buildSearchString(date, run, getTodayUTC(), numDays)
+function buildUrl(date: string, run: string | null, numDays: number, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = ''): string {
+  const qs = buildSearchString(date, run, getTodayUTC(), numDays, filterBenchmark, filterStatus, filterText)
   return qs || window.location.pathname
 }
 
 export default function App() {
-  const [date, setDate] = useState(() => parseUrlState().date)
-  const [numDays, setNumDays] = useState(() => parseUrlState().numDays)
+  const initialState = parseUrlState()
+  const [date, setDate] = useState(initialState.date)
+  const [numDays, setNumDays] = useState(initialState.numDays)
+  const [filterBenchmark, setFilterBenchmark] = useState(initialState.filterBenchmark)
+  const [filterStatus, setFilterStatus] = useState(initialState.filterStatus)
+  const [filterText, setFilterText] = useState(initialState.filterText)
+  
   const [runs, setRuns] = useState<string[]>([])
   const [dayGroups, setDayGroups] = useState<DayRunGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedRun, setSelectedRun] = useState<string | null>(() => parseUrlState().run)
+  const [selectedRun, setSelectedRun] = useState<string | null>(initialState.run)
   const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null)
   const [loadingMetadata, setLoadingMetadata] = useState(false)
 
@@ -58,16 +75,16 @@ export default function App() {
   const [runMetadataMap, setRunMetadataMap] = useState<Record<string, RunMetadata>>({})
   const [loadingMetadataList, setLoadingMetadataList] = useState(false)
 
-  // Sync URL when date, selectedRun, or numDays changes (skip on initial mount)
+  // Sync URL when state changes (skip on initial mount)
   const [initialized, setInitialized] = useState(false)
   useEffect(() => {
     if (!initialized) {
       setInitialized(true)
       return
     }
-    const url = buildUrl(date, selectedRun, numDays)
-    window.history.pushState({ date, run: selectedRun, numDays }, '', url)
-  }, [date, selectedRun, numDays]) // eslint-disable-line react-hooks/exhaustive-deps
+    const url = buildUrl(date, selectedRun, numDays, filterBenchmark, filterStatus, filterText)
+    window.history.pushState({ date, run: selectedRun, numDays, filterBenchmark, filterStatus, filterText }, '', url)
+  }, [date, selectedRun, numDays, filterBenchmark, filterStatus, filterText]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -76,6 +93,9 @@ export default function App() {
       setDate(state.date)
       setSelectedRun(state.run)
       setNumDays(state.numDays)
+      setFilterBenchmark(state.filterBenchmark)
+      setFilterStatus(state.filterStatus)
+      setFilterText(state.filterText)
       if (!state.run) {
         setRunMetadata(null)
       }
@@ -224,6 +244,12 @@ export default function App() {
             runMetadataMap={runMetadataMap}
             loadingMetadataList={loadingMetadataList}
             dayGroups={dayGroups}
+            filterBenchmark={filterBenchmark}
+            setFilterBenchmark={setFilterBenchmark}
+            filterStatus={filterStatus}
+            setFilterStatus={setFilterStatus}
+            filterText={filterText}
+            setFilterText={setFilterText}
           />
         )}
       </main>
