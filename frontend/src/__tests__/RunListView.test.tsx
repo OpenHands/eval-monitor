@@ -10,8 +10,7 @@ describe('RunListView', () => {
         slug: 'swebench/test-run/123',
         benchmark: 'swebench',
         model: 'test-run',
-        id: '123',
-        status: 'completed' as const
+        jobId: '123'
       }
     ],
     loading: false,
