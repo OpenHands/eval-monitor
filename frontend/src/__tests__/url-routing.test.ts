@@ -6,32 +6,32 @@ describe('parseSearchParams', () => {
 
   it('returns defaults when search string is empty', () => {
     const result = parseSearchParams('', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('parses date from search params', () => {
     const result = parseSearchParams('?date=2025-01-15', defaultDate)
-    expect(result).toEqual({ date: '2025-01-15', run: null, numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(result).toEqual({ date: '2025-01-15', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('parses run from search params', () => {
     const result = parseSearchParams('?run=swebench/model/123', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: 'swebench/model/123', numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(result).toEqual({ date: '2025-03-17', run: 'swebench/model/123', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('parses both date and run from search params', () => {
     const result = parseSearchParams('?date=2025-02-20&run=gaia/litellm_proxy-gpt4/456', defaultDate)
-    expect(result).toEqual({ date: '2025-02-20', run: 'gaia/litellm_proxy-gpt4/456', numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(result).toEqual({ date: '2025-02-20', run: 'gaia/litellm_proxy-gpt4/456', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('handles URL-encoded run slugs with slashes', () => {
     const result = parseSearchParams('?run=bench%2Fmodel%2Fjob', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: 'bench/model/job', numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(result).toEqual({ date: '2025-03-17', run: 'bench/model/job', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('uses default date when date param is missing', () => {
     const result = parseSearchParams('?run=test/run/1', '2025-12-31')
-    expect(result).toEqual({ date: '2025-12-31', run: 'test/run/1', numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(result).toEqual({ date: '2025-12-31', run: 'test/run/1', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('parses days param', () => {
@@ -40,10 +40,10 @@ describe('parseSearchParams', () => {
   })
 
   it('clamps days param to valid range (1-7)', () => {
-    expect(parseSearchParams('?days=0', defaultDate).numDays).toBe(2)
-    expect(parseSearchParams('?days=8', defaultDate).numDays).toBe(2)
-    expect(parseSearchParams('?days=-1', defaultDate).numDays).toBe(2)
-    expect(parseSearchParams('?days=abc', defaultDate).numDays).toBe(2)
+    expect(parseSearchParams('?days=0', defaultDate).numDays).toBe(3)
+    expect(parseSearchParams('?days=8', defaultDate).numDays).toBe(3)
+    expect(parseSearchParams('?days=-1', defaultDate).numDays).toBe(3)
+    expect(parseSearchParams('?days=abc', defaultDate).numDays).toBe(3)
     expect(parseSearchParams('?days=7', defaultDate).numDays).toBe(7)
   })
 
@@ -54,7 +54,7 @@ describe('parseSearchParams', () => {
 
   it('parses filters', () => {
     const result = parseSearchParams('?benchmark=swebench&status=completed&text=gpt4', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 2, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4' })
+    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4' })
   })
 })
 
@@ -86,14 +86,14 @@ describe('buildSearchString', () => {
     expect(result).toBe('?run=bench%2Fmodel%2Fjob')
   })
 
-  it('omits days param when numDays is 2 (default)', () => {
-    const result = buildSearchString(today, null, today, 2)
+  it('omits days param when numDays is 3 (default)', () => {
+    const result = buildSearchString(today, null, today, 3)
     expect(result).toBe('')
   })
 
   it('includes days param when numDays is not the default', () => {
-    const result = buildSearchString(today, null, today, 3)
-    expect(result).toBe('?days=3')
+    const result = buildSearchString(today, null, today, 4)
+    expect(result).toBe('?days=4')
   })
 
   it('includes days param when numDays is 1', () => {
@@ -102,7 +102,7 @@ describe('buildSearchString', () => {
   })
 
   it('includes filters when provided', () => {
-    const result = buildSearchString(today, null, today, 2, 'swebench', 'completed', 'gpt4')
+    const result = buildSearchString(today, null, today, 3, 'swebench', 'completed', 'gpt4')
     expect(result).toBe('?benchmark=swebench&status=completed&text=gpt4')
   })
 
@@ -120,30 +120,30 @@ describe('round-trip: buildSearchString -> parseSearchParams', () => {
     const run = 'swebench/litellm_proxy-claude/789'
     const qs = buildSearchString(date, run, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date, run, numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(parsed).toEqual({ date, run, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('round-trips a run selection with today date', () => {
     const run = 'gaia/model/42'
     const qs = buildSearchString(today, run, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run, numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(parsed).toEqual({ date: today, run, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('round-trips list view with non-today date', () => {
     const date = '2025-06-15'
     const qs = buildSearchString(date, null, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date, run: null, numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(parsed).toEqual({ date, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('round-trips list view with today date', () => {
     const qs = buildSearchString(today, null, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
-  it('round-trips with numDays > 2', () => {
+  it('round-trips with numDays > 3', () => {
     const date = '2025-02-20'
     const run = 'swebench/model/123'
     const numDays = 5
@@ -152,10 +152,10 @@ describe('round-trip: buildSearchString -> parseSearchParams', () => {
     expect(parsed).toEqual({ date, run, numDays, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
-  it('round-trips with numDays = 2 (default omitted)', () => {
-    const qs = buildSearchString(today, null, today, 2)
+  it('round-trips with numDays = 3 (default omitted)', () => {
+    const qs = buildSearchString(today, null, today, 3)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 2, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '' })
   })
 
   it('round-trips with numDays = 1', () => {
@@ -165,8 +165,8 @@ describe('round-trip: buildSearchString -> parseSearchParams', () => {
   })
 
   it('round-trips with filters', () => {
-    const qs = buildSearchString(today, null, today, 2, 'swebench', 'completed', 'gpt4')
+    const qs = buildSearchString(today, null, today, 3, 'swebench', 'completed', 'gpt4')
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 2, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4' })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4' })
   })
 })

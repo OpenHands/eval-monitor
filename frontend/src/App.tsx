@@ -14,15 +14,15 @@ export function parseSearchParams(search: string, defaultDate: string): { date: 
   const params = new URLSearchParams(search)
   const date = params.get('date') || defaultDate
   const run = params.get('run') || null
-  const numDaysParam = parseInt(params.get('days') || '2', 10)
-  const numDays = numDaysParam >= 1 && numDaysParam <= 7 ? numDaysParam : 2
+  const numDaysParam = parseInt(params.get('days') || '3', 10)
+  const numDays = numDaysParam >= 1 && numDaysParam <= 7 ? numDaysParam : 3
   const filterBenchmark = params.get('benchmark') || 'all'
   const filterStatus = params.get('status') || 'all'
   const filterText = params.get('text') || ''
   return { date, run, numDays, filterBenchmark, filterStatus, filterText }
 }
 
-export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 2, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = ''): string {
+export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 3, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = ''): string {
   const params = new URLSearchParams()
   if (date !== todayDate) {
     params.set('date', date)
@@ -30,7 +30,7 @@ export function buildSearchString(date: string, run: string | null, todayDate: s
   if (run) {
     params.set('run', run)
   }
-  if (numDays !== 2) {
+  if (numDays !== 3) {
     params.set('days', String(numDays))
   }
   if (filterBenchmark !== 'all') {
