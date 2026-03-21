@@ -29,7 +29,7 @@ describe('ErrorReportSection', () => {
     })
   })
 
-  it('renders correctly when error report has content', async () => {
+  it('renders correctly when error report has content (errors found)', async () => {
     const mockReport = 'Some inference error happened\nTraceback...'
     vi.mocked(api.fetchErrorReport).mockResolvedValue(mockReport)
     
@@ -39,7 +39,8 @@ describe('ErrorReportSection', () => {
       expect(screen.getByTestId('error-report-section')).toBeInTheDocument()
     })
     
-    expect(screen.getByText('Inference Error report')).toBeInTheDocument()
+    expect(screen.getByText('⚠️')).toBeInTheDocument()
+    expect(screen.getByText('Conversation Errors Found')).toBeInTheDocument()
     expect(screen.getByText('View full list of errors (conversation-errors.txt)')).toBeInTheDocument()
     expect(screen.getByText('View full list of errors (conversation-errors.txt)')).toHaveAttribute(
       'href', 
@@ -47,6 +48,25 @@ describe('ErrorReportSection', () => {
     )
     expect(screen.getByText((content, element) => {
       return element?.tagName.toLowerCase() === 'pre' && content.includes('Some inference error happened');
+    })).toBeInTheDocument()
+  })
+
+  it('renders correctly when no errors found', async () => {
+    const mockReport = 'Everything is fine\nNo errors found.'
+    vi.mocked(api.fetchErrorReport).mockResolvedValue(mockReport)
+    
+    render(<ErrorReportSection slug="test-run" />)
+    
+    await waitFor(() => {
+      expect(screen.getByTestId('error-report-section')).toBeInTheDocument()
+    })
+    
+    expect(screen.getByText('✅')).toBeInTheDocument()
+    expect(screen.getByText('All Conversations Pass Checks')).toBeInTheDocument()
+    expect(screen.queryByText('View full list of errors (conversation-errors.txt)')).not.toBeInTheDocument()
+    
+    expect(screen.getByText((content, element) => {
+      return element?.tagName.toLowerCase() === 'pre' && content.includes('Everything is fine');
     })).toBeInTheDocument()
   })
 })
