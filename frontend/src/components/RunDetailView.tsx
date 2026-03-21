@@ -5,6 +5,8 @@ import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
 import CompletedRunResults from './CompletedRunResults'
 
+import ErrorReportSection from './ErrorReportSection'
+
 const BENCHMARK_COLORS: Record<string, string> = {
   swebench: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   swebenchmultimodal: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
@@ -129,6 +131,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
 
       {/* Metadata Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ErrorReportSection slug={slug} />
         <JsonCard title="Parameters" data={metadata?.params} icon="⚙️" />
         <JsonCard title="Init" data={metadata?.init} icon="🚀" />
         <JsonCard title="Run Infer Start" data={metadata?.runInferStart} icon="▶️" />
