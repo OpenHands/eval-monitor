@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { fetchErrorReport, getResultsUrl } from '../api'
 
+import SectionMenu from './SectionMenu'
+
 interface ErrorReportSectionProps {
   slug: string
 }
@@ -39,6 +41,15 @@ export default function ErrorReportSection({ slug }: ErrorReportSectionProps) {
     }
   }, [slug])
 
+  useEffect(() => {
+    if (!loading && errorReport && window.location.hash === '#error-report') {
+      setTimeout(() => {
+        const el = document.getElementById('error-report')
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      }, 50)
+    }
+  }, [loading, errorReport])
+
   if (loading || !errorReport) return null
 
   const errorsUrl = getResultsUrl(slug, 'conversation-errors.txt')
@@ -48,10 +59,13 @@ export default function ErrorReportSection({ slug }: ErrorReportSectionProps) {
   const icon = noErrors ? "✅" : "⚠️"
 
   return (
-    <div data-testid="error-report-section" className="col-span-1 lg:col-span-2 bg-oh-surface border border-oh-border rounded-lg p-5">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-xl">{icon}</span>
-        <h3 className="text-lg font-semibold text-oh-text">{title}</h3>
+    <div id="error-report" data-testid="error-report-section" className="col-span-1 lg:col-span-2 bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-6">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{icon}</span>
+          <h3 className="text-lg font-semibold text-oh-text">{title}</h3>
+        </div>
+        <SectionMenu id="error-report" />
       </div>
       {!noErrors && (
         <div className="mb-4">

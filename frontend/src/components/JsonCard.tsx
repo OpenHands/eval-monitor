@@ -1,3 +1,5 @@
+import SectionMenu from './SectionMenu'
+
 interface JsonCardProps {
   title: string
   data: Record<string, unknown> | null | undefined
@@ -6,12 +8,17 @@ interface JsonCardProps {
 }
 
 export default function JsonCard({ title, data, icon, isError }: JsonCardProps) {
+  const sectionId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
   if (data === null || data === undefined) {
     return (
-      <div className="bg-oh-surface border border-oh-border rounded-lg p-4 opacity-50">
-        <div className="flex items-center gap-2 mb-3">
-          <span>{icon}</span>
-          <h3 className="text-sm font-medium text-oh-text-muted">{title}</h3>
+      <div id={sectionId} className="bg-oh-surface border border-oh-border rounded-lg p-4 opacity-50 scroll-mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span>{icon}</span>
+            <h3 className="text-sm font-medium text-oh-text-muted">{title}</h3>
+          </div>
+          <SectionMenu id={sectionId} />
         </div>
         <p className="text-xs text-oh-text-muted italic">Not available yet</p>
       </div>
@@ -22,10 +29,13 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
   const bgClass = isError ? 'bg-oh-error/5' : 'bg-oh-surface'
 
   return (
-    <div className={`${bgClass} border ${borderClass} rounded-lg p-4`}>
-      <div className="flex items-center gap-2 mb-3">
-        <span>{icon}</span>
-        <h3 className="text-sm font-medium text-oh-text">{title}</h3>
+    <div id={sectionId} className={`${bgClass} border ${borderClass} rounded-lg p-4 scroll-mt-6`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span>{icon}</span>
+          <h3 className="text-sm font-medium text-oh-text">{title}</h3>
+        </div>
+        <SectionMenu id={sectionId} />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
