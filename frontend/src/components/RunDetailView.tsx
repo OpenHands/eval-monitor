@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished } from '../api'
 import type { RunMetadata } from '../api'
 import StatusTimeline from './StatusTimeline'
@@ -6,6 +6,8 @@ import JsonCard from './JsonCard'
 import CompletedRunResults from './CompletedRunResults'
 
 import ErrorReportSection from './ErrorReportSection'
+
+import SectionMenu from './SectionMenu'
 
 const BENCHMARK_COLORS: Record<string, string> = {
   swebench: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -24,6 +26,19 @@ interface RunDetailViewProps {
 
 export default function RunDetailView({ slug, metadata, loading, status }: RunDetailViewProps) {
   const parsed = parseRunSlug(slug)
+
+  useEffect(() => {
+    if (!loading && window.location.hash) {
+      // Give React a moment to render the newly un-hidden components
+      setTimeout(() => {
+        const id = window.location.hash.slice(1)
+        const el = document.getElementById(id)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 100)
+    }
+  }, [loading])
 
   if (loading) {
     return (
@@ -82,36 +97,39 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
 
       {/* Cancelled Section */}
       {metadata?.cancelEval && (
-        <div data-testid="cancelled-section" className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-5">
-          <div className="flex items-start gap-3">
-            <span className="text-xl">🚫</span>
-            <div>
-              <h3 className="text-base font-semibold text-orange-400 mb-1">Evaluation Cancelled</h3>
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-oh-text-muted">
-                {!!metadata.cancelEval.timestamp && (
-                  <span data-testid="cancelled-timestamp">
-                    <span className="font-medium">Cancelled at:</span>{' '}
-                    {new Date(metadata.cancelEval.timestamp as string).toLocaleString()}
+        <div id="cancelled-section" data-testid="cancelled-section" className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-5 scroll-mt-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <span className="text-xl">🚫</span>
+              <div>
+                <h3 className="text-base font-semibold text-orange-400 mb-1">Evaluation Cancelled</h3>
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-oh-text-muted">
+                  {!!metadata.cancelEval.timestamp && (
+                    <span data-testid="cancelled-timestamp">
+                      <span className="font-medium">Cancelled at:</span>{' '}
+                      {new Date(metadata.cancelEval.timestamp as string).toLocaleString()}
+                    </span>
+                  )}
+                  <span data-testid="cancelled-by">
+                    <span className="font-medium">Cancelled by:</span>{' '}
+                    {extractCancelledBy(metadata.cancelEval)}
                   </span>
-                )}
-                <span data-testid="cancelled-by">
-                  <span className="font-medium">Cancelled by:</span>{' '}
-                  {extractCancelledBy(metadata.cancelEval)}
-                </span>
-                {metadata.cancelEval.kubernetes_jobs_found !== undefined && (
-                  <span data-testid="kubernetes-jobs-found">
-                    <span className="font-medium">Kubernetes jobs found:</span>{' '}
-                    {String(metadata.cancelEval.kubernetes_jobs_found)}
-                  </span>
-                )}
-                {metadata.cancelEval.helm_releases_found !== undefined && (
-                  <span data-testid="helm-releases-found">
-                    <span className="font-medium">Helm releases found:</span>{' '}
-                    {String(metadata.cancelEval.helm_releases_found)}
-                  </span>
-                )}
+                  {metadata.cancelEval.kubernetes_jobs_found !== undefined && (
+                    <span data-testid="kubernetes-jobs-found">
+                      <span className="font-medium">Kubernetes jobs found:</span>{' '}
+                      {String(metadata.cancelEval.kubernetes_jobs_found)}
+                    </span>
+                  )}
+                  {metadata.cancelEval.helm_releases_found !== undefined && (
+                    <span data-testid="helm-releases-found">
+                      <span className="font-medium">Helm releases found:</span>{' '}
+                      {String(metadata.cancelEval.helm_releases_found)}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
+            <SectionMenu id="cancelled-section" />
           </div>
         </div>
       )}
@@ -157,8 +175,11 @@ function CancelEvaluationSection({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div data-testid="cancel-evaluation-section" className="bg-oh-surface border border-oh-border rounded-lg p-5">
-      <h3 className="text-lg font-semibold text-oh-text mb-3">Cancel Evaluation</h3>
+    <div id="cancel-evaluation" data-testid="cancel-evaluation-section" className="bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold text-oh-text">Cancel Evaluation</h3>
+        <SectionMenu id="cancel-evaluation" />
+      </div>
       <button
         onClick={handleClick}
         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-600 hover:bg-gray-700 text-white transition-colors cursor-pointer"

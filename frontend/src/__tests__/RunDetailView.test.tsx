@@ -276,7 +276,7 @@ describe('RunDetailView', () => {
       el => el.textContent === 'Pipeline Progress'
     )
     expect(pipelineHeading).toBeTruthy()
-    const pipelineSection = pipelineHeading!.parentElement!
+    const pipelineSection = pipelineHeading!.closest('#pipeline-progress') || pipelineHeading!.parentElement!.parentElement!
     // Stage labels use specific classes; select only the label elements
     const stageLabels = Array.from(pipelineSection.querySelectorAll('p.text-xs.font-medium'))
       .map(p => p.textContent)

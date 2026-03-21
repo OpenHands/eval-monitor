@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import type { RunMetadata } from '../api'
 
+import SectionMenu from './SectionMenu'
+
 interface StatusTimelineProps {
   metadata: RunMetadata
   now?: number
@@ -55,8 +57,11 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
   }, [nowProp])
 
   return (
-    <div className="bg-oh-surface border border-oh-border rounded-lg p-5">
-      <h3 className="text-sm font-medium text-oh-text-muted mb-4">Pipeline Progress</h3>
+    <div id="pipeline-progress" className="bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-oh-text-muted">Pipeline Progress</h3>
+        <SectionMenu id="pipeline-progress" />
+      </div>
       <div className="flex items-center gap-0">
         {STAGES.map((stage, i) => {
           const startData = metadata[stage.startKey]
