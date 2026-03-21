@@ -97,7 +97,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
 
       {/* Cancelled Section */}
       {metadata?.cancelEval && (
-        <div id="cancelled-section" data-testid="cancelled-section" className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-5 scroll-mt-6">
+        <div id="cancelled-section" data-testid="cancelled-section" className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-5 scroll-mt-24">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
               <span className="text-xl">🚫</span>
@@ -175,7 +175,7 @@ function CancelEvaluationSection({ jobId }: { jobId: string }) {
   }
 
   return (
-    <div id="cancel-evaluation" data-testid="cancel-evaluation-section" className="bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-6">
+    <div id="cancel-evaluation" data-testid="cancel-evaluation-section" className="bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-24">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-oh-text">Cancel Evaluation</h3>
         <SectionMenu id="cancel-evaluation" />

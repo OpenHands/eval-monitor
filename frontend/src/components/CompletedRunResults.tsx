@@ -146,7 +146,7 @@ export default function CompletedRunResults({ slug }: CompletedRunResultsProps) 
 
   if (loading) {
     return (
-      <div id="run-results" className="bg-oh-surface border border-oh-success/30 rounded-lg p-4 scroll-mt-6">
+      <div id="run-results" className="bg-oh-surface border border-oh-success/30 rounded-lg p-4 scroll-mt-24">
         <div className="flex items-center gap-2 text-oh-text-muted text-sm">
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -161,7 +161,7 @@ export default function CompletedRunResults({ slug }: CompletedRunResultsProps) 
   if (!outputReport && !costReport) return null
 
   return (
-    <div id="run-results" className="space-y-4 scroll-mt-6">
+    <div id="run-results" className="space-y-4 scroll-mt-24">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-oh-text flex items-center gap-2">
           <span className="text-oh-success">✓</span> Run Results
