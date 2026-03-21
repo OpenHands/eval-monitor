@@ -40,10 +40,10 @@ describe('ErrorReportSection', () => {
     })
     
     expect(screen.getByText('Inference Error report')).toBeInTheDocument()
-    expect(screen.getByText('View full list of errors (metadata/conversation-errors.txt)')).toBeInTheDocument()
-    expect(screen.getByText('View full list of errors (metadata/conversation-errors.txt)')).toHaveAttribute(
+    expect(screen.getByText('View full list of errors (conversation-errors.txt)')).toBeInTheDocument()
+    expect(screen.getByText('View full list of errors (conversation-errors.txt)')).toHaveAttribute(
       'href', 
-      'https://mock-results.com/test-run/metadata/conversation-errors.txt'
+      'https://mock-results.com/test-run/conversation-errors.txt'
     )
     expect(screen.getByText((content, element) => {
       return element?.tagName.toLowerCase() === 'pre' && content.includes('Some inference error happened');

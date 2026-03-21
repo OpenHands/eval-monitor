@@ -276,7 +276,7 @@ export function getRuntime(metadata: RunMetadata, now: number = Date.now()): str
 export async function fetchErrorReport(slug: string): Promise<string | null> {
   const cleanSlug = slug.replace(/\/$/, '')
   try {
-    const res = await fetch(`${BASE_URL}/${cleanSlug}/metadata/conversation-error-report.txt`)
+    const res = await fetch(`${BASE_URL}/${cleanSlug}/conversation-error-report.txt`)
     if (!res.ok) return null
     return await res.text()
   } catch {

@@ -41,16 +41,16 @@ export default function ErrorReportSection({ slug }: ErrorReportSectionProps) {
 
   if (loading || !errorReport) return null
 
-  const errorsUrl = getResultsUrl(slug, 'metadata/conversation-errors.txt')
+  const errorsUrl = getResultsUrl(slug, 'conversation-errors.txt')
 
   return (
-    <div data-testid="error-report-section" className="bg-oh-surface border border-oh-border rounded-lg p-5">
+    <div data-testid="error-report-section" className="col-span-1 lg:col-span-2 bg-oh-surface border border-oh-border rounded-lg p-5">
       <div className="flex items-center gap-2 mb-1">
         <span className="text-xl">⚠️</span>
         <h3 className="text-lg font-semibold text-oh-text">Inference Error report</h3>
       </div>
       <div className="mb-4">
-        <ExternalLink href={errorsUrl}>View full list of errors (metadata/conversation-errors.txt)</ExternalLink>
+        <ExternalLink href={errorsUrl}>View full list of errors (conversation-errors.txt)</ExternalLink>
       </div>
       <pre className="text-sm font-mono text-oh-text-muted bg-oh-bg p-4 rounded-md overflow-x-auto whitespace-pre-wrap break-words">
         {errorReport}
