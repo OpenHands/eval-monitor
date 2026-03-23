@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import SectionMenu from './SectionMenu'
 
 interface JsonCardProps {
@@ -7,8 +9,15 @@ interface JsonCardProps {
   isError?: boolean
 }
 
+const SDK_COMMIT_BASE_URL = 'https://github.com/OpenHands/software-agent-sdk/commit/'
+const EVAL_BRANCH_BASE_URL = 'https://github.com/OpenHands/evaluation/tree/'
+const BENCHMARKS_BRANCH_BASE_URL = 'https://github.com/OpenHands/benchmarks/tree/'
+
+const SHA_RE = /^[0-9a-f]{7,40}$/i
+const GIT_REFS_HEADS_PREFIX = 'refs/heads/'
+
 export default function JsonCard({ title, data, icon, isError }: JsonCardProps) {
-  const sectionId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const sectionId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
   if (data === null || data === undefined) {
     return (
@@ -46,7 +55,7 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
                   {key}
                 </td>
                 <td className="py-1.5 text-oh-text font-mono text-xs break-all">
-                  {formatValue(value)}
+                  {formatValue(key, value)}
                 </td>
               </tr>
             ))}
@@ -57,9 +66,47 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
   )
 }
 
-function formatValue(value: unknown): string {
+function formatValue(key: string, value: unknown): ReactNode {
   if (value === null) return 'null'
   if (value === undefined) return '—'
+
+  const link = getLinkForKeyValue(key, value)
+  if (link) {
+    return (
+      <a className="text-oh-primary hover:underline" href={link.href} target="_blank" rel="noreferrer">
+        {link.text}
+      </a>
+    )
+  }
+
   if (typeof value === 'object') return JSON.stringify(value, null, 2)
   return String(value)
+}
+
+function stripRefsHeads(branch: string): string {
+  return branch.startsWith(GIT_REFS_HEADS_PREFIX) ? branch.slice(GIT_REFS_HEADS_PREFIX.length) : branch
+}
+
+function getLinkForKeyValue(key: string, value: unknown): { href: string; text: string } | null {
+  if (typeof value !== 'string' || value.trim() === '') return null
+
+  const keyLower = key.toLowerCase()
+
+  if (keyLower.includes('sdk_commit') && SHA_RE.test(value)) {
+    return { href: `${SDK_COMMIT_BASE_URL}${value}`, text: value }
+  }
+
+  if (keyLower.includes('evaluation_branch') || keyLower.includes('eval_branch')) {
+    const branch = stripRefsHeads(value)
+    if (!branch) return null
+    return { href: `${EVAL_BRANCH_BASE_URL}${branch}`, text: branch }
+  }
+
+  if (keyLower.includes('benchmarks_branch')) {
+    const branch = stripRefsHeads(value)
+    if (!branch) return null
+    return { href: `${BENCHMARKS_BRANCH_BASE_URL}${branch}`, text: branch }
+  }
+
+  return null
 }
