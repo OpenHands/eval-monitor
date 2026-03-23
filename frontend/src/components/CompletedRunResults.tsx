@@ -85,7 +85,7 @@ function CostReportCard({ report }: { report: CostReport }) {
           <div className="text-xs">
             <div className="font-semibold">Cost is $0.0000</div>
             <div className="text-orange-200/80">
-              This usually means cost tracking was missing or disabled for this run.
+              Check if cost was added to infra. Token usage was tracked, you can recalculate costs.
             </div>
           </div>
         </div>
