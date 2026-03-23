@@ -435,7 +435,7 @@ describe('fetchCostReport', () => {
     const fetchMock = makeFetchMock({ v2Exists: true, v1Exists: true })
     globalThis.fetch = fetchMock
     await fetchCostReport('swebench/model/123')
-    const calledUrls = (fetchMock as ReturnType<typeof vi.fn>).mock.calls.map(([url]: [RequestInfo | URL]) => String(url))
+    const calledUrls = (fetchMock as ReturnType<typeof vi.fn>).mock.calls.map((call: unknown[]) => String(call[0]))
     expect(calledUrls.some(u => u.includes('cost_report_v2.json'))).toBe(true)
     expect(calledUrls.some(u => u.includes('cost_report.jsonl'))).toBe(false)
   })
@@ -444,7 +444,7 @@ describe('fetchCostReport', () => {
     const fetchMock = makeFetchMock({ v2Exists: false, v1Exists: false })
     globalThis.fetch = fetchMock
     await fetchCostReport('swebench/model/123/')
-    const calledUrls = (fetchMock as ReturnType<typeof vi.fn>).mock.calls.map(([url]: [RequestInfo | URL]) => String(url))
+    const calledUrls = (fetchMock as ReturnType<typeof vi.fn>).mock.calls.map((call: unknown[]) => String(call[0]))
     expect(calledUrls.every(u => !u.includes('//'))).toBe(true)
   })
 })
