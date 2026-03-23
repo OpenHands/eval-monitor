@@ -42,4 +42,29 @@ describe('JsonCard repo links', () => {
     const link = screen.getByRole('link', { name: 'my-bench-branch' })
     expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/benchmarks/tree/my-bench-branch')
   })
+
+  it('links build_action to the benchmarks actions page with a query filter', () => {
+    render(
+      <JsonCard
+        title="Parameters"
+        icon="⚙️"
+        data={{ build_action: 'dispatch-abc123xyz' }}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: 'dispatch-abc123xyz' })
+    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/benchmarks/actions?query=branch%3Adispatch-abc123xyz')
+  })
+
+  it('does not link build_action values that do not start with dispatch-', () => {
+    render(
+      <JsonCard
+        title="Parameters"
+        icon="⚙️"
+        data={{ build_action: 'other-value' }}
+      />
+    )
+
+    expect(screen.queryByRole('link')).toBeNull()
+  })
 })

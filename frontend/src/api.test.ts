@@ -7,6 +7,7 @@ import {
   formatDurationMs,
   getStageStatus,
   extractCancelledBy,
+  augmentParams,
 } from './api'
 import type { RunMetadata } from './api'
 
@@ -345,5 +346,43 @@ describe('extractCancelledBy', () => {
 
   it('returns dash when all known keys are empty strings', () => {
     expect(extractCancelledBy({ cancelled_by: '', actor: '' })).toBe('—')
+  })
+})
+
+describe('augmentParams', () => {
+  it('returns null when params is null', () => {
+    expect(augmentParams(null)).toBeNull()
+  })
+
+  it('synthesizes build_action from github_run_id and inserts it after sdk_commit', () => {
+    const params = { sdk_commit: 'abc123', github_run_id: '23459137418', eval_limit: 5 }
+    const result = augmentParams(params)!
+    const keys = Object.keys(result)
+    expect(result.build_action).toBe('dispatch-23459137418')
+    expect(keys.indexOf('build_action')).toBe(keys.indexOf('sdk_commit') + 1)
+  })
+
+  it('appends build_action at the end when sdk_commit is absent', () => {
+    const params = { eval_limit: 5, github_run_id: '99999' }
+    const result = augmentParams(params)!
+    const keys = Object.keys(result)
+    expect(result.build_action).toBe('dispatch-99999')
+    expect(keys[keys.length - 1]).toBe('build_action')
+  })
+
+  it('does not override an existing build_action', () => {
+    const params = { sdk_commit: 'abc', build_action: 'dispatch-existing', github_run_id: '111' }
+    const result = augmentParams(params)!
+    expect(result.build_action).toBe('dispatch-existing')
+  })
+
+  it('returns params unchanged when github_run_id is missing', () => {
+    const params = { sdk_commit: 'abc', eval_limit: 5 }
+    expect(augmentParams(params)).toBe(params)
+  })
+
+  it('returns params unchanged when github_run_id is not a string', () => {
+    const params = { sdk_commit: 'abc', github_run_id: 12345 }
+    expect(augmentParams(params)).toBe(params)
   })
 })

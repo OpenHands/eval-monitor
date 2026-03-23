@@ -84,6 +84,26 @@ async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
   }
 }
 
+/** Synthesize a `build_action` field from `github_run_id` if not already present,
+ *  inserting it immediately after `sdk_commit` so it appears under it in the UI. */
+export function augmentParams(params: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!params) return params
+  if (params.build_action || !params.github_run_id || typeof params.github_run_id !== 'string') return params
+
+  const buildAction = `dispatch-${params.github_run_id}`
+  const augmented: Record<string, unknown> = {}
+  let inserted = false
+  for (const [key, value] of Object.entries(params)) {
+    augmented[key] = value
+    if (key === 'sdk_commit' && !inserted) {
+      augmented['build_action'] = buildAction
+      inserted = true
+    }
+  }
+  if (!inserted) augmented['build_action'] = buildAction
+  return augmented
+}
+
 export async function fetchRunMetadata(runSlug: string): Promise<RunMetadata> {
   const slug = runSlug.replace(/\/$/, '')
   const results = await Promise.all(
@@ -95,6 +115,7 @@ export async function fetchRunMetadata(runSlug: string): Promise<RunMetadata> {
   METADATA_FILES.forEach(([key], i) => {
     metadata[key] = results[i]
   })
+  metadata['params'] = augmentParams(metadata['params'])
   return metadata as unknown as RunMetadata
 }
 
