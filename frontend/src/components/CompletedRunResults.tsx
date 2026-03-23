@@ -61,6 +61,9 @@ function OutputReportCard({ report }: { report: OutputReport }) {
 }
 
 function CostReportCard({ report }: { report: CostReport }) {
+  const totalCost = report.summary?.total_cost
+  const showZeroCostWarning = typeof totalCost === 'number' && totalCost === 0
+
   return (
     <div className="bg-oh-surface border border-oh-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
@@ -70,6 +73,24 @@ function CostReportCard({ report }: { report: CostReport }) {
         </div>
         <ExternalLink href={report.fullUrl}>View full report</ExternalLink>
       </div>
+
+      {showZeroCostWarning && (
+        <div
+          data-testid="zero-cost-warning"
+          className="mb-3 flex items-start gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 p-3 text-orange-300"
+        >
+          <span className="text-sm" aria-hidden>
+            ⚠️
+          </span>
+          <div className="text-xs">
+            <div className="font-semibold">Cost is $0.0000</div>
+            <div className="text-orange-200/80">
+              Check if cost was added to infra. Token usage was tracked, you can recalculate costs.
+            </div>
+          </div>
+        </div>
+      )}
+
       {report.summary ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
