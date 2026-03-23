@@ -53,7 +53,7 @@ describe('JsonCard repo links', () => {
     )
 
     const link = screen.getByRole('link', { name: 'dispatch-abc123xyz' })
-    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/benchmarks/actions?query=dispatch-abc123xyz')
+    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/benchmarks/actions?query=branch%3Adispatch-abc123xyz')
   })
 
   it('does not link build_action values that do not start with dispatch-', () => {

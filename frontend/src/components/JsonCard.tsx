@@ -110,7 +110,7 @@ function getLinkForKeyValue(key: string, value: unknown): { href: string; text: 
   }
 
   if (keyLower.includes('build_action') && value.startsWith('dispatch-')) {
-    return { href: `${BENCHMARKS_ACTIONS_BASE_URL}?query=${encodeURIComponent(value)}`, text: value }
+    return { href: `${BENCHMARKS_ACTIONS_BASE_URL}?query=${encodeURIComponent('branch:' + value)}`, text: value }
   }
 
   return null
