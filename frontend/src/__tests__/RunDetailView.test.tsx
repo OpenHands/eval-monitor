@@ -1,7 +1,14 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, within, fireEvent, act } from '@testing-library/react'
 import RunDetailView from '../components/RunDetailView'
 import type { RunMetadata } from '../api'
+
+const originalFetch = globalThis.fetch
+
+afterEach(() => {
+  globalThis.fetch = originalFetch
+  vi.restoreAllMocks()
+})
 
 function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
   return {
@@ -578,6 +585,47 @@ describe('RunDetailView', () => {
       expect(k8sEl.textContent).toContain('2')
       const helmEl = screen.getByTestId('helm-releases-found')
       expect(helmEl.textContent).toContain('4')
+    })
+  })
+
+  describe('Submission badge', () => {
+    it('shows submission badge with PR link when submission.json exists', async () => {
+      globalThis.fetch = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          timestamp: '2026-03-23T21:29:48Z',
+          url: 'https://github.com/OpenHands/openhands-index-results/pull/719',
+        }),
+      })) as unknown as typeof fetch
+
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+
+      const badge = await screen.findByTestId('submission-badge')
+      expect(badge.textContent).toContain('Submitted to OpenHands Index')
+      expect(badge.getAttribute('href')).toBe('https://github.com/OpenHands/openhands-index-results/pull/719')
+      expect(badge.getAttribute('target')).toBe('_blank')
+    })
+
+    it('does not show submission badge when submission.json does not exist', async () => {
+      globalThis.fetch = vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        headers: { get: () => null },
+      })) as unknown as typeof fetch
+
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      })
+
+      expect(screen.queryByTestId('submission-badge')).toBeNull()
     })
   })
 })
