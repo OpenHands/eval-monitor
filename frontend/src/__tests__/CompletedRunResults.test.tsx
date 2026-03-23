@@ -16,6 +16,14 @@ function mockFetchWithCost(totalCost: number) {
       } as unknown as Response
     }
 
+    if (url.includes('cost_report_v2.json')) {
+      return {
+        ok: false,
+        status: 404,
+        headers: { get: () => null },
+      } as unknown as Response
+    }
+
     if (url.includes('cost_report.jsonl')) {
       return {
         ok: true,

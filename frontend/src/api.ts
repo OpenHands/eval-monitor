@@ -183,6 +183,13 @@ export interface CostReport {
 
 export async function fetchCostReport(slug: string): Promise<CostReport | null> {
   const cleanSlug = slug.replace(/\/$/, '')
+
+  const v2Data = await fetchJson(`${BASE_URL}/${cleanSlug}/cost_report_v2.json`)
+  if (v2Data) {
+    const summary = (v2Data.summary as CostReportSummary) || null
+    return { summary, fullUrl: getResultsUrl(cleanSlug, 'cost_report_v2.json') }
+  }
+
   const data = await fetchJson(`${BASE_URL}/${cleanSlug}/cost_report.jsonl`)
   if (!data) return null
   const summary = (data.summary as CostReportSummary) || null

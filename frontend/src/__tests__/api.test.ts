@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport } from '../api'
 import type { RunMetadata } from '../api'
 
 const originalFetch = globalThis.fetch
@@ -375,3 +375,77 @@ describe('fetchSubmissionData', () => {
     })
   })
 })
+
+describe('fetchCostReport', () => {
+  const costSummary = {
+    total_cost: 1.5,
+    total_duration: 30.0,
+    only_main_output_cost: 1.2,
+    sum_critic_files: 0.3,
+  }
+
+  function makeFetchMock({ v2Exists, v1Exists }: { v2Exists: boolean; v1Exists: boolean }) {
+    return vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('cost_report_v2.json')) {
+        if (!v2Exists) return { ok: false, status: 404, headers: { get: () => null } } as unknown as Response
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ summary: costSummary }),
+        } as unknown as Response
+      }
+      if (url.includes('cost_report.jsonl')) {
+        if (!v1Exists) return { ok: false, status: 404, headers: { get: () => null } } as unknown as Response
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ summary: costSummary }),
+        } as unknown as Response
+      }
+      throw new Error(`Unexpected fetch url: ${url}`)
+    }) as unknown as typeof fetch
+  }
+
+  it('uses cost_report_v2.json when it exists', async () => {
+    globalThis.fetch = makeFetchMock({ v2Exists: true, v1Exists: true })
+    const result = await fetchCostReport('swebench/model/123')
+    expect(result).not.toBeNull()
+    expect(result!.fullUrl).toContain('cost_report_v2.json')
+    expect(result!.summary).toEqual(costSummary)
+  })
+
+  it('falls back to cost_report.jsonl when v2 does not exist', async () => {
+    globalThis.fetch = makeFetchMock({ v2Exists: false, v1Exists: true })
+    const result = await fetchCostReport('swebench/model/123')
+    expect(result).not.toBeNull()
+    expect(result!.fullUrl).toContain('cost_report.jsonl')
+    expect(result!.summary).toEqual(costSummary)
+  })
+
+  it('returns null when neither v2 nor v1 exists', async () => {
+    globalThis.fetch = makeFetchMock({ v2Exists: false, v1Exists: false })
+    const result = await fetchCostReport('swebench/model/123')
+    expect(result).toBeNull()
+  })
+
+  it('does not fetch cost_report.jsonl when v2 exists', async () => {
+    const fetchMock = makeFetchMock({ v2Exists: true, v1Exists: true })
+    globalThis.fetch = fetchMock
+    await fetchCostReport('swebench/model/123')
+    const calledUrls = (fetchMock as ReturnType<typeof vi.fn>).mock.calls.map(([url]: [RequestInfo | URL]) => String(url))
+    expect(calledUrls.some(u => u.includes('cost_report_v2.json'))).toBe(true)
+    expect(calledUrls.some(u => u.includes('cost_report.jsonl'))).toBe(false)
+  })
+
+  it('strips trailing slash from slug when building fetch URL', async () => {
+    const fetchMock = makeFetchMock({ v2Exists: false, v1Exists: false })
+    globalThis.fetch = fetchMock
+    await fetchCostReport('swebench/model/123/')
+    const calledUrls = (fetchMock as ReturnType<typeof vi.fn>).mock.calls.map(([url]: [RequestInfo | URL]) => String(url))
+    expect(calledUrls.every(u => !u.includes('//'))).toBe(true)
+  })
+})
+
