@@ -59,7 +59,7 @@ export default function ErrorReportSection({ slug }: ErrorReportSectionProps) {
   const icon = noErrors ? "✅" : "⚠️"
 
   return (
-    <div id="error-report" data-testid="error-report-section" className="col-span-1 lg:col-span-2 bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-6">
+    <div id="error-report" data-testid="error-report-section" className="col-span-1 lg:col-span-2 bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-24">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <span className="text-xl">{icon}</span>

@@ -21,7 +21,7 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
 
   if (data === null || data === undefined) {
     return (
-      <div id={sectionId} className="bg-oh-surface border border-oh-border rounded-lg p-4 opacity-50 scroll-mt-6">
+      <div id={sectionId} className="bg-oh-surface border border-oh-border rounded-lg p-4 opacity-50 scroll-mt-24">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span>{icon}</span>
@@ -38,7 +38,7 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
   const bgClass = isError ? 'bg-oh-error/5' : 'bg-oh-surface'
 
   return (
-    <div id={sectionId} className={`${bgClass} border ${borderClass} rounded-lg p-4 scroll-mt-6`}>
+    <div id={sectionId} className={`${bgClass} border ${borderClass} rounded-lg p-4 scroll-mt-24`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span>{icon}</span>
