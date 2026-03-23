@@ -1,6 +1,13 @@
-import { describe, it, expect } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange } from '../api'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData } from '../api'
 import type { RunMetadata } from '../api'
+
+const originalFetch = globalThis.fetch
+
+afterEach(() => {
+  globalThis.fetch = originalFetch
+  vi.restoreAllMocks()
+})
 
 describe('getResultsUrl', () => {
   it('constructs the correct URL for a file', () => {
@@ -282,5 +289,89 @@ describe('getDatesForRange', () => {
       '2025-03-01',
       '2025-02-28',
     ])
+  })
+})
+
+describe('fetchSubmissionData', () => {
+  it('returns submission data when file exists with valid url and timestamp', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({
+        timestamp: '2026-03-23T21:29:48Z',
+        url: 'https://github.com/OpenHands/openhands-index-results/pull/719',
+      }),
+    })) as unknown as typeof fetch
+
+    const result = await fetchSubmissionData('swebench/model/123')
+    expect(result).toEqual({
+      timestamp: '2026-03-23T21:29:48Z',
+      url: 'https://github.com/OpenHands/openhands-index-results/pull/719',
+    })
+  })
+
+  it('returns null when submission.json does not exist (404)', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      headers: { get: () => null },
+    })) as unknown as typeof fetch
+
+    const result = await fetchSubmissionData('swebench/model/123')
+    expect(result).toBeNull()
+  })
+
+  it('returns null when response has no url field', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ timestamp: '2026-03-23T21:29:48Z' }),
+    })) as unknown as typeof fetch
+
+    const result = await fetchSubmissionData('swebench/model/123')
+    expect(result).toBeNull()
+  })
+
+  it('returns null when response has non-string url field', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ url: 42 }),
+    })) as unknown as typeof fetch
+
+    const result = await fetchSubmissionData('swebench/model/123')
+    expect(result).toBeNull()
+  })
+
+  it('strips trailing slash from slug when building fetch URL', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      headers: { get: () => null },
+    })) as unknown as typeof fetch
+    globalThis.fetch = fetchMock
+
+    await fetchSubmissionData('swebench/model/123/')
+    const calledUrl = String((fetchMock as ReturnType<typeof vi.fn>).mock.calls[0][0])
+    expect(calledUrl).not.toMatch(/\/\//  )
+    expect(calledUrl).toContain('swebench/model/123/metadata/submission.json')
+  })
+
+  it('uses empty string for timestamp when not a string in the response', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ({ url: 'https://github.com/OpenHands/results/pull/1', timestamp: null }),
+    })) as unknown as typeof fetch
+
+    const result = await fetchSubmissionData('swebench/model/123')
+    expect(result).toEqual({
+      timestamp: '',
+      url: 'https://github.com/OpenHands/results/pull/1',
+    })
   })
 })

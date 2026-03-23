@@ -304,3 +304,18 @@ export async function fetchErrorReport(slug: string): Promise<string | null> {
     return null
   }
 }
+
+export interface SubmissionData {
+  timestamp: string
+  url: string
+}
+
+export async function fetchSubmissionData(slug: string): Promise<SubmissionData | null> {
+  const cleanSlug = slug.replace(/\/$/, '')
+  const data = await fetchJson(`${BASE_URL}/${cleanSlug}/metadata/submission.json`)
+  if (!data || typeof data.url !== 'string') return null
+  return {
+    timestamp: typeof data.timestamp === 'string' ? data.timestamp : '',
+    url: data.url,
+  }
+}

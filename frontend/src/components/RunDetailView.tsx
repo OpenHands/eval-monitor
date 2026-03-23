@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished } from '../api'
-import type { RunMetadata } from '../api'
+import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData } from '../api'
+import type { RunMetadata, SubmissionData } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
 import CompletedRunResults from './CompletedRunResults'
@@ -26,6 +26,11 @@ interface RunDetailViewProps {
 
 export default function RunDetailView({ slug, metadata, loading, status }: RunDetailViewProps) {
   const parsed = parseRunSlug(slug)
+  const [submission, setSubmission] = useState<SubmissionData | null>(null)
+
+  useEffect(() => {
+    fetchSubmissionData(slug).then(setSubmission)
+  }, [slug])
 
   useEffect(() => {
     if (!loading && window.location.hash) {
@@ -66,7 +71,20 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
         <div className="flex items-start justify-between gap-4">
           {/* Left: model, benchmark + job id, trigger reason */}
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold text-oh-text">{parsed.model}</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl font-semibold text-oh-text">{parsed.model}</h2>
+              {submission && (
+                <a
+                  href={submission.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid="submission-badge"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors"
+                >
+                  🏅 Submitted to OpenHands Index
+                </a>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <BenchmarkBadge name={parsed.benchmark} />
               {parsed.jobId && <CopyJobId jobId={parsed.jobId} />}
