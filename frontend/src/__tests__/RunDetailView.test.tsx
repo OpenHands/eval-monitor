@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, within, fireEvent, act } from '@testing-library/react'
 import RunDetailView from '../components/RunDetailView'
 import type { RunMetadata } from '../api'
 
@@ -176,6 +176,57 @@ describe('RunDetailView', () => {
     )
     const el = screen.getByTestId('trigger-reason')
     expect(el.textContent).toContain('—')
+  })
+
+  it('renders trigger reason as a link when value is a full URL', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 'https://github.com/OpenHands/foo/pull/42' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+    )
+    const el = screen.getByTestId('trigger-reason')
+    const link = within(el).getByRole('link', { name: 'https://github.com/OpenHands/foo/pull/42' })
+    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/foo/pull/42')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
+  it('renders trigger reason as a link when value is a bare domain URL', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 'openhands.dev/blabla' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+    )
+    const el = screen.getByTestId('trigger-reason')
+    const link = within(el).getByRole('link', { name: 'openhands.dev/blabla' })
+    expect(link.getAttribute('href')).toBe('https://openhands.dev/blabla')
+  })
+
+  it('renders only the URL portion as a link when trigger reason contains a URL in text', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 'abc openhands.dev/blabla xyz' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+    )
+    const el = screen.getByTestId('trigger-reason')
+    const link = within(el).getByRole('link', { name: 'openhands.dev/blabla' })
+    expect(link.getAttribute('href')).toBe('https://openhands.dev/blabla')
+    expect(el.textContent).toContain('abc')
+    expect(el.textContent).toContain('xyz')
+  })
+
+  it('does not render a link when trigger reason has no URL', () => {
+    const metadata = makeMetadata({
+      params: { trigger_reason: 'testing SDK: fix/issue-2375' },
+    })
+    render(
+      <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+    )
+    const el = screen.getByTestId('trigger-reason')
+    expect(el.textContent).toContain('testing SDK: fix/issue-2375')
+    expect(within(el).queryByRole('link')).toBeNull()
   })
 
   it('shows dash for triggered by and runtime when metadata is null', () => {

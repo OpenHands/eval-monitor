@@ -16,6 +16,15 @@ const BENCHMARKS_ACTIONS_BASE_URL = 'https://github.com/OpenHands/benchmarks/act
 
 const SHA_RE = /^[0-9a-f]{7,40}$/i
 const GIT_REFS_HEADS_PREFIX = 'refs/heads/'
+const URL_RE = /https?:\/\/[^\s<>"']+|[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\/[^\s<>"']*/
+
+function findFirstUrl(text: string): { url: string; href: string; start: number; end: number } | null {
+  const m = URL_RE.exec(text)
+  if (!m) return null
+  const url = m[0].replace(/[.,;:!?)\]>]+$/, '')
+  const href = /^https?:\/\//.test(url) ? url : `https://${url}`
+  return { url, href, start: m.index, end: m.index + url.length }
+}
 
 export default function JsonCard({ title, data, icon, isError }: JsonCardProps) {
   const sectionId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-')
@@ -81,6 +90,22 @@ function formatValue(key: string, value: unknown): ReactNode {
   }
 
   if (typeof value === 'object') return JSON.stringify(value, null, 2)
+
+  if (typeof value === 'string') {
+    const urlMatch = findFirstUrl(value)
+    if (urlMatch) {
+      return (
+        <>
+          {value.slice(0, urlMatch.start)}
+          <a className="text-oh-primary hover:underline" href={urlMatch.href} target="_blank" rel="noreferrer">
+            {urlMatch.url}
+          </a>
+          {value.slice(urlMatch.end)}
+        </>
+      )
+    }
+  }
+
   return String(value)
 }
 

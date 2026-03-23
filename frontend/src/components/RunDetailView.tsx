@@ -73,7 +73,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
             </div>
             <div className="mt-2 text-sm text-oh-text-muted">
               <span data-testid="trigger-reason">
-                <span className="font-medium">Trigger reason:</span> {triggerReason}
+                <span className="font-medium">Trigger reason:</span> {renderWithUrl(triggerReason)}
               </span>
             </div>
           </div>
@@ -163,6 +163,24 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
         <CancelEvaluationSection jobId={parsed.jobId} />
       )}
     </div>
+  )
+}
+
+const URL_RE = /https?:\/\/[^\s<>"']+|[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}\/[^\s<>"']*/
+
+function renderWithUrl(text: string) {
+  const m = URL_RE.exec(text)
+  if (!m) return text
+  const url = m[0].replace(/[.,;:!?)\]>]+$/, '')
+  const href = /^https?:\/\//.test(url) ? url : `https://${url}`
+  return (
+    <>
+      {text.slice(0, m.index)}
+      <a className="text-oh-primary hover:underline" href={href} target="_blank" rel="noreferrer">
+        {url}
+      </a>
+      {text.slice(m.index + url.length)}
+    </>
   )
 }
 
