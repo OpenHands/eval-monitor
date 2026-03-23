@@ -38,6 +38,13 @@ cd frontend && npm run lint   # run eslint
 - **CORS workaround** — bucket at `results.eval.all-hands.dev` has no CORS headers; Vercel rewrites proxy `/api/*` → bucket. Vite dev server uses its built-in proxy for the same effect.
 - **Data format** — daily run list is a text file (`metadata/YYYY-MM-DD.txt`), individual run metadata is JSON files under `{run}/metadata/`.
 
+
+## Metadata Rendering Notes
+- `frontend/src/components/JsonCard.tsx` renders special GitHub links for certain metadata fields:
+  - `sdk_commit` → `https://github.com/OpenHands/software-agent-sdk/commit/<sha>`
+  - `evaluation_branch` / `eval_branch` → `https://github.com/OpenHands/evaluation/tree/<branch>` (strips `refs/heads/`)
+  - `benchmarks_branch` → `https://github.com/OpenHands/benchmarks/tree/<branch>` (strips `refs/heads/`)
+
 ## Coding Style
 - TypeScript strict mode, React functional components with hooks
 - Tailwind CSS for styling with custom `oh-*` color theme (defined in `tailwind.config.js`)
