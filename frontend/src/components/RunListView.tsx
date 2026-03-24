@@ -165,14 +165,19 @@ export default function RunListView({
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
       if (filterStatus !== 'all' && run.status !== filterStatus) return false
       if (filterText) {
-        const search = filterText.toLowerCase()
-        if (
-          !run.model.toLowerCase().includes(search) &&
-          !run.jobId.toLowerCase().includes(search) &&
-          !run.benchmark.toLowerCase().includes(search) &&
-          !run.triggeredBy.toLowerCase().includes(search) &&
-          !run.triggerReason.toLowerCase().includes(search)
-        ) return false
+        // Split by whitespace and filter out empty strings
+        const searchTerms = filterText.toLowerCase().split(/\s+/).filter(term => term.length > 0)
+        // Combine all searchable fields into one string for matching
+        const searchableContent = [
+          run.model,
+          run.jobId,
+          run.benchmark,
+          run.triggeredBy,
+          run.triggerReason
+        ].join(' ').toLowerCase()
+        // ALL terms must match (AND logic)
+        const allTermsMatch = searchTerms.every(term => searchableContent.includes(term))
+        if (!allTermsMatch) return false
       }
       return true
     })
