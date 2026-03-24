@@ -290,14 +290,13 @@ export default function RunListView({
             <option key={s} value={s}>{STATUS_CONFIG[s as StatusType]?.label || s}</option>
           ))}
         </select>
-        {(filterText || filterBenchmark !== 'all' || filterStatus !== 'all') && (
-          <button
-            onClick={() => { setFilterText(''); setFilterBenchmark('all'); setFilterStatus('all') }}
-            className="text-xs text-oh-text-muted hover:text-oh-text transition-colors"
-          >
-            Clear filters
-          </button>
-        )}
+        <button
+          onClick={() => { setFilterText(''); setFilterBenchmark('all'); setFilterStatus('all') }}
+          disabled={!filterText && filterBenchmark === 'all' && filterStatus === 'all'}
+          className="text-xs text-oh-text-muted hover:text-oh-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Clear filters
+        </button>
         <button
           onClick={() => setIsExportModalOpen(true)}
           className="text-xs text-oh-text-muted hover:text-oh-text transition-colors flex items-center gap-1"
