@@ -31,16 +31,34 @@ describe('RunListView', () => {
     onSelectRun: mockOnSelectRun,
     runMetadataMap: {
       'swebench/qwen-2.5-coder/123': {
-        start_time: '2025-01-01T10:00:00Z',
-        params: { triggered_by: 'juanmichelini' }
+        init: null,
+        params: { triggered_by: 'juanmichelini' },
+        error: null,
+        runInferStart: null,
+        runInferEnd: null,
+        evalInferStart: null,
+        evalInferEnd: null,
+        cancelEval: null
       },
       'gaia/claude-sonnet/456': {
-        start_time: '2025-01-01T11:00:00Z',
-        params: { triggered_by: 'admin' }
+        init: null,
+        params: { triggered_by: 'admin' },
+        error: null,
+        runInferStart: null,
+        runInferEnd: null,
+        evalInferStart: null,
+        evalInferEnd: null,
+        cancelEval: null
       },
       'swebench/gpt-4o/789': {
-        start_time: '2025-01-01T12:00:00Z',
-        params: { triggered_by: 'admin' }
+        init: null,
+        params: { triggered_by: 'admin' },
+        error: null,
+        runInferStart: null,
+        runInferEnd: null,
+        evalInferStart: null,
+        evalInferEnd: null,
+        cancelEval: null
       }
     },
     loadingMetadataList: false,
