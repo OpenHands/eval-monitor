@@ -169,6 +169,70 @@ describe('ExportPathsModal', () => {
     expect(exportButton).toBeDisabled()
   })
 
+  it('disables copy button when no files selected', () => {
+    render(
+      <ExportPathsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        filteredRuns={mockFilteredRuns}
+      />
+    )
+    // Unmark all
+    fireEvent.click(screen.getByTestId('toggle-all-checkbox'))
+    fireEvent.click(screen.getByTestId('toggle-all-checkbox'))
+
+    const copyButton = screen.getByTestId('copy-button')
+    expect(copyButton).toBeDisabled()
+  })
+
+  it('copies JSON to clipboard when clicking copy button', async () => {
+    const mockWriteText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: { writeText: mockWriteText }
+    })
+
+    render(
+      <ExportPathsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        filteredRuns={mockFilteredRuns}
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('copy-button'))
+
+    expect(mockWriteText).toHaveBeenCalled()
+    const copiedJson = JSON.parse(mockWriteText.mock.calls[0][0])
+    expect(copiedJson).toHaveLength(2)
+    expect(copiedJson[0].eval_job_id).toBe('123')
+    expect(copiedJson[0]['params.json']).toContain('swebench/model-a/123')
+  })
+
+  it('shows Copied! text after clicking copy button', async () => {
+    const mockWriteText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: { writeText: mockWriteText }
+    })
+
+    render(
+      <ExportPathsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        filteredRuns={mockFilteredRuns}
+      />
+    )
+
+    const copyButton = screen.getByTestId('copy-button')
+    expect(copyButton).toHaveTextContent('Copy')
+
+    fireEvent.click(copyButton)
+
+    // Wait for state update
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('copy-button')).toHaveTextContent('Copied!')
+    })
+  })
+
   it('calls onClose after clicking export', () => {
     // Mock the download behavior
     const originalCreateObjectURL = URL.createObjectURL

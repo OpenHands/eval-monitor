@@ -47,6 +47,7 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
     })
     return defaults
   })
+  const [copied, setCopied] = useState(false)
 
   // Reset selections when modal opens
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
         if (f.defaultChecked) defaults.add(f.filename)
       })
       setSelectedFiles(defaults)
+      setCopied(false)
     }
   }, [isOpen])
 
@@ -84,8 +86,8 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
     }
   }
 
-  const handleExport = () => {
-    const exportData = filteredRuns.map(run => {
+  const generateExportData = () => {
+    return filteredRuns.map(run => {
       const entry: Record<string, string> = { eval_job_id: run.jobId }
       EXPORTABLE_FILES.forEach(file => {
         if (selectedFiles.has(file.filename)) {
@@ -95,7 +97,17 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
       })
       return entry
     })
+  }
 
+  const handleCopy = async () => {
+    const exportData = generateExportData()
+    await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleExport = () => {
+    const exportData = generateExportData()
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -180,6 +192,14 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
             className="px-4 py-2 text-sm font-medium text-oh-text-muted hover:text-oh-text transition-colors"
           >
             Cancel
+          </button>
+          <button
+            onClick={handleCopy}
+            disabled={noneSelected}
+            className="px-4 py-2 text-sm font-medium border border-oh-border text-oh-text rounded-lg hover:bg-oh-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="copy-button"
+          >
+            {copied ? 'Copied!' : 'Copy'}
           </button>
           <button
             onClick={handleExport}
