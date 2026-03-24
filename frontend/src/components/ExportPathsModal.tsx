@@ -33,13 +33,34 @@ interface ExportPathsModalProps {
   isOpen: boolean
   onClose: () => void
   filteredRuns: RunInfo[]
+  filterBenchmark: string
+  filterStatus: string
+  filterText: string
+}
+
+export function buildFilterString(filterBenchmark: string, filterStatus: string, filterText: string): string {
+  const parts: string[] = []
+  if (filterBenchmark !== 'all') {
+    parts.push(`benchmark-${filterBenchmark}`)
+  }
+  if (filterStatus !== 'all') {
+    parts.push(`status-${filterStatus}`)
+  }
+  if (filterText) {
+    // Replace spaces and special chars with dashes, limit length
+    const sanitized = filterText.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30)
+    if (sanitized) {
+      parts.push(`text-${sanitized}`)
+    }
+  }
+  return parts.length > 0 ? parts.join('_') : 'all'
 }
 
 export function getFilePath(file: ExportableFile): string {
   return file.subdir ? `${file.subdir}/${file.filename}` : file.filename
 }
 
-export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: ExportPathsModalProps) {
+export default function ExportPathsModal({ isOpen, onClose, filteredRuns, filterBenchmark, filterStatus, filterText }: ExportPathsModalProps) {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(() => {
     const defaults = new Set<string>()
     EXPORTABLE_FILES.forEach(f => {
@@ -47,6 +68,7 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
     })
     return defaults
   })
+  const [copied, setCopied] = useState(false)
 
   // Reset selections when modal opens
   useEffect(() => {
@@ -56,6 +78,7 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
         if (f.defaultChecked) defaults.add(f.filename)
       })
       setSelectedFiles(defaults)
+      setCopied(false)
     }
   }, [isOpen])
 
@@ -84,8 +107,8 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
     }
   }
 
-  const handleExport = () => {
-    const exportData = filteredRuns.map(run => {
+  const generateExportData = () => {
+    return filteredRuns.map(run => {
       const entry: Record<string, string> = { eval_job_id: run.jobId }
       EXPORTABLE_FILES.forEach(file => {
         if (selectedFiles.has(file.filename)) {
@@ -95,12 +118,23 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
       })
       return entry
     })
+  }
 
+  const handleCopy = async () => {
+    const exportData = generateExportData()
+    await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleExport = () => {
+    const exportData = generateExportData()
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'exported-paths.json'
+    const filterString = buildFilterString(filterBenchmark, filterStatus, filterText)
+    link.download = `paths-${filterString}.json`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -184,10 +218,18 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
           <button
             onClick={handleExport}
             disabled={noneSelected}
-            className="px-4 py-2 text-sm font-medium bg-oh-primary text-white rounded-lg hover:bg-oh-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            data-testid="export-button"
+            className="px-4 py-2 text-sm font-medium border border-oh-border text-oh-text rounded-lg hover:bg-oh-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="download-button"
           >
-            Export
+            Download
+          </button>
+          <button
+            onClick={handleCopy}
+            disabled={noneSelected}
+            className="px-4 py-2 text-sm font-medium bg-oh-primary text-white rounded-lg hover:bg-oh-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="copy-button"
+          >
+            {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
       </div>

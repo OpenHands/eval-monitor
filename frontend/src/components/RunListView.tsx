@@ -314,6 +314,9 @@ export default function RunListView({
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         filteredRuns={filteredRuns.map(run => ({ slug: run.slug, jobId: run.jobId }))}
+        filterBenchmark={filterBenchmark}
+        filterStatus={filterStatus}
+        filterText={filterText}
       />
 
       {/* Table */}
