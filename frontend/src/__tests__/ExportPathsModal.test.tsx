@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import ExportPathsModal, { EXPORTABLE_FILES, getFilePath } from '../components/ExportPathsModal'
+import ExportPathsModal, { EXPORTABLE_FILES, getFilePath, buildFilterString } from '../components/ExportPathsModal'
 
 describe('ExportPathsModal', () => {
   const mockOnClose = vi.fn()
@@ -25,6 +25,9 @@ describe('ExportPathsModal', () => {
         isOpen={false}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     expect(screen.queryByText('Export current instances paths to JSON')).not.toBeInTheDocument()
@@ -36,6 +39,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     expect(screen.getByText('Export current instances paths to JSON')).toBeInTheDocument()
@@ -48,6 +54,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     EXPORTABLE_FILES.forEach(file => {
@@ -61,6 +70,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     const paramsCheckbox = screen.getByTestId('checkbox-params.json') as HTMLInputElement
@@ -80,6 +92,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     const initCheckbox = screen.getByTestId('checkbox-init.json') as HTMLInputElement
@@ -98,6 +113,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     const toggleAllCheckbox = screen.getByTestId('toggle-all-checkbox') as HTMLInputElement
@@ -123,6 +141,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     fireEvent.click(screen.getByTestId('close-modal-button'))
@@ -135,6 +156,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     fireEvent.click(screen.getByTestId('export-modal-backdrop'))
@@ -147,6 +171,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     fireEvent.click(screen.getByText('Cancel'))
@@ -159,6 +186,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     // Unmark all
@@ -175,6 +205,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     // Unmark all
@@ -196,6 +229,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
 
@@ -219,6 +255,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
 
@@ -256,6 +295,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
 
@@ -276,6 +318,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
 
@@ -289,6 +334,9 @@ describe('ExportPathsModal', () => {
         isOpen={false}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
     rerender(
@@ -296,6 +344,9 @@ describe('ExportPathsModal', () => {
         isOpen={true}
         onClose={mockOnClose}
         filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="all"
+        filterText=""
       />
     )
 
@@ -330,5 +381,40 @@ describe('EXPORTABLE_FILES', () => {
     expect(filenames).toContain('error.json')
     expect(filenames).toContain('cost_report_v2.json')
     expect(filenames).toContain('conversation-error-report.txt')
+  })
+})
+
+describe('buildFilterString', () => {
+  it('returns "all" when no filters are active', () => {
+    expect(buildFilterString('all', 'all', '')).toBe('all')
+  })
+
+  it('includes benchmark when not "all"', () => {
+    expect(buildFilterString('swebench', 'all', '')).toBe('benchmark-swebench')
+  })
+
+  it('includes status when not "all"', () => {
+    expect(buildFilterString('all', 'completed', '')).toBe('status-completed')
+  })
+
+  it('includes sanitized text filter', () => {
+    expect(buildFilterString('all', 'all', 'my search')).toBe('text-my-search')
+  })
+
+  it('combines multiple filters with underscores', () => {
+    expect(buildFilterString('swebench', 'completed', 'test')).toBe('benchmark-swebench_status-completed_text-test')
+  })
+
+  it('sanitizes special characters in text filter', () => {
+    expect(buildFilterString('all', 'all', 'hello@world!test')).toBe('text-hello-world-test')
+  })
+
+  it('truncates long text filters to 30 characters', () => {
+    const longText = 'this is a very long search string that should be truncated'
+    const result = buildFilterString('all', 'all', longText)
+    // After sanitization "this is a very long search string..." becomes "this-is-a-very-long-search-str..."
+    // Then it's sliced to 30 chars
+    expect(result.startsWith('text-')).toBe(true)
+    expect(result.length).toBeLessThanOrEqual(35) // 'text-' (5) + 30 chars max
   })
 })

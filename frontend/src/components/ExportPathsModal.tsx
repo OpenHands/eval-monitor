@@ -33,13 +33,34 @@ interface ExportPathsModalProps {
   isOpen: boolean
   onClose: () => void
   filteredRuns: RunInfo[]
+  filterBenchmark: string
+  filterStatus: string
+  filterText: string
+}
+
+export function buildFilterString(filterBenchmark: string, filterStatus: string, filterText: string): string {
+  const parts: string[] = []
+  if (filterBenchmark !== 'all') {
+    parts.push(`benchmark-${filterBenchmark}`)
+  }
+  if (filterStatus !== 'all') {
+    parts.push(`status-${filterStatus}`)
+  }
+  if (filterText) {
+    // Replace spaces and special chars with dashes, limit length
+    const sanitized = filterText.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30)
+    if (sanitized) {
+      parts.push(`text-${sanitized}`)
+    }
+  }
+  return parts.length > 0 ? parts.join('_') : 'all'
 }
 
 export function getFilePath(file: ExportableFile): string {
   return file.subdir ? `${file.subdir}/${file.filename}` : file.filename
 }
 
-export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: ExportPathsModalProps) {
+export default function ExportPathsModal({ isOpen, onClose, filteredRuns, filterBenchmark, filterStatus, filterText }: ExportPathsModalProps) {
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(() => {
     const defaults = new Set<string>()
     EXPORTABLE_FILES.forEach(f => {
@@ -112,7 +133,8 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns }: Expo
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'exported-paths.json'
+    const filterString = buildFilterString(filterBenchmark, filterStatus, filterText)
+    link.download = `paths-${filterString}.json`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
