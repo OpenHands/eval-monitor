@@ -165,6 +165,13 @@ describe('RunListView', () => {
       expect(screen.queryByText('claude-sonnet')).not.toBeInTheDocument()
     })
 
+    it('handles + as separator between terms', () => {
+      render(<RunListView {...multipleRunsProps} filterText="juan+qwen" />)
+      expect(screen.getByText('qwen-2.5-coder')).toBeInTheDocument()
+      expect(screen.queryByText('claude-sonnet')).not.toBeInTheDocument()
+      expect(screen.queryByText('gpt-4o')).not.toBeInTheDocument()
+    })
+
     it('shows no results when no runs match all terms', () => {
       render(<RunListView {...multipleRunsProps} filterText="nonexistent terms" />)
       expect(screen.getByText('No runs match the current filters.')).toBeInTheDocument()

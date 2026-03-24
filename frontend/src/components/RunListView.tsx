@@ -165,8 +165,8 @@ export default function RunListView({
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
       if (filterStatus !== 'all' && run.status !== filterStatus) return false
       if (filterText) {
-        // Split by whitespace and filter out empty strings
-        const searchTerms = filterText.toLowerCase().split(/\s+/).filter(term => term.length > 0)
+        // Split by whitespace or + and filter out empty strings
+        const searchTerms = filterText.toLowerCase().split(/[\s+]+/).filter(term => term.length > 0)
         // Combine all searchable fields into one string for matching
         const searchableContent = [
           run.model,
