@@ -216,20 +216,20 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns, filter
             Cancel
           </button>
           <button
-            onClick={handleCopy}
-            disabled={noneSelected}
-            className="px-4 py-2 text-sm font-medium border border-oh-border text-oh-text rounded-lg hover:bg-oh-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            data-testid="copy-button"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <button
             onClick={handleExport}
             disabled={noneSelected}
-            className="px-4 py-2 text-sm font-medium bg-oh-primary text-white rounded-lg hover:bg-oh-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium border border-oh-border text-oh-text rounded-lg hover:bg-oh-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="export-button"
           >
             Export
+          </button>
+          <button
+            onClick={handleCopy}
+            disabled={noneSelected}
+            className="px-4 py-2 text-sm font-medium bg-oh-primary text-white rounded-lg hover:bg-oh-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="copy-button"
+          >
+            {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
       </div>
