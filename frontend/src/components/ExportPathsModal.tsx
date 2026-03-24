@@ -219,9 +219,9 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns, filter
             onClick={handleExport}
             disabled={noneSelected}
             className="px-4 py-2 text-sm font-medium border border-oh-border text-oh-text rounded-lg hover:bg-oh-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            data-testid="export-button"
+            data-testid="download-button"
           >
-            Export
+            Download
           </button>
           <button
             onClick={handleCopy}

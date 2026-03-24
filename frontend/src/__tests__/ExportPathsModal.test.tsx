@@ -195,7 +195,7 @@ describe('ExportPathsModal', () => {
     fireEvent.click(screen.getByTestId('toggle-all-checkbox'))
     fireEvent.click(screen.getByTestId('toggle-all-checkbox'))
 
-    const exportButton = screen.getByTestId('export-button')
+    const exportButton = screen.getByTestId('download-button')
     expect(exportButton).toBeDisabled()
   })
 
@@ -301,7 +301,7 @@ describe('ExportPathsModal', () => {
       />
     )
 
-    fireEvent.click(screen.getByTestId('export-button'))
+    fireEvent.click(screen.getByTestId('download-button'))
 
     expect(mockClick).toHaveBeenCalled()
     expect(mockOnClose).toHaveBeenCalled()
