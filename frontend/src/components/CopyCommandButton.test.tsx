@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import ParametersCard from './ParametersCard'
+import CopyCommandButton from './CopyCommandButton'
 
-describe('ParametersCard', () => {
+describe('CopyCommandButton', () => {
   let fetchMock: any
 
   beforeEach(() => {
@@ -31,38 +31,13 @@ describe('ParametersCard', () => {
     })
   }
 
-  it('renders "Not available yet" when data is null', () => {
-    render(<ParametersCard data={null} />)
-    expect(screen.getByText('Not available yet')).toBeTruthy()
-  })
-
-  it('renders "Not available yet" when data is undefined', () => {
-    render(<ParametersCard data={undefined} />)
-    expect(screen.getByText('Not available yet')).toBeTruthy()
-  })
-
-  it('renders parameters table with data', () => {
-    const data = {
-      benchmark: 'swebench',
-      sdk_ref: 'v1.15.0',
-      eval_limit: '10',
-    }
-    render(<ParametersCard data={data} />)
-
-    expect(screen.getByText('Parameters')).toBeTruthy()
-    expect(screen.getByText('benchmark')).toBeTruthy()
-    expect(screen.getByText('swebench')).toBeTruthy()
-    expect(screen.getByText('sdk_ref')).toBeTruthy()
-    expect(screen.getByText('v1.15.0')).toBeTruthy()
-  })
-
   it('enables copy button when workflow inputs are found', async () => {
     const data = {
       benchmark: 'swebench',
       sdk_ref: 'v1.15.0',
       eval_limit: '10',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -79,7 +54,7 @@ describe('ParametersCard', () => {
       benchmark: 'swebench',
       eval_limit: '1',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -102,7 +77,7 @@ describe('ParametersCard', () => {
       timestamp: '2026-03-27T19:54:18Z',
       triggered_by: 'user123',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('No workflow inputs found in parameters')
@@ -120,7 +95,7 @@ describe('ParametersCard', () => {
       timestamp: '2026-03-27T19:54:18Z',
       triggered_by: 'user123',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -161,7 +136,7 @@ describe('ParametersCard', () => {
       benchmark: 'swebench',
       sdk_ref: 'main',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -184,7 +159,7 @@ describe('ParametersCard', () => {
       num_infer_workers: null,
       eval_limit: '1',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -209,7 +184,7 @@ describe('ParametersCard', () => {
       benchmark: 'swebench',
       evaluation_branch: 'refs/heads/main',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -232,7 +207,7 @@ describe('ParametersCard', () => {
       benchmark: 'swebench',
       trigger_reason: 'test eval-job-id',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -254,7 +229,7 @@ describe('ParametersCard', () => {
       benchmark: 'swebench',
       model_name: 'litellm_proxy/minimax/MiniMax-M2.5',
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -277,7 +252,7 @@ describe('ParametersCard', () => {
       allow_unreleased_branches: true,
       enable_conversation_event_logging: false,
     }
-    render(<ParametersCard data={data} />)
+    render(<CopyCommandButton data={data} />)
 
     await waitFor(() => {
       const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -291,6 +266,30 @@ describe('ParametersCard', () => {
       const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
       expect(call).toContain('-f allow_unreleased_branches="true"')
       expect(call).toContain('-f enable_conversation_event_logging="false"')
+    })
+  })
+
+  it('converts N/A values to empty strings', async () => {
+    const data = {
+      benchmark: 'swebench',
+      instance_ids: 'N/A',
+      eval_limit: '10',
+    }
+    render(<CopyCommandButton data={data} />)
+
+    await waitFor(() => {
+      const copyButton = screen.getByTitle('Copy gh workflow run command')
+      expect((copyButton as HTMLButtonElement).disabled).toBe(false)
+    })
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    await waitFor(() => {
+      const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      expect(call).toContain('-f instance_ids=""')
+      expect(call).toContain('-f benchmark="swebench"')
+      expect(call).toContain('-f eval_limit="10"')
     })
   })
 })

@@ -5,6 +5,7 @@ import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
 import ParametersCard from './ParametersCard'
 import CompletedRunResults from './CompletedRunResults'
+import CopyCommandButton from './CopyCommandButton'
 
 import ErrorReportSection from './ErrorReportSection'
 
@@ -85,6 +86,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
                   🏅 Submitted to OpenHands Index
                 </a>
               )}
+              <CopyCommandButton data={metadata?.params} />
             </div>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <BenchmarkBadge name={parsed.benchmark} />
