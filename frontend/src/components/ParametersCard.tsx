@@ -12,25 +12,54 @@ interface WorkflowInputParams {
 
 async function fetchWorkflowInputParams(runId: string): Promise<WorkflowInputParams | null> {
   try {
+    console.log('[ParametersCard] Fetching workflow params for run:', runId)
+    
     // Fetch the workflow run jobs
-    const jobsRes = await fetch(`https://api.github.com/repos/OpenHands/software-agent-sdk/actions/runs/${runId}/jobs`)
-    if (!jobsRes.ok) return null
+    const jobsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/runs/${runId}/jobs`
+    console.log('[ParametersCard] Fetching jobs from:', jobsUrl)
+    const jobsRes = await fetch(jobsUrl)
+    
+    console.log('[ParametersCard] Jobs response status:', jobsRes.status)
+    if (!jobsRes.ok) {
+      console.error('[ParametersCard] Failed to fetch jobs:', jobsRes.status, jobsRes.statusText)
+      return null
+    }
+    
     const jobsData = await jobsRes.json()
+    console.log('[ParametersCard] Jobs data:', jobsData)
     
     // Find the print-parameters job
     const printJob = jobsData.jobs?.find((job: any) => job.name === 'print-parameters')
-    if (!printJob) return null
+    if (!printJob) {
+      console.error('[ParametersCard] print-parameters job not found. Available jobs:', jobsData.jobs?.map((j: any) => j.name))
+      return null
+    }
+    
+    console.log('[ParametersCard] Found print-parameters job:', printJob.id)
 
     // Fetch the job logs
-    const logsRes = await fetch(`https://api.github.com/repos/OpenHands/software-agent-sdk/actions/jobs/${printJob.id}/logs`)
-    if (!logsRes.ok) return null
+    const logsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/jobs/${printJob.id}/logs`
+    console.log('[ParametersCard] Fetching logs from:', logsUrl)
+    const logsRes = await fetch(logsUrl)
+    
+    console.log('[ParametersCard] Logs response status:', logsRes.status)
+    if (!logsRes.ok) {
+      console.error('[ParametersCard] Failed to fetch logs:', logsRes.status, logsRes.statusText)
+      return null
+    }
+    
     const logs = await logsRes.text()
+    console.log('[ParametersCard] Logs length:', logs.length)
 
     // Parse the "=== Input Parameters ===" section
     const paramsMatch = logs.match(/=== Input Parameters ===\n([\s\S]*?)(?=\n===|\n\n|$)/)
-    if (!paramsMatch) return null
+    if (!paramsMatch) {
+      console.error('[ParametersCard] Could not find Input Parameters section in logs')
+      return null
+    }
 
     const paramsSection = paramsMatch[1]
+    console.log('[ParametersCard] Found params section:', paramsSection)
     const params: WorkflowInputParams = {}
 
     // Parse each line: "key: value"
@@ -48,9 +77,10 @@ async function fetchWorkflowInputParams(runId: string): Promise<WorkflowInputPar
       params[trimmedKey] = trimmedValue
     }
 
+    console.log('[ParametersCard] Parsed params:', params)
     return params
   } catch (error) {
-    console.error('Failed to fetch workflow input params:', error)
+    console.error('[ParametersCard] Failed to fetch workflow input params:', error)
     return null
   }
 }
@@ -73,17 +103,27 @@ export default function ParametersCard({ data }: ParametersCardProps) {
   const [copied, setCopied] = useState(false)
   const [workflowParams, setWorkflowParams] = useState<WorkflowInputParams | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     const loadWorkflowParams = async () => {
       if (!data) return
       
       const runId = data.sdk_workflow_run_id as string | undefined
-      if (!runId) return
+      if (!runId) {
+        console.log('[ParametersCard] No sdk_workflow_run_id found in data:', data)
+        return
+      }
 
+      console.log('[ParametersCard] Starting to load workflow params for run:', runId)
       setLoading(true)
+      setError(false)
       const params = await fetchWorkflowInputParams(runId)
-      setWorkflowParams(params)
+      if (params) {
+        setWorkflowParams(params)
+      } else {
+        setError(true)
+      }
       setLoading(false)
     }
 
@@ -137,7 +177,11 @@ export default function ParametersCard({ data }: ParametersCardProps) {
                 ? 'Loading workflow parameters...'
                 : workflowParams
                 ? 'Copy gh workflow run command'
-                : 'Workflow run ID not available'
+                : error
+                ? 'Failed to load workflow parameters (check console for details)'
+                : !data?.sdk_workflow_run_id
+                ? 'Workflow run ID not available'
+                : 'Workflow parameters not available'
             }
           >
             {copied ? (
@@ -154,6 +198,13 @@ export default function ParametersCard({ data }: ParametersCardProps) {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 Loading...
+              </>
+            ) : error ? (
+              <>
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Error
               </>
             ) : (
               <>
