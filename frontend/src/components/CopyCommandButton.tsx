@@ -1,112 +1,71 @@
 import { useState, useEffect } from 'react'
 
 interface CopyCommandButtonProps {
-  data: Record<string, unknown> | null | undefined
+  sdkWorkflowRunId: string | null | undefined
   className?: string
 }
 
-// Workflow input parameter keys (from run-eval.yml)
-const WORKFLOW_INPUT_KEYS = new Set([
-  'benchmark',
-  'sdk_ref',
-  'allow_unreleased_branches',
-  'eval_limit',
-  'model_ids',
-  'reason',
-  'eval_branch',
-  'benchmarks_branch',
-  'instance_ids',
-  'num_infer_workers',
-  'num_eval_workers',
-  'enable_conversation_event_logging',
-  'max_retries',
-  'tool_preset',
-  'agent_type',
-  'partial_archive_url',
-])
-
-// Extract model_ids from model_name (e.g. "litellm_proxy/minimax/MiniMax-M2.5" → "minimax-m2.5")
-function extractModelIds(modelName: string): string {
-  let cleaned = modelName.replace(/^litellm_proxy\//, '')
-  const parts = cleaned.split('/')
-  if (parts.length === 2) {
-    const provider = parts[0]
-    const modelPart = parts[1]
-    if (modelPart.toLowerCase().startsWith(provider.toLowerCase() + '-')) {
-      const model = modelPart.substring(provider.length + 1)
-      return `${provider}-${model}`.toLowerCase()
-    }
-    return `${provider}-${modelPart}`.toLowerCase()
-  }
-  return modelName.toLowerCase()
-}
-
-// Strip refs/heads/ prefix from branch names
-function stripRefsPrefix(branch: string): string {
-  return branch.replace(/^refs\/heads\//, '')
-}
-
-async function fetchSdkRef(runId: string): Promise<string | null> {
+async function fetchWorkflowInputParams(runId: string): Promise<Record<string, string> | null> {
   try {
-    const res = await fetch(`https://api.github.com/repos/OpenHands/software-agent-sdk/actions/runs/${runId}`)
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.head_branch || null
+    // Fetch the workflow run jobs
+    const jobsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/runs/${runId}/jobs`
+    const jobsRes = await fetch(jobsUrl)
+    
+    if (!jobsRes.ok) {
+      console.error('[CopyCommandButton] Failed to fetch jobs:', jobsRes.status)
+      return null
+    }
+    
+    const jobsData = await jobsRes.json()
+    
+    // Find the print-parameters job
+    const printJob = jobsData.jobs?.find((job: any) => job.name === 'print-parameters')
+    if (!printJob) {
+      console.error('[CopyCommandButton] print-parameters job not found')
+      return null
+    }
+
+    // Fetch the job logs
+    const logsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/jobs/${printJob.id}/logs`
+    const logsRes = await fetch(logsUrl)
+    
+    if (!logsRes.ok) {
+      console.error('[CopyCommandButton] Failed to fetch logs:', logsRes.status)
+      return null
+    }
+    
+    const logs = await logsRes.text()
+
+    // Parse the "=== Input Parameters ===" section
+    const paramsMatch = logs.match(/=== Input Parameters ===\n([\s\S]*?)(?=\n===|\n\n|$)/)
+    if (!paramsMatch) {
+      console.error('[CopyCommandButton] Could not find Input Parameters section')
+      return null
+    }
+
+    const paramsSection = paramsMatch[1]
+    const params: Record<string, string> = {}
+
+    // Parse each line: "key: value"
+    for (const line of paramsSection.split('\n')) {
+      const match = line.match(/^([^:]+):\s*(.+)$/)
+      if (!match) continue
+      
+      const [, key, value] = match
+      const trimmedKey = key.trim()
+      const trimmedValue = value.trim()
+      
+      // Skip N/A and (default) values
+      if (trimmedValue === 'N/A' || trimmedValue === '(default)') continue
+      
+      params[trimmedKey] = trimmedValue
+    }
+
+    return params
   } catch (error) {
-    console.error('[CopyCommandButton] Failed to fetch SDK ref:', error)
+    console.error('[CopyCommandButton] Failed to fetch workflow input params:', error)
     return null
   }
-}
-
-async function extractWorkflowInputs(data: Record<string, unknown>): Promise<Record<string, string>> {
-  const inputs: Record<string, string> = {}
-  
-  // Fetch sdk_ref from the workflow run if we have the run ID
-  const runId = data.sdk_workflow_run_id as string | undefined
-  if (runId) {
-    const sdkRef = await fetchSdkRef(runId)
-    if (sdkRef) {
-      inputs['sdk_ref'] = sdkRef
-    }
-  }
-  
-  for (const [key, value] of Object.entries(data)) {
-    if (value === null || value === undefined) continue
-    
-    if (key === 'model_name' && typeof value === 'string') {
-      inputs['model_ids'] = extractModelIds(value)
-      continue
-    }
-    
-    if (key === 'trigger_reason' && typeof value === 'string') {
-      inputs['reason'] = value
-      continue
-    }
-    
-    if (key === 'evaluation_branch' && typeof value === 'string') {
-      inputs['eval_branch'] = stripRefsPrefix(value)
-      continue
-    }
-    
-    if (!WORKFLOW_INPUT_KEYS.has(key)) continue
-    
-    let valueStr: string
-    if (typeof value === 'boolean') {
-      valueStr = value ? 'true' : 'false'
-    } else if (typeof value === 'object') {
-      continue
-    } else {
-      valueStr = String(value)
-      // Convert "N/A" to empty string
-      if (valueStr === 'N/A') {
-        valueStr = ''
-      }
-    }
-    
-    inputs[key] = valueStr
-  }
-  
-  return inputs
 }
 
 function generateGhCommand(params: Record<string, string>): string {
@@ -122,26 +81,26 @@ function generateGhCommand(params: Record<string, string>): string {
   return parts.join(' \\\n  ')
 }
 
-export default function CopyCommandButton({ data, className = '' }: CopyCommandButtonProps) {
+export default function CopyCommandButton({ sdkWorkflowRunId, className = '' }: CopyCommandButtonProps) {
   const [copied, setCopied] = useState(false)
   const [workflowParams, setWorkflowParams] = useState<Record<string, string> | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const loadWorkflowInputs = async () => {
-      if (!data) {
+      if (!sdkWorkflowRunId) {
         setWorkflowParams(null)
         return
       }
       
       setLoading(true)
-      const inputs = await extractWorkflowInputs(data)
-      setWorkflowParams(Object.keys(inputs).length > 0 ? inputs : null)
+      const params = await fetchWorkflowInputParams(sdkWorkflowRunId)
+      setWorkflowParams(params)
       setLoading(false)
     }
     
     loadWorkflowInputs()
-  }, [data])
+  }, [sdkWorkflowRunId])
 
   const handleCopyCommand = async () => {
     if (!workflowParams) return
@@ -150,6 +109,11 @@ export default function CopyCommandButton({ data, className = '' }: CopyCommandB
     await navigator.clipboard.writeText(command)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Don't render if no SDK workflow run ID
+  if (!sdkWorkflowRunId) {
+    return null
   }
 
   return (

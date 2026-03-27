@@ -86,7 +86,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
                   🏅 Submitted to OpenHands Index
                 </a>
               )}
-              <CopyCommandButton data={metadata?.params} />
+              <CopyCommandButton sdkWorkflowRunId={metadata?.params?.sdk_workflow_run_id as string | undefined} />
             </div>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <BenchmarkBadge name={parsed.benchmark} />
