@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { formatValue } from './JsonCard'
+import SectionMenu from './SectionMenu'
 
 interface ParametersCardProps {
   data: Record<string, unknown> | null | undefined
 }
-
-const WORKFLOW_URL = 'https://github.com/OpenHands/software-agent-sdk/actions/workflows/run-eval.yml'
 
 // Map params.json keys to workflow input names
 const PARAM_MAPPING: Record<string, string> = {
@@ -79,6 +78,7 @@ export default function ParametersCard({ data }: ParametersCardProps) {
             <span>⚙️</span>
             <h3 className="text-sm font-medium text-oh-text-muted">Parameters</h3>
           </div>
+          <SectionMenu id="parameters" />
         </div>
         <p className="text-xs text-oh-text-muted italic">Not available yet</p>
       </div>
@@ -116,33 +116,7 @@ export default function ParametersCard({ data }: ParametersCardProps) {
               </>
             )}
           </button>
-          <a
-            href={WORKFLOW_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-oh-surface hover:bg-oh-border/30 text-oh-text-muted border border-oh-border transition-colors"
-            title="Open workflow in GitHub"
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-          </a>
-          <button
-            onClick={() => {
-              const el = document.getElementById(sectionId)
-              if (el) {
-                const url = new URL(window.location.href)
-                url.hash = sectionId
-                navigator.clipboard.writeText(url.toString())
-              }
-            }}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-oh-text-muted hover:text-oh-text hover:bg-oh-border/30 transition-colors"
-            title="Copy link to section"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </button>
+          <SectionMenu id={sectionId} />
         </div>
       </div>
       <div className="overflow-x-auto">

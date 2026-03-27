@@ -160,14 +160,4 @@ describe('ParametersCard', () => {
       )
     })
   })
-
-  it('has link to workflow on GitHub', () => {
-    const data = { benchmark: 'swebench' }
-    render(<ParametersCard data={data} />)
-
-    const link = screen.getByTitle('Open workflow in GitHub') as HTMLAnchorElement
-    expect(link.href).toBe(
-      'https://github.com/OpenHands/software-agent-sdk/actions/workflows/run-eval.yml'
-    )
-  })
 })
