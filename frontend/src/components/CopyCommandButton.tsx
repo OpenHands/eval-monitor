@@ -7,61 +7,16 @@ interface CopyCommandButtonProps {
 
 async function fetchWorkflowInputParams(runId: string): Promise<Record<string, string> | null> {
   try {
-    // Fetch the workflow run jobs
-    const jobsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/runs/${runId}/jobs`
-    const jobsRes = await fetch(jobsUrl)
+    // Call our serverless function which has GitHub token access
+    const res = await fetch(`/api/workflow-params?runId=${runId}`)
     
-    if (!jobsRes.ok) {
-      console.error('[CopyCommandButton] Failed to fetch jobs:', jobsRes.status)
+    if (!res.ok) {
+      console.error('[CopyCommandButton] Failed to fetch params:', res.status)
       return null
     }
     
-    const jobsData = await jobsRes.json()
-    
-    // Find the print-parameters job
-    const printJob = jobsData.jobs?.find((job: any) => job.name === 'print-parameters')
-    if (!printJob) {
-      console.error('[CopyCommandButton] print-parameters job not found')
-      return null
-    }
-
-    // Fetch the job logs
-    const logsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/jobs/${printJob.id}/logs`
-    const logsRes = await fetch(logsUrl)
-    
-    if (!logsRes.ok) {
-      console.error('[CopyCommandButton] Failed to fetch logs:', logsRes.status)
-      return null
-    }
-    
-    const logs = await logsRes.text()
-
-    // Parse the "=== Input Parameters ===" section
-    const paramsMatch = logs.match(/=== Input Parameters ===\n([\s\S]*?)(?=\n===|\n\n|$)/)
-    if (!paramsMatch) {
-      console.error('[CopyCommandButton] Could not find Input Parameters section')
-      return null
-    }
-
-    const paramsSection = paramsMatch[1]
-    const params: Record<string, string> = {}
-
-    // Parse each line: "key: value"
-    for (const line of paramsSection.split('\n')) {
-      const match = line.match(/^([^:]+):\s*(.+)$/)
-      if (!match) continue
-      
-      const [, key, value] = match
-      const trimmedKey = key.trim()
-      const trimmedValue = value.trim()
-      
-      // Skip N/A and (default) values
-      if (trimmedValue === 'N/A' || trimmedValue === '(default)') continue
-      
-      params[trimmedKey] = trimmedValue
-    }
-
-    return params
+    const data = await res.json()
+    return data.params || null
   } catch (error) {
     console.error('[CopyCommandButton] Failed to fetch workflow input params:', error)
     return null

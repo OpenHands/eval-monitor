@@ -22,31 +22,11 @@ describe('CopyCommandButton', () => {
     vi.restoreAllMocks()
   })
 
-  const mockWorkflowLogsResponse = (params: Record<string, string>) => {
-    const paramsText = Object.entries(params)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\n')
-
-    const logs = `
-Some log output before
-=== Input Parameters ===
-${paramsText}
-=== End ===
-Some log output after
-`
-
-    // Mock jobs response
+  const mockWorkflowParamsResponse = (params: Record<string, string>) => {
+    // Mock API response from our serverless function
     fetchMock.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
-        jobs: [{ id: 123, name: 'print-parameters' }],
-      }),
-    })
-    
-    // Mock logs response
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      text: async () => logs,
+      json: async () => ({ params }),
     })
   }
 
@@ -56,14 +36,14 @@ Some log output after
   })
 
   it('shows loading state initially', () => {
-    mockWorkflowLogsResponse({ benchmark: 'swebench' })
+    mockWorkflowParamsResponse({ benchmark: 'swebench' })
     render(<CopyCommandButton sdkWorkflowRunId="12345" />)
     
     expect(screen.getByText('Loading...')).toBeTruthy()
   })
 
   it('enables copy button when workflow inputs are loaded', async () => {
-    mockWorkflowLogsResponse({
+    mockWorkflowParamsResponse({
       benchmark: 'swebench',
       sdk_ref: 'main',
       eval_limit: '1',
@@ -79,7 +59,7 @@ Some log output after
   })
 
   it('copies gh command with parameters from workflow logs', async () => {
-    mockWorkflowLogsResponse({
+    mockWorkflowParamsResponse({
       benchmark: 'swebench',
       sdk_ref: 'main',
       allow_unreleased_branches: 'true',
@@ -110,7 +90,7 @@ Some log output after
   })
 
   it('shows Copied! feedback after copying', async () => {
-    mockWorkflowLogsResponse({ benchmark: 'swebench' })
+    mockWorkflowParamsResponse({ benchmark: 'swebench' })
     render(<CopyCommandButton sdkWorkflowRunId="12345" />)
 
     await waitFor(() => {
@@ -126,27 +106,14 @@ Some log output after
     })
   })
 
-  it('skips N/A and (default) values from workflow logs', async () => {
-    const logsWithDefaults = `
-=== Input Parameters ===
-benchmark: swebench
-sdk_ref: main
-instance_ids: N/A
-num_infer_workers: (default)
-eval_limit: 1
-=== End ===
-`
-    fetchMock
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          jobs: [{ id: 123, name: 'print-parameters' }],
-        }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        text: async () => logsWithDefaults,
-      })
+  it('receives filtered parameters from API (N/A and (default) excluded)', async () => {
+    // Server-side already filters out N/A and (default) values
+    mockWorkflowParamsResponse({
+      benchmark: 'swebench',
+      sdk_ref: 'main',
+      eval_limit: '1',
+      // instance_ids and num_infer_workers are already filtered by the API
+    })
 
     render(<CopyCommandButton sdkWorkflowRunId="12345" />)
 
