@@ -6,92 +6,65 @@ interface ParametersCardProps {
   data: Record<string, unknown> | null | undefined
 }
 
-interface WorkflowInputParams {
-  [key: string]: string
+// Workflow input parameter keys (from run-eval.yml)
+const WORKFLOW_INPUT_KEYS = new Set([
+  'benchmark',
+  'sdk_ref',
+  'allow_unreleased_branches',
+  'eval_limit',
+  'model_ids',
+  'reason',
+  'eval_branch',
+  'benchmarks_branch',
+  'instance_ids',
+  'num_infer_workers',
+  'num_eval_workers',
+  'enable_conversation_event_logging',
+  'max_retries',
+  'tool_preset',
+  'agent_type',
+  'partial_archive_url',
+])
+
+// Map params.json keys to workflow input keys
+const PARAM_TO_INPUT_MAP: Record<string, string> = {
+  'evaluation_branch': 'eval_branch',
 }
 
-async function fetchWorkflowInputParams(runId: string): Promise<WorkflowInputParams | null> {
-  try {
-    console.log('[ParametersCard] Fetching workflow params for run:', runId)
+function extractWorkflowInputs(data: Record<string, unknown>): Record<string, string> {
+  const inputs: Record<string, string> = {}
+  
+  for (const [key, value] of Object.entries(data)) {
+    // Skip null/undefined values
+    if (value === null || value === undefined) continue
     
-    // Fetch the workflow run jobs
-    const jobsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/runs/${runId}/jobs`
-    console.log('[ParametersCard] Fetching jobs from:', jobsUrl)
-    const jobsRes = await fetch(jobsUrl)
+    // Check if this is a workflow input (either directly or via mapping)
+    const inputKey = PARAM_TO_INPUT_MAP[key] || key
+    if (!WORKFLOW_INPUT_KEYS.has(inputKey)) continue
     
-    console.log('[ParametersCard] Jobs response status:', jobsRes.status)
-    if (!jobsRes.ok) {
-      console.error('[ParametersCard] Failed to fetch jobs:', jobsRes.status, jobsRes.statusText)
-      return null
+    // Convert value to string
+    let valueStr: string
+    if (typeof value === 'boolean') {
+      valueStr = value ? 'true' : 'false'
+    } else if (typeof value === 'object') {
+      continue // Skip complex objects
+    } else {
+      valueStr = String(value)
     }
     
-    const jobsData = await jobsRes.json()
-    console.log('[ParametersCard] Jobs data:', jobsData)
-    
-    // Find the print-parameters job
-    const printJob = jobsData.jobs?.find((job: any) => job.name === 'print-parameters')
-    if (!printJob) {
-      console.error('[ParametersCard] print-parameters job not found. Available jobs:', jobsData.jobs?.map((j: any) => j.name))
-      return null
-    }
-    
-    console.log('[ParametersCard] Found print-parameters job:', printJob.id)
-
-    // Fetch the job logs
-    const logsUrl = `https://api.github.com/repos/OpenHands/software-agent-sdk/actions/jobs/${printJob.id}/logs`
-    console.log('[ParametersCard] Fetching logs from:', logsUrl)
-    const logsRes = await fetch(logsUrl)
-    
-    console.log('[ParametersCard] Logs response status:', logsRes.status)
-    if (!logsRes.ok) {
-      console.error('[ParametersCard] Failed to fetch logs:', logsRes.status, logsRes.statusText)
-      return null
-    }
-    
-    const logs = await logsRes.text()
-    console.log('[ParametersCard] Logs length:', logs.length)
-
-    // Parse the "=== Input Parameters ===" section
-    const paramsMatch = logs.match(/=== Input Parameters ===\n([\s\S]*?)(?=\n===|\n\n|$)/)
-    if (!paramsMatch) {
-      console.error('[ParametersCard] Could not find Input Parameters section in logs')
-      return null
-    }
-
-    const paramsSection = paramsMatch[1]
-    console.log('[ParametersCard] Found params section:', paramsSection)
-    const params: WorkflowInputParams = {}
-
-    // Parse each line: "key: value"
-    for (const line of paramsSection.split('\n')) {
-      const match = line.match(/^([^:]+):\s*(.+)$/)
-      if (!match) continue
-      
-      const [, key, value] = match
-      const trimmedKey = key.trim()
-      const trimmedValue = value.trim()
-      
-      // Skip N/A and (default) values
-      if (trimmedValue === 'N/A' || trimmedValue === '(default)') continue
-      
-      params[trimmedKey] = trimmedValue
-    }
-
-    console.log('[ParametersCard] Parsed params:', params)
-    return params
-  } catch (error) {
-    console.error('[ParametersCard] Failed to fetch workflow input params:', error)
-    return null
+    inputs[inputKey] = valueStr
   }
+  
+  return inputs
 }
 
-function generateGhCommand(params: WorkflowInputParams): string {
+function generateGhCommand(params: Record<string, string>): string {
   const parts = [
     'gh workflow run run-eval.yml',
     '--repo OpenHands/software-agent-sdk',
   ]
 
-  // Output each parameter exactly as it appears in the workflow logs
+  // Output each parameter
   for (const [key, value] of Object.entries(params)) {
     parts.push(`-f ${key}="${value}"`)
   }
@@ -101,33 +74,16 @@ function generateGhCommand(params: WorkflowInputParams): string {
 
 export default function ParametersCard({ data }: ParametersCardProps) {
   const [copied, setCopied] = useState(false)
-  const [workflowParams, setWorkflowParams] = useState<WorkflowInputParams | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(false)
+  const [workflowParams, setWorkflowParams] = useState<Record<string, string> | null>(null)
 
   useEffect(() => {
-    const loadWorkflowParams = async () => {
-      if (!data) return
-      
-      const runId = data.sdk_workflow_run_id as string | undefined
-      if (!runId) {
-        console.log('[ParametersCard] No sdk_workflow_run_id found in data:', data)
-        return
-      }
-
-      console.log('[ParametersCard] Starting to load workflow params for run:', runId)
-      setLoading(true)
-      setError(false)
-      const params = await fetchWorkflowInputParams(runId)
-      if (params) {
-        setWorkflowParams(params)
-      } else {
-        setError(true)
-      }
-      setLoading(false)
+    if (!data) {
+      setWorkflowParams(null)
+      return
     }
-
-    loadWorkflowParams()
+    
+    const inputs = extractWorkflowInputs(data)
+    setWorkflowParams(Object.keys(inputs).length > 0 ? inputs : null)
   }, [data])
 
   const handleCopyCommand = async () => {
@@ -166,22 +122,16 @@ export default function ParametersCard({ data }: ParametersCardProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopyCommand}
-            disabled={!workflowParams || loading}
+            disabled={!workflowParams}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              workflowParams && !loading
+              workflowParams
                 ? 'bg-oh-primary/10 hover:bg-oh-primary/20 text-oh-primary border-oh-primary/30 cursor-pointer'
                 : 'bg-oh-surface text-oh-text-muted border-oh-border cursor-not-allowed opacity-50'
             }`}
             title={
-              loading
-                ? 'Loading workflow parameters...'
-                : workflowParams
+              workflowParams
                 ? 'Copy gh workflow run command'
-                : error
-                ? 'Failed to load workflow parameters (check console for details)'
-                : !data?.sdk_workflow_run_id
-                ? 'Workflow run ID not available'
-                : 'Workflow parameters not available'
+                : 'No workflow inputs found in parameters'
             }
           >
             {copied ? (
@@ -190,21 +140,6 @@ export default function ParametersCard({ data }: ParametersCardProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Copied!
-              </>
-            ) : loading ? (
-              <>
-                <svg className="w-3.5 h-3.5 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Loading...
-              </>
-            ) : error ? (
-              <>
-                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Error
               </>
             ) : (
               <>
