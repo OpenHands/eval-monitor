@@ -77,7 +77,7 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
   )
 }
 
-function formatValue(key: string, value: unknown): ReactNode {
+export function formatValue(key: string, value: unknown): ReactNode {
   if (value === null) return 'null'
   if (value === undefined) return '—'
 
