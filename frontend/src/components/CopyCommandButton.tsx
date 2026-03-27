@@ -43,8 +43,8 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // benchmark
   params['benchmark'] = valueToString(data.benchmark)
 
-  // sdk_commit (from sdk_commit field)
-  params['sdk_commit'] = valueToString(data.sdk_commit)
+  // sdk_ref (value from sdk_commit field)
+  params['sdk_ref'] = valueToString(data.sdk_commit)
 
   // allow_unreleased_branches (always true)
   params['allow_unreleased_branches'] = 'true'

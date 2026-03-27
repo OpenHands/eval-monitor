@@ -57,7 +57,7 @@ describe('CopyCommandButton', () => {
     expect(call).toContain('gh workflow run run-eval.yml')
     expect(call).toContain('--repo OpenHands/software-agent-sdk')
     expect(call).toContain('-f benchmark="swebench"')
-    expect(call).toContain('-f sdk_commit=""')
+    expect(call).toContain('-f sdk_ref=""')
     expect(call).toContain('-f allow_unreleased_branches="true"')
     expect(call).toContain('-f eval_limit="1"')
     expect(call).toContain('-f model_id="minimax-m2.5"')
@@ -131,5 +131,20 @@ describe('CopyCommandButton', () => {
     expect(call).toContain('-f eval_branch="feature-branch"')
     expect(call).toContain('-f benchmarks_branch="main"')
     expect(call).not.toContain('refs/heads')
+  })
+
+  it('uses sdk_commit value for sdk_ref parameter', () => {
+    const data = {
+      benchmark: 'swebench',
+      sdk_commit: 'abc123def456',
+    }
+
+    render(<CopyCommandButton data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f sdk_ref="abc123def456"')
   })
 })
