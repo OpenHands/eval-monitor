@@ -26,9 +26,32 @@ const WORKFLOW_INPUT_KEYS = new Set([
   'partial_archive_url',
 ])
 
-// Map params.json keys to workflow input keys
-const PARAM_TO_INPUT_MAP: Record<string, string> = {
-  'evaluation_branch': 'eval_branch',
+// Extract model_ids from model_name (e.g. "litellm_proxy/minimax/MiniMax-M2.5" → "minimax-m2.5")
+function extractModelIds(modelName: string): string {
+  // Remove litellm_proxy/ prefix if present
+  let cleaned = modelName.replace(/^litellm_proxy\//, '')
+  // For the pattern "provider/Provider-Model", we want "provider-model"
+  const parts = cleaned.split('/')
+  if (parts.length === 2) {
+    // parts[0] is provider (already lowercase)
+    // parts[1] is Provider-Model, we need to extract just the model part
+    const provider = parts[0]
+    const modelPart = parts[1]
+    // Check if modelPart starts with the provider name (case-insensitive) followed by dash
+    if (modelPart.toLowerCase().startsWith(provider.toLowerCase() + '-')) {
+      // Remove the provider prefix (keep original casing of the model part)
+      const model = modelPart.substring(provider.length + 1)
+      return `${provider}-${model}`.toLowerCase()
+    }
+    // Fallback: just join with dash and lowercase
+    return `${provider}-${modelPart}`.toLowerCase()
+  }
+  return modelName.toLowerCase()
+}
+
+// Strip refs/heads/ prefix from branch names
+function stripRefsPrefix(branch: string): string {
+  return branch.replace(/^refs\/heads\//, '')
 }
 
 function extractWorkflowInputs(data: Record<string, unknown>): Record<string, string> {
@@ -38,9 +61,24 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
     // Skip null/undefined values
     if (value === null || value === undefined) continue
     
-    // Check if this is a workflow input (either directly or via mapping)
-    const inputKey = PARAM_TO_INPUT_MAP[key] || key
-    if (!WORKFLOW_INPUT_KEYS.has(inputKey)) continue
+    // Handle special transformations
+    if (key === 'model_name' && typeof value === 'string') {
+      inputs['model_ids'] = extractModelIds(value)
+      continue
+    }
+    
+    if (key === 'trigger_reason' && typeof value === 'string') {
+      inputs['reason'] = value
+      continue
+    }
+    
+    if (key === 'evaluation_branch' && typeof value === 'string') {
+      inputs['eval_branch'] = stripRefsPrefix(value)
+      continue
+    }
+    
+    // Check if this is a direct workflow input key
+    if (!WORKFLOW_INPUT_KEYS.has(key)) continue
     
     // Convert value to string
     let valueStr: string
@@ -52,7 +90,7 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
       valueStr = String(value)
     }
     
-    inputs[inputKey] = valueStr
+    inputs[key] = valueStr
   }
   
   return inputs

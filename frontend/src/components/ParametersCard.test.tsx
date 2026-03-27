@@ -140,10 +140,10 @@ describe('ParametersCard', () => {
     expect(call).not.toContain('num_infer_workers')
   })
 
-  it('maps evaluation_branch to eval_branch', () => {
+  it('maps evaluation_branch to eval_branch and strips refs/heads/', () => {
     const data = {
       benchmark: 'swebench',
-      evaluation_branch: 'main',
+      evaluation_branch: 'refs/heads/main',
     }
     render(<ParametersCard data={data} />)
 
@@ -153,6 +153,37 @@ describe('ParametersCard', () => {
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
     expect(call).toContain('-f eval_branch="main"')
     expect(call).not.toContain('evaluation_branch')
+    expect(call).not.toContain('refs/heads')
+  })
+
+  it('maps trigger_reason to reason', () => {
+    const data = {
+      benchmark: 'swebench',
+      trigger_reason: 'test eval-job-id',
+    }
+    render(<ParametersCard data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f reason="test eval-job-id"')
+    expect(call).not.toContain('trigger_reason')
+  })
+
+  it('extracts model_ids from model_name', () => {
+    const data = {
+      benchmark: 'swebench',
+      model_name: 'litellm_proxy/minimax/MiniMax-M2.5',
+    }
+    render(<ParametersCard data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f model_ids="minimax-m2.5"')
+    expect(call).not.toContain('model_name')
   })
 
   it('handles boolean values correctly', () => {
