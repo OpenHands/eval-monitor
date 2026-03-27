@@ -3,8 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import CopyCommandButton from './CopyCommandButton'
 
 describe('CopyCommandButton', () => {
-  let fetchMock: any
-
   beforeEach(() => {
     // Mock clipboard API
     Object.assign(navigator, {
@@ -12,91 +10,70 @@ describe('CopyCommandButton', () => {
         writeText: vi.fn(() => Promise.resolve()),
       },
     })
-
-    // Mock fetch API
-    fetchMock = vi.fn()
-    globalThis.fetch = fetchMock
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  const mockWorkflowParamsResponse = (params: Record<string, string>) => {
-    // Mock API response from our serverless function
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ params }),
-    })
-  }
-
-  it('does not render when no sdkWorkflowRunId', () => {
-    const { container } = render(<CopyCommandButton sdkWorkflowRunId={null} />)
+  it('does not render when no data', () => {
+    const { container } = render(<CopyCommandButton data={null} />)
     expect(container.firstChild).toBeNull()
   })
 
-  it('shows loading state initially', () => {
-    mockWorkflowParamsResponse({ benchmark: 'swebench' })
-    render(<CopyCommandButton sdkWorkflowRunId="12345" />)
-    
-    expect(screen.getByText('Loading...')).toBeTruthy()
+  it('renders copy button with data', () => {
+    const data = {
+      benchmark: 'swebench',
+      eval_limit: '1',
+    }
+    render(<CopyCommandButton data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    expect(copyButton).toBeTruthy()
+    expect((copyButton as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('enables copy button when workflow inputs are loaded', async () => {
-    mockWorkflowParamsResponse({
+  it('copies gh command with all parameters', () => {
+    const data = {
       benchmark: 'swebench',
-      sdk_ref: 'main',
       eval_limit: '1',
-    })
+      model_name: 'litellm_proxy/minimax/MiniMax-M2.5',
+      trigger_reason: 'test eval-job-id',
+      evaluation_branch: 'refs/heads/main',
+      benchmarks_branch: 'main',
+      instance_ids: null,
+      num_infer_workers: null,
+      num_eval_workers: null,
+      agent_type: 'default',
+      partial_archive_url: null,
+    }
 
-    render(<CopyCommandButton sdkWorkflowRunId="23664774188" />)
-
-    await waitFor(() => {
-      const copyButton = screen.getByTitle('Copy gh workflow run command')
-      expect(copyButton).toBeTruthy()
-      expect((copyButton as HTMLButtonElement).disabled).toBe(false)
-    })
-  })
-
-  it('copies gh command with parameters from workflow logs', async () => {
-    mockWorkflowParamsResponse({
-      benchmark: 'swebench',
-      sdk_ref: 'main',
-      allow_unreleased_branches: 'true',
-      eval_limit: '1',
-      model_ids: 'minimax-m2.5',
-    })
-
-    render(<CopyCommandButton sdkWorkflowRunId="23664774188" />)
-
-    await waitFor(() => {
-      const copyButton = screen.getByTitle('Copy gh workflow run command')
-      expect((copyButton as HTMLButtonElement).disabled).toBe(false)
-    })
+    render(<CopyCommandButton data={data} />)
 
     const copyButton = screen.getByTitle('Copy gh workflow run command')
     fireEvent.click(copyButton)
 
-    await waitFor(() => {
-      const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-      expect(call).toContain('gh workflow run run-eval.yml')
-      expect(call).toContain('--repo OpenHands/software-agent-sdk')
-      expect(call).toContain('-f benchmark="swebench"')
-      expect(call).toContain('-f sdk_ref="main"')
-      expect(call).toContain('-f allow_unreleased_branches="true"')
-      expect(call).toContain('-f eval_limit="1"')
-      expect(call).toContain('-f model_ids="minimax-m2.5"')
-    })
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('gh workflow run run-eval.yml')
+    expect(call).toContain('--repo OpenHands/software-agent-sdk')
+    expect(call).toContain('-f benchmark="swebench"')
+    expect(call).toContain('-f sdk_ref=""')
+    expect(call).toContain('-f allow_unreleased_branches="true"')
+    expect(call).toContain('-f eval_limit="1"')
+    expect(call).toContain('-f model_ids="minimax-m2.5"')
+    expect(call).toContain('-f reason="test eval-job-id"')
+    expect(call).toContain('-f eval_branch="main"')
+    expect(call).toContain('-f benchmarks_branch="main"')
+    expect(call).toContain('-f instance_ids=""')
+    expect(call).toContain('-f enable_conversation_event_logging="true"')
+    expect(call).toContain('-f max_retries="3"')
+    expect(call).toContain('-f tool_preset="default"')
+    expect(call).toContain('-f agent_type="default"')
   })
 
   it('shows Copied! feedback after copying', async () => {
-    mockWorkflowParamsResponse({ benchmark: 'swebench' })
-    render(<CopyCommandButton sdkWorkflowRunId="12345" />)
-
-    await waitFor(() => {
-      const copyButton = screen.getByTitle('Copy gh workflow run command')
-      expect((copyButton as HTMLButtonElement).disabled).toBe(false)
-    })
+    const data = { benchmark: 'swebench' }
+    render(<CopyCommandButton data={data} />)
 
     const copyButton = screen.getByTitle('Copy gh workflow run command')
     fireEvent.click(copyButton)
@@ -106,47 +83,53 @@ describe('CopyCommandButton', () => {
     })
   })
 
-  it('receives filtered parameters from API (N/A and (default) excluded)', async () => {
-    // Server-side already filters out N/A and (default) values
-    mockWorkflowParamsResponse({
+  it('converts N/A to empty string', () => {
+    const data = {
       benchmark: 'swebench',
-      sdk_ref: 'main',
-      eval_limit: '1',
-      // instance_ids and num_infer_workers are already filtered by the API
-    })
+      instance_ids: 'N/A',
+      num_infer_workers: 'N/A',
+    }
 
-    render(<CopyCommandButton sdkWorkflowRunId="12345" />)
-
-    await waitFor(() => {
-      const copyButton = screen.getByTitle('Copy gh workflow run command')
-      expect((copyButton as HTMLButtonElement).disabled).toBe(false)
-    })
+    render(<CopyCommandButton data={data} />)
 
     const copyButton = screen.getByTitle('Copy gh workflow run command')
     fireEvent.click(copyButton)
 
-    await waitFor(() => {
-      const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-      expect(call).toContain('-f benchmark="swebench"')
-      expect(call).toContain('-f sdk_ref="main"')
-      expect(call).toContain('-f eval_limit="1"')
-      expect(call).not.toContain('instance_ids')
-      expect(call).not.toContain('num_infer_workers')
-    })
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f instance_ids=""')
+    expect(call).toContain('-f num_infer_workers=""')
   })
 
-  it('handles API errors gracefully', async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    })
+  it('extracts model_ids from model_name', () => {
+    const data = {
+      benchmark: 'swebench',
+      model_name: 'litellm_proxy/minimax/MiniMax-M2.5',
+    }
 
-    render(<CopyCommandButton sdkWorkflowRunId="12345" />)
+    render(<CopyCommandButton data={data} />)
 
-    // Button should remain disabled
-    await waitFor(() => {
-      const copyButton = screen.getByTitle('No workflow inputs found in parameters')
-      expect((copyButton as HTMLButtonElement).disabled).toBe(true)
-    })
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f model_ids="minimax-m2.5"')
+  })
+
+  it('strips refs/heads/ from branches', () => {
+    const data = {
+      benchmark: 'swebench',
+      evaluation_branch: 'refs/heads/feature-branch',
+      benchmarks_branch: 'refs/heads/main',
+    }
+
+    render(<CopyCommandButton data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f eval_branch="feature-branch"')
+    expect(call).toContain('-f benchmarks_branch="main"')
+    expect(call).not.toContain('refs/heads')
   })
 })

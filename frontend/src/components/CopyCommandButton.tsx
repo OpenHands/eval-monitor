@@ -1,26 +1,106 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface CopyCommandButtonProps {
-  sdkWorkflowRunId: string | null | undefined
+  data: Record<string, unknown> | null | undefined
   className?: string
 }
 
-async function fetchWorkflowInputParams(runId: string): Promise<Record<string, string> | null> {
-  try {
-    // Call our serverless function which has GitHub token access
-    const res = await fetch(`/api/workflow-params?runId=${runId}`)
-    
-    if (!res.ok) {
-      console.error('[CopyCommandButton] Failed to fetch params:', res.status)
-      return null
+// Extract model_ids from model_name (e.g. "litellm_proxy/minimax/MiniMax-M2.5" → "minimax-m2.5")
+function extractModelIds(modelName: string): string {
+  let cleaned = modelName.replace(/^litellm_proxy\//, '')
+  const parts = cleaned.split('/')
+  if (parts.length === 2) {
+    const provider = parts[0]
+    const modelPart = parts[1]
+    if (modelPart.toLowerCase().startsWith(provider.toLowerCase() + '-')) {
+      const model = modelPart.substring(provider.length + 1)
+      return `${provider}-${model}`.toLowerCase()
     }
-    
-    const data = await res.json()
-    return data.params || null
-  } catch (error) {
-    console.error('[CopyCommandButton] Failed to fetch workflow input params:', error)
-    return null
+    return `${provider}-${modelPart}`.toLowerCase()
   }
+  return modelName.toLowerCase()
+}
+
+// Strip refs/heads/ prefix from branch names
+function stripRefsPrefix(branch: string): string {
+  return branch.replace(/^refs\/heads\//, '')
+}
+
+// Convert value to string, N/A or null/undefined becomes ""
+function valueToString(value: unknown): string {
+  if (value === null || value === undefined || value === 'N/A') {
+    return ''
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false'
+  }
+  return String(value)
+}
+
+function extractWorkflowInputs(data: Record<string, unknown>): Record<string, string> {
+  const params: Record<string, string> = {}
+
+  // benchmark
+  params['benchmark'] = valueToString(data.benchmark)
+
+  // sdk_ref (not in params.json, use "")
+  params['sdk_ref'] = ''
+
+  // allow_unreleased_branches (always true)
+  params['allow_unreleased_branches'] = 'true'
+
+  // eval_limit
+  params['eval_limit'] = valueToString(data.eval_limit)
+
+  // model_ids (extract from model_name)
+  if (data.model_name && typeof data.model_name === 'string') {
+    params['model_ids'] = extractModelIds(data.model_name)
+  } else {
+    params['model_ids'] = ''
+  }
+
+  // reason (from trigger_reason)
+  params['reason'] = valueToString(data.trigger_reason)
+
+  // eval_branch (from evaluation_branch, strip refs/heads/)
+  if (data.evaluation_branch && typeof data.evaluation_branch === 'string') {
+    params['eval_branch'] = stripRefsPrefix(data.evaluation_branch)
+  } else {
+    params['eval_branch'] = ''
+  }
+
+  // benchmarks_branch
+  if (data.benchmarks_branch && typeof data.benchmarks_branch === 'string') {
+    params['benchmarks_branch'] = stripRefsPrefix(data.benchmarks_branch)
+  } else {
+    params['benchmarks_branch'] = ''
+  }
+
+  // instance_ids
+  params['instance_ids'] = valueToString(data.instance_ids)
+
+  // num_infer_workers
+  params['num_infer_workers'] = valueToString(data.num_infer_workers)
+
+  // num_eval_workers
+  params['num_eval_workers'] = valueToString(data.num_eval_workers)
+
+  // enable_conversation_event_logging (always true)
+  params['enable_conversation_event_logging'] = 'true'
+
+  // max_retries (always 3)
+  params['max_retries'] = '3'
+
+  // tool_preset (always default)
+  params['tool_preset'] = 'default'
+
+  // agent_type
+  params['agent_type'] = valueToString(data.agent_type)
+
+  // partial_archive_url
+  params['partial_archive_url'] = valueToString(data.partial_archive_url)
+
+  return params
 }
 
 function generateGhCommand(params: Record<string, string>): string {
@@ -36,57 +116,28 @@ function generateGhCommand(params: Record<string, string>): string {
   return parts.join(' \\\n  ')
 }
 
-export default function CopyCommandButton({ sdkWorkflowRunId, className = '' }: CopyCommandButtonProps) {
+export default function CopyCommandButton({ data, className = '' }: CopyCommandButtonProps) {
   const [copied, setCopied] = useState(false)
-  const [workflowParams, setWorkflowParams] = useState<Record<string, string> | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    const loadWorkflowInputs = async () => {
-      if (!sdkWorkflowRunId) {
-        setWorkflowParams(null)
-        return
-      }
-      
-      setLoading(true)
-      const params = await fetchWorkflowInputParams(sdkWorkflowRunId)
-      setWorkflowParams(params)
-      setLoading(false)
-    }
-    
-    loadWorkflowInputs()
-  }, [sdkWorkflowRunId])
+  // Don't render if no data
+  if (!data) {
+    return null
+  }
+
+  const workflowParams = extractWorkflowInputs(data)
 
   const handleCopyCommand = async () => {
-    if (!workflowParams) return
-
     const command = generateGhCommand(workflowParams)
     await navigator.clipboard.writeText(command)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Don't render if no SDK workflow run ID
-  if (!sdkWorkflowRunId) {
-    return null
-  }
-
   return (
     <button
       onClick={handleCopyCommand}
-      disabled={!workflowParams || loading}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-        workflowParams && !loading
-          ? 'bg-oh-primary/10 hover:bg-oh-primary/20 text-oh-primary border-oh-primary/30 cursor-pointer'
-          : 'bg-oh-surface text-oh-text-muted border-oh-border cursor-not-allowed opacity-50'
-      } ${className}`}
-      title={
-        loading
-          ? 'Loading workflow parameters...'
-          : workflowParams
-          ? 'Copy gh workflow run command'
-          : 'No workflow inputs found in parameters'
-      }
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors bg-oh-primary/10 hover:bg-oh-primary/20 text-oh-primary border-oh-primary/30 cursor-pointer ${className}`}
+      title="Copy gh workflow run command"
     >
       {copied ? (
         <>
@@ -94,14 +145,6 @@ export default function CopyCommandButton({ sdkWorkflowRunId, className = '' }: 
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           Copied!
-        </>
-      ) : loading ? (
-        <>
-          <svg className="w-3 h-3 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          Loading...
         </>
       ) : (
         <>
