@@ -54,8 +54,29 @@ function stripRefsPrefix(branch: string): string {
   return branch.replace(/^refs\/heads\//, '')
 }
 
-function extractWorkflowInputs(data: Record<string, unknown>): Record<string, string> {
+async function fetchSdkRef(runId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.github.com/repos/OpenHands/software-agent-sdk/actions/runs/${runId}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.head_branch || null
+  } catch (error) {
+    console.error('[ParametersCard] Failed to fetch SDK ref:', error)
+    return null
+  }
+}
+
+async function extractWorkflowInputs(data: Record<string, unknown>): Promise<Record<string, string>> {
   const inputs: Record<string, string> = {}
+  
+  // Fetch sdk_ref from the workflow run if we have the run ID
+  const runId = data.sdk_workflow_run_id as string | undefined
+  if (runId) {
+    const sdkRef = await fetchSdkRef(runId)
+    if (sdkRef) {
+      inputs['sdk_ref'] = sdkRef
+    }
+  }
   
   for (const [key, value] of Object.entries(data)) {
     // Skip null/undefined values
@@ -113,15 +134,22 @@ function generateGhCommand(params: Record<string, string>): string {
 export default function ParametersCard({ data }: ParametersCardProps) {
   const [copied, setCopied] = useState(false)
   const [workflowParams, setWorkflowParams] = useState<Record<string, string> | null>(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!data) {
-      setWorkflowParams(null)
-      return
+    const loadWorkflowInputs = async () => {
+      if (!data) {
+        setWorkflowParams(null)
+        return
+      }
+      
+      setLoading(true)
+      const inputs = await extractWorkflowInputs(data)
+      setWorkflowParams(Object.keys(inputs).length > 0 ? inputs : null)
+      setLoading(false)
     }
     
-    const inputs = extractWorkflowInputs(data)
-    setWorkflowParams(Object.keys(inputs).length > 0 ? inputs : null)
+    loadWorkflowInputs()
   }, [data])
 
   const handleCopyCommand = async () => {
@@ -160,14 +188,16 @@ export default function ParametersCard({ data }: ParametersCardProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopyCommand}
-            disabled={!workflowParams}
+            disabled={!workflowParams || loading}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              workflowParams
+              workflowParams && !loading
                 ? 'bg-oh-primary/10 hover:bg-oh-primary/20 text-oh-primary border-oh-primary/30 cursor-pointer'
                 : 'bg-oh-surface text-oh-text-muted border-oh-border cursor-not-allowed opacity-50'
             }`}
             title={
-              workflowParams
+              loading
+                ? 'Loading workflow parameters...'
+                : workflowParams
                 ? 'Copy gh workflow run command'
                 : 'No workflow inputs found in parameters'
             }
@@ -178,6 +208,14 @@ export default function ParametersCard({ data }: ParametersCardProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Copied!
+              </>
+            ) : loading ? (
+              <>
+                <svg className="w-3.5 h-3.5 shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Loading...
               </>
             ) : (
               <>
