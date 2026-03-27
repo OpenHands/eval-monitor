@@ -40,6 +40,12 @@ Deployed automatically via Vercel. The `vercel.json` configures:
 - Build command and output directory
 - API rewrites to proxy requests to the data bucket
 
+### Environment Variables
+
+The following environment variable must be set in Vercel:
+
+- `GITHUB_TOKEN` — GitHub Personal Access Token with `actions:read` permission (required for the "Copy command" feature to fetch workflow parameters)
+
 ## Tech Stack
 
 - React + TypeScript
