@@ -5,7 +5,7 @@ interface CopyCommandButtonProps {
   className?: string
 }
 
-// Extract model_ids from model_name (e.g. "litellm_proxy/minimax/MiniMax-M2.5" → "minimax-m2.5")
+// Extract model_id from model_name (e.g. "litellm_proxy/minimax/MiniMax-M2.5" → "minimax-m2.5")
 function extractModelIds(modelName: string): string {
   let cleaned = modelName.replace(/^litellm_proxy\//, '')
   const parts = cleaned.split('/')
@@ -43,8 +43,8 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // benchmark
   params['benchmark'] = valueToString(data.benchmark)
 
-  // sdk_ref (not in params.json, use "")
-  params['sdk_ref'] = ''
+  // sdk_commit (from sdk_commit field)
+  params['sdk_commit'] = valueToString(data.sdk_commit)
 
   // allow_unreleased_branches (always true)
   params['allow_unreleased_branches'] = 'true'
@@ -52,11 +52,11 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // eval_limit
   params['eval_limit'] = valueToString(data.eval_limit)
 
-  // model_ids (extract from model_name)
+  // model_id (extract from model_name)
   if (data.model_name && typeof data.model_name === 'string') {
-    params['model_ids'] = extractModelIds(data.model_name)
+    params['model_id'] = extractModelIds(data.model_name)
   } else {
-    params['model_ids'] = ''
+    params['model_id'] = ''
   }
 
   // reason (from trigger_reason)

@@ -57,10 +57,10 @@ describe('CopyCommandButton', () => {
     expect(call).toContain('gh workflow run run-eval.yml')
     expect(call).toContain('--repo OpenHands/software-agent-sdk')
     expect(call).toContain('-f benchmark="swebench"')
-    expect(call).toContain('-f sdk_ref=""')
+    expect(call).toContain('-f sdk_commit=""')
     expect(call).toContain('-f allow_unreleased_branches="true"')
     expect(call).toContain('-f eval_limit="1"')
-    expect(call).toContain('-f model_ids="minimax-m2.5"')
+    expect(call).toContain('-f model_id="minimax-m2.5"')
     expect(call).toContain('-f reason="test eval-job-id"')
     expect(call).toContain('-f eval_branch="main"')
     expect(call).toContain('-f benchmarks_branch="main"')
@@ -100,7 +100,7 @@ describe('CopyCommandButton', () => {
     expect(call).toContain('-f num_infer_workers=""')
   })
 
-  it('extracts model_ids from model_name', () => {
+  it('extracts model_id from model_name', () => {
     const data = {
       benchmark: 'swebench',
       model_name: 'litellm_proxy/minimax/MiniMax-M2.5',
@@ -112,7 +112,7 @@ describe('CopyCommandButton', () => {
     fireEvent.click(copyButton)
 
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-    expect(call).toContain('-f model_ids="minimax-m2.5"')
+    expect(call).toContain('-f model_id="minimax-m2.5"')
   })
 
   it('strips refs/heads/ from branches', () => {
