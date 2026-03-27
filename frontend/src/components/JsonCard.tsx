@@ -10,6 +10,7 @@ interface JsonCardProps {
 }
 
 const SDK_COMMIT_BASE_URL = 'https://github.com/OpenHands/software-agent-sdk/commit/'
+const SDK_WORKFLOW_RUN_BASE_URL = 'https://github.com/OpenHands/software-agent-sdk/actions/runs/'
 const EVAL_BRANCH_BASE_URL = 'https://github.com/OpenHands/evaluation/tree/'
 const BENCHMARKS_BRANCH_BASE_URL = 'https://github.com/OpenHands/benchmarks/tree/'
 const BENCHMARKS_ACTIONS_BASE_URL = 'https://github.com/OpenHands/benchmarks/actions'
@@ -120,6 +121,10 @@ function getLinkForKeyValue(key: string, value: unknown): { href: string; text: 
 
   if (keyLower.includes('sdk_commit') && SHA_RE.test(value)) {
     return { href: `${SDK_COMMIT_BASE_URL}${value}`, text: value }
+  }
+
+  if (keyLower.includes('sdk_workflow_run_id') && /^\d+$/.test(value)) {
+    return { href: `${SDK_WORKFLOW_RUN_BASE_URL}${value}`, text: value }
   }
 
   if (keyLower.includes('evaluation_branch') || keyLower.includes('eval_branch')) {

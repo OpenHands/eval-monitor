@@ -17,6 +17,31 @@ describe('JsonCard repo links', () => {
     expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/software-agent-sdk/commit/abc1234def5678')
   })
 
+  it('links sdk_workflow_run_id to the software-agent-sdk actions run page', () => {
+    render(
+      <JsonCard
+        title="Parameters"
+        icon="⚙️"
+        data={{ sdk_workflow_run_id: '23663720332' }}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: '23663720332' })
+    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/software-agent-sdk/actions/runs/23663720332')
+  })
+
+  it('does not link sdk_workflow_run_id if value is not numeric', () => {
+    render(
+      <JsonCard
+        title="Parameters"
+        icon="⚙️"
+        data={{ sdk_workflow_run_id: 'not-a-number' }}
+      />
+    )
+
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
   it('links evaluation_branch to the evaluation repo tree and strips refs/heads/', () => {
     render(
       <JsonCard
