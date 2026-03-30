@@ -5,22 +5,6 @@ interface CopyCommandButtonProps {
   className?: string
 }
 
-// Extract model_id from model_name (e.g. "litellm_proxy/minimax/MiniMax-M2.5" → "minimax-m2.5")
-function extractModelIds(modelName: string): string {
-  let cleaned = modelName.replace(/^litellm_proxy\//, '')
-  const parts = cleaned.split('/')
-  if (parts.length === 2) {
-    const provider = parts[0]
-    const modelPart = parts[1]
-    if (modelPart.toLowerCase().startsWith(provider.toLowerCase() + '-')) {
-      const model = modelPart.substring(provider.length + 1)
-      return `${provider}-${model}`.toLowerCase()
-    }
-    return `${provider}-${modelPart}`.toLowerCase()
-  }
-  return modelName.toLowerCase()
-}
-
 // Strip refs/heads/ prefix from branch names
 function stripRefsPrefix(branch: string): string {
   return branch.replace(/^refs\/heads\//, '')
@@ -52,12 +36,8 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // eval_limit
   params['eval_limit'] = valueToString(data.eval_limit)
 
-  // model_id (extract from model_name)
-  if (data.model_name && typeof data.model_name === 'string') {
-    params['model_id'] = extractModelIds(data.model_name)
-  } else {
-    params['model_id'] = ''
-  }
+  // model_id (must exist in params, don't extract from model_name)
+  params['model_id'] = valueToString(data.model_id)
 
   // reason (from trigger_reason)
   params['reason'] = valueToString(data.trigger_reason)
@@ -119,8 +99,8 @@ function generateGhCommand(params: Record<string, string>): string {
 export default function CopyCommandButton({ data, className = '' }: CopyCommandButtonProps) {
   const [copied, setCopied] = useState(false)
 
-  // Don't render if no data
-  if (!data) {
+  // Don't render if no data or no model_id (older runs don't have model_id)
+  if (!data || !data.model_id) {
     return null
   }
 

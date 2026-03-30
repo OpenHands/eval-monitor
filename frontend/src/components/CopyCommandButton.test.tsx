@@ -21,10 +21,22 @@ describe('CopyCommandButton', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders copy button with data', () => {
+  it('does not render when no model_id (older runs)', () => {
     const data = {
       benchmark: 'swebench',
       eval_limit: '1',
+      model_name: 'litellm_proxy/claude-sonnet-4-5-20250929',
+      // no model_id field
+    }
+    const { container } = render(<CopyCommandButton data={data} />)
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('renders copy button with data and model_id', () => {
+    const data = {
+      benchmark: 'swebench',
+      eval_limit: '1',
+      model_id: 'claude-sonnet-4-5-20250929',
     }
     render(<CopyCommandButton data={data} />)
 
@@ -37,7 +49,7 @@ describe('CopyCommandButton', () => {
     const data = {
       benchmark: 'swebench',
       eval_limit: '1',
-      model_name: 'litellm_proxy/minimax/MiniMax-M2.5',
+      model_id: 'minimax-m2.5',
       trigger_reason: 'test eval-job-id',
       evaluation_branch: 'refs/heads/main',
       benchmarks_branch: 'main',
@@ -72,7 +84,7 @@ describe('CopyCommandButton', () => {
   })
 
   it('shows Copied! feedback after copying', async () => {
-    const data = { benchmark: 'swebench' }
+    const data = { benchmark: 'swebench', model_id: 'claude-sonnet-4' }
     render(<CopyCommandButton data={data} />)
 
     const copyButton = screen.getByTitle('Copy gh workflow run command')
@@ -86,6 +98,7 @@ describe('CopyCommandButton', () => {
   it('converts N/A to empty string', () => {
     const data = {
       benchmark: 'swebench',
+      model_id: 'claude-sonnet-4',
       instance_ids: 'N/A',
       num_infer_workers: 'N/A',
     }
@@ -100,10 +113,10 @@ describe('CopyCommandButton', () => {
     expect(call).toContain('-f num_infer_workers=""')
   })
 
-  it('extracts model_id from model_name', () => {
+  it('uses model_id directly from params', () => {
     const data = {
       benchmark: 'swebench',
-      model_name: 'litellm_proxy/minimax/MiniMax-M2.5',
+      model_id: 'claude-sonnet-4-5-20250929',
     }
 
     render(<CopyCommandButton data={data} />)
@@ -112,12 +125,13 @@ describe('CopyCommandButton', () => {
     fireEvent.click(copyButton)
 
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-    expect(call).toContain('-f model_id="minimax-m2.5"')
+    expect(call).toContain('-f model_id="claude-sonnet-4-5-20250929"')
   })
 
   it('strips refs/heads/ from branches', () => {
     const data = {
       benchmark: 'swebench',
+      model_id: 'claude-sonnet-4',
       evaluation_branch: 'refs/heads/feature-branch',
       benchmarks_branch: 'refs/heads/main',
     }
@@ -136,6 +150,7 @@ describe('CopyCommandButton', () => {
   it('uses sdk_commit value for sdk_ref parameter', () => {
     const data = {
       benchmark: 'swebench',
+      model_id: 'claude-sonnet-4',
       sdk_commit: 'abc123def456',
     }
 
