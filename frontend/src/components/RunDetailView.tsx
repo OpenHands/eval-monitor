@@ -3,7 +3,9 @@ import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelle
 import type { RunMetadata, SubmissionData } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
+import ParametersCard from './ParametersCard'
 import CompletedRunResults from './CompletedRunResults'
+import CopyCommandButton from './CopyCommandButton'
 
 import ErrorReportSection from './ErrorReportSection'
 
@@ -84,6 +86,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
                   🏅 Submitted to OpenHands Index
                 </a>
               )}
+              <CopyCommandButton data={metadata?.params} />
             </div>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <BenchmarkBadge name={parsed.benchmark} />
@@ -168,7 +171,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
       {/* Metadata Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ErrorReportSection slug={slug} />
-        <JsonCard title="Parameters" data={metadata?.params} icon="⚙️" />
+        <ParametersCard data={metadata?.params} />
         <JsonCard title="Init" data={metadata?.init} icon="🚀" />
         <JsonCard title="Run Infer Start" data={metadata?.runInferStart} icon="▶️" />
         <JsonCard title="Run Infer End" data={metadata?.runInferEnd} icon="⏹️" />
