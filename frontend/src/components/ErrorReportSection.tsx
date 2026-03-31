@@ -5,6 +5,7 @@ import SectionMenu from './SectionMenu'
 
 interface ErrorReportSectionProps {
   slug: string
+  status?: 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
 }
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -23,7 +24,7 @@ function ExternalLink({ href, children }: { href: string; children: React.ReactN
   )
 }
 
-export default function ErrorReportSection({ slug }: ErrorReportSectionProps) {
+export default function ErrorReportSection({ slug, status }: ErrorReportSectionProps) {
   const [errorReport, setErrorReport] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -50,7 +51,32 @@ export default function ErrorReportSection({ slug }: ErrorReportSectionProps) {
     }
   }, [loading, errorReport])
 
-  if (loading || !errorReport) return null
+  const isEvalStarted = status === 'running-eval' || status === 'completed'
+
+  if (loading) return null
+
+  if (!errorReport) {
+    if (isEvalStarted) {
+      return (
+        <div id="error-report" data-testid="error-report-section" className="col-span-1 lg:col-span-2 bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-24">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⏳</span>
+              <h3 className="text-lg font-semibold text-oh-text">Error Report</h3>
+            </div>
+            <SectionMenu id="error-report" />
+          </div>
+          <div className="flex items-center gap-2 text-sm text-oh-warning mt-2">
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Evaluation has started but error report is not available yet. Please check back shortly.</span>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
 
   const errorsUrl = getResultsUrl(slug, 'conversation-errors.txt')
 

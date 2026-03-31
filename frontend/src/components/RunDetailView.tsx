@@ -170,7 +170,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
 
       {/* Metadata Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ErrorReportSection slug={slug} />
+        <ErrorReportSection slug={slug} status={status} />
         <ParametersCard data={metadata?.params} />
         <JsonCard title="Init" data={metadata?.init} icon="🚀" />
         <JsonCard title="Run Infer Start" data={metadata?.runInferStart} icon="▶️" />
