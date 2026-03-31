@@ -72,7 +72,7 @@ describe('CopyCommandButton', () => {
     expect(call).toContain('-f sdk_ref=""')
     expect(call).toContain('-f allow_unreleased_branches="true"')
     expect(call).toContain('-f eval_limit="1"')
-    expect(call).toContain('-f model_id="minimax-m2.5"')
+    expect(call).toContain('-f model_ids="minimax-m2.5"')
     expect(call).toContain('-f reason="test eval-job-id"')
     expect(call).toContain('-f eval_branch="main"')
     expect(call).toContain('-f benchmarks_branch="main"')
@@ -125,7 +125,7 @@ describe('CopyCommandButton', () => {
     fireEvent.click(copyButton)
 
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-    expect(call).toContain('-f model_id="claude-sonnet-4-5-20250929"')
+    expect(call).toContain('-f model_ids="claude-sonnet-4-5-20250929"')
   })
 
   it('strips refs/heads/ from branches', () => {
