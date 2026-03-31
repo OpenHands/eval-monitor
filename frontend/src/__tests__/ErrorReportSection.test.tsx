@@ -18,12 +18,69 @@ describe('ErrorReportSection', () => {
     vi.clearAllMocks()
   })
 
-  it('does not render when error report is null', async () => {
+  it('does not render when error report is null and status is not eval-related', async () => {
+    vi.mocked(api.fetchErrorReport).mockResolvedValue(null)
+    
+    render(<ErrorReportSection slug="test-run" status="pending" />)
+    
+    await waitFor(() => {
+      expect(screen.queryByTestId('error-report-section')).not.toBeInTheDocument()
+    })
+  })
+
+  it('does not render when error report is null and no status provided', async () => {
     vi.mocked(api.fetchErrorReport).mockResolvedValue(null)
     
     render(<ErrorReportSection slug="test-run" />)
     
-    // Wait for the state to settle
+    await waitFor(() => {
+      expect(screen.queryByTestId('error-report-section')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows warning when eval started but error report not available yet (running-eval)', async () => {
+    vi.mocked(api.fetchErrorReport).mockResolvedValue(null)
+    
+    render(<ErrorReportSection slug="test-run" status="running-eval" />)
+    
+    await waitFor(() => {
+      expect(screen.getByTestId('error-report-section')).toBeInTheDocument()
+    })
+    
+    expect(screen.getByText('⏳')).toBeInTheDocument()
+    expect(screen.getByText('Error Report')).toBeInTheDocument()
+    expect(screen.getByText('Evaluation has started but error report is not available yet. Please check back shortly.')).toBeInTheDocument()
+  })
+
+  it('shows warning when eval started but error report not available yet (completed)', async () => {
+    vi.mocked(api.fetchErrorReport).mockResolvedValue(null)
+    
+    render(<ErrorReportSection slug="test-run" status="completed" />)
+    
+    await waitFor(() => {
+      expect(screen.getByTestId('error-report-section')).toBeInTheDocument()
+    })
+    
+    expect(screen.getByText('⏳')).toBeInTheDocument()
+    expect(screen.getByText('Error Report')).toBeInTheDocument()
+    expect(screen.getByText('Evaluation has started but error report is not available yet. Please check back shortly.')).toBeInTheDocument()
+  })
+
+  it('does not show warning when eval has not started (running-infer)', async () => {
+    vi.mocked(api.fetchErrorReport).mockResolvedValue(null)
+    
+    render(<ErrorReportSection slug="test-run" status="running-infer" />)
+    
+    await waitFor(() => {
+      expect(screen.queryByTestId('error-report-section')).not.toBeInTheDocument()
+    })
+  })
+
+  it('does not show warning when status is pending', async () => {
+    vi.mocked(api.fetchErrorReport).mockResolvedValue(null)
+    
+    render(<ErrorReportSection slug="test-run" status="pending" />)
+    
     await waitFor(() => {
       expect(screen.queryByTestId('error-report-section')).not.toBeInTheDocument()
     })
