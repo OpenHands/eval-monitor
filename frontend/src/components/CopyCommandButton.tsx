@@ -36,8 +36,8 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // eval_limit
   params['eval_limit'] = valueToString(data.eval_limit)
 
-  // model_id (must exist in params, don't extract from model_name)
-  params['model_id'] = valueToString(data.model_id)
+  // model_ids (must exist in params, don't extract from model_name)
+  params['model_ids'] = valueToString(data.model_id)
 
   // reason (from trigger_reason)
   params['reason'] = valueToString(data.trigger_reason)
