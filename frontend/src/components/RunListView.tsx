@@ -165,7 +165,15 @@ export default function RunListView({
   const filteredRuns = useMemo(() => {
     return runsWithStatus.filter(run => {
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
-      if (filterStatus !== 'all' && run.status !== filterStatus) return false
+      if (filterStatus !== 'all') {
+        if (filterStatus === 'active') {
+          // Active status: show all non-terminal statuses (pending, building, running-infer, running-eval)
+          const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
+          if (!activeStatuses.includes(run.status)) return false
+        } else if (run.status !== filterStatus) {
+          return false
+        }
+      }
       if (filterText) {
         // Split by whitespace or + and filter out empty strings
         const searchTerms = filterText.toLowerCase().split(/[\s+]+/).filter(term => term.length > 0)
@@ -286,6 +294,7 @@ export default function RunListView({
           className="bg-oh-surface border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text focus:outline-none focus:ring-1 focus:ring-oh-primary"
         >
           <option value="all">All statuses</option>
+          <option value="active">Active</option>
           {statuses.map(s => (
             <option key={s} value={s}>{STATUS_CONFIG[s as StatusType]?.label || s}</option>
           ))}
