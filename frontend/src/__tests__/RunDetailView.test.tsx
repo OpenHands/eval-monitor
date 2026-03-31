@@ -2,12 +2,14 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, within, fireEvent, act } from '@testing-library/react'
 import RunDetailView from '../components/RunDetailView'
 import type { RunMetadata } from '../api'
+import { clearJsonCache } from '../api'
 
 const originalFetch = globalThis.fetch
 
 afterEach(() => {
   globalThis.fetch = originalFetch
   vi.restoreAllMocks()
+  clearJsonCache()
 })
 
 function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {

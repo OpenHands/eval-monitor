@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   getRuntime,
   getStartTimestamp,
@@ -8,6 +8,8 @@ import {
   getStageStatus,
   extractCancelledBy,
   augmentParams,
+  clearJsonCache,
+  fetchJson,
 } from './api'
 import type { RunMetadata } from './api'
 
@@ -384,5 +386,61 @@ describe('augmentParams', () => {
   it('returns params unchanged when github_run_id is not a string', () => {
     const params = { sdk_commit: 'abc', github_run_id: 12345 }
     expect(augmentParams(params)).toBe(params)
+  })
+})
+
+describe('JSON caching', () => {
+  beforeEach(() => {
+    clearJsonCache()
+  })
+
+  it('clearJsonCache clears the internal cache', () => {
+    clearJsonCache()
+  })
+
+  it('fetchJson caches results by URL', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Map([['content-type', 'application/json']]),
+      json: () => Promise.resolve({ foo: 'bar' }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const url = '/test/metadata/init.json'
+
+    const result1 = await fetchJson(url)
+    expect(result1).toEqual({ foo: 'bar' })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    const result2 = await fetchJson(url)
+    expect(result2).toEqual({ foo: 'bar' })
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    clearJsonCache()
+    const result3 = await fetchJson(url)
+    expect(result3).toEqual({ foo: 'bar' })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    vi.restoreAllMocks()
+  })
+
+  it('fetchJson caches null results for failed requests', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const url = '/test/metadata/missing.json'
+
+    const result1 = await fetchJson(url)
+    expect(result1).toBeNull()
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    const result2 = await fetchJson(url)
+    expect(result2).toBeNull()
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    vi.restoreAllMocks()
   })
 })

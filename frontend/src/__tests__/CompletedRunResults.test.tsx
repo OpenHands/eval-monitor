@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import CompletedRunResults from '../components/CompletedRunResults'
+import { clearJsonCache } from '../api'
 
 const originalFetch = globalThis.fetch
 
@@ -50,6 +51,7 @@ function mockFetchWithCost(totalCost: number) {
 afterEach(() => {
   globalThis.fetch = originalFetch
   vi.restoreAllMocks()
+  clearJsonCache()
 })
 
 describe('CompletedRunResults', () => {

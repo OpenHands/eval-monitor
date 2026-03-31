@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, clearJsonCache } from '../api'
 import type { RunMetadata } from '../api'
 
 const originalFetch = globalThis.fetch
@@ -7,6 +7,7 @@ const originalFetch = globalThis.fetch
 afterEach(() => {
   globalThis.fetch = originalFetch
   vi.restoreAllMocks()
+  clearJsonCache()
 })
 
 describe('getResultsUrl', () => {

@@ -1,6 +1,12 @@
 const BASE_URL = '/api'
 const RESULTS_BASE_URL = 'https://results.eval.all-hands.dev'
 
+const jsonCache = new Map<string, Record<string, unknown> | null>()
+
+export function clearJsonCache(): void {
+  jsonCache.clear()
+}
+
 export async function fetchRunList(date: string): Promise<string[]> {
   const cacheBust = Math.floor(Date.now() / 1000)
   const res = await fetch(`${BASE_URL}/metadata/${date}.txt?${cacheBust}`)
@@ -72,14 +78,25 @@ const METADATA_FILES = [
   ['cancelEval', 'cancel-eval.json'],
 ] as const
 
-async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
+export async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
+  const cached = jsonCache.get(url)
+  if (cached !== undefined) return cached
   try {
     const res = await fetch(url)
-    if (!res.ok) return null
+    if (!res.ok) {
+      jsonCache.set(url, null)
+      return null
+    }
     const contentType = res.headers.get('content-type') || ''
-    if (contentType.includes('xml')) return null
-    return await res.json()
+    if (contentType.includes('xml')) {
+      jsonCache.set(url, null)
+      return null
+    }
+    const data = await res.json()
+    jsonCache.set(url, data)
+    return data
   } catch {
+    jsonCache.set(url, null)
     return null
   }
 }
