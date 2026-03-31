@@ -379,7 +379,7 @@ describe('EXPORTABLE_FILES', () => {
     expect(filenames).toContain('output.report.json')
     expect(filenames).toContain('init.json')
     expect(filenames).toContain('error.json')
-    expect(filenames).toContain('cost_report_v2.json')
+    expect(filenames).toContain('cost_report_v2.jsonl')
     expect(filenames).toContain('cost_report.jsonl')
     expect(filenames).toContain('conversation-error-report.txt')
   })

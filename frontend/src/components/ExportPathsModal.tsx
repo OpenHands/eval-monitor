@@ -18,7 +18,7 @@ export const EXPORTABLE_FILES: ExportableFile[] = [
   { filename: 'eval-infer-start.json', subdir: 'metadata', defaultChecked: false },
   { filename: 'eval-infer-end.json', subdir: 'metadata', defaultChecked: false },
   { filename: 'cancel-eval.json', subdir: 'metadata', defaultChecked: false },
-  { filename: 'cost_report_v2.json', defaultChecked: false },
+  { filename: 'cost_report_v2.jsonl', defaultChecked: false },
   { filename: 'cost_report.jsonl', defaultChecked: false },
   { filename: 'conversation-error-report.txt', defaultChecked: false },
   { filename: 'conversation-errors.txt', defaultChecked: false },
