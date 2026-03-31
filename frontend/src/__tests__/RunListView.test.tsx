@@ -195,4 +195,90 @@ describe('RunListView', () => {
       expect(screen.getByText('No runs match the current filters.')).toBeInTheDocument()
     })
   })
+
+  describe('active status filtering', () => {
+    const createMetadata = (status: string) => {
+      const base = {
+        init: null,
+        params: null,
+        error: null,
+        runInferStart: null,
+        runInferEnd: null,
+        evalInferStart: null,
+        evalInferEnd: null,
+        cancelEval: null
+      }
+      switch (status) {
+        case 'pending':
+          return { ...base }
+        case 'building':
+          return { ...base, params: { timestamp: '2025-01-01T00:00:00Z' } }
+        case 'running-infer':
+          return { ...base, runInferStart: { timestamp: '2025-01-01T00:00:00Z' } }
+        case 'running-eval':
+          return { ...base, evalInferStart: { timestamp: '2025-01-01T00:00:00Z' } }
+        case 'completed':
+          return { ...base, evalInferEnd: { timestamp: '2025-01-01T00:00:00Z' } }
+        case 'error':
+          return { ...base, error: { timestamp: '2025-01-01T00:00:00Z' } }
+        case 'cancelled':
+          return { ...base, cancelEval: { timestamp: '2025-01-01T00:00:00Z' } }
+        default:
+          return base
+      }
+    }
+
+    const activeStatusProps = {
+      runs: [
+        { slug: 'swebench/pending-run/1', benchmark: 'swebench', model: 'pending-run', jobId: '1' },
+        { slug: 'swebench/building-run/2', benchmark: 'swebench', model: 'building-run', jobId: '2' },
+        { slug: 'swebench/infer-run/3', benchmark: 'swebench', model: 'infer-run', jobId: '3' },
+        { slug: 'swebench/eval-run/4', benchmark: 'swebench', model: 'eval-run', jobId: '4' },
+        { slug: 'swebench/completed-run/5', benchmark: 'swebench', model: 'completed-run', jobId: '5' },
+        { slug: 'swebench/error-run/6', benchmark: 'swebench', model: 'error-run', jobId: '6' },
+        { slug: 'swebench/cancelled-run/7', benchmark: 'swebench', model: 'cancelled-run', jobId: '7' }
+      ],
+      loading: false,
+      error: null,
+      onSelectRun: mockOnSelectRun,
+      runMetadataMap: {
+        'swebench/pending-run/1': createMetadata('pending'),
+        'swebench/building-run/2': createMetadata('building'),
+        'swebench/infer-run/3': createMetadata('running-infer'),
+        'swebench/eval-run/4': createMetadata('running-eval'),
+        'swebench/completed-run/5': createMetadata('completed'),
+        'swebench/error-run/6': createMetadata('error'),
+        'swebench/cancelled-run/7': createMetadata('cancelled')
+      },
+      loadingMetadataList: false,
+      dayGroups: [{ date: '2025-01-01', runs: ['swebench/pending-run/1', 'swebench/building-run/2', 'swebench/infer-run/3', 'swebench/eval-run/4', 'swebench/completed-run/5', 'swebench/error-run/6', 'swebench/cancelled-run/7'] }],
+      filterBenchmark: 'all',
+      setFilterBenchmark: vi.fn(),
+      filterStatus: 'all',
+      setFilterStatus: vi.fn(),
+      filterText: '',
+      setFilterText: vi.fn()
+    }
+
+    it('shows all active statuses when filterStatus is "active"', () => {
+      render(<RunListView {...activeStatusProps} filterStatus="active" />)
+      // Should show pending, building, running-infer, running-eval
+      expect(screen.getByText('pending-run')).toBeInTheDocument()
+      expect(screen.getByText('building-run')).toBeInTheDocument()
+      expect(screen.getByText('infer-run')).toBeInTheDocument()
+      expect(screen.getByText('eval-run')).toBeInTheDocument()
+      // Should NOT show completed, error, cancelled
+      expect(screen.queryByText('completed-run')).not.toBeInTheDocument()
+      expect(screen.queryByText('error-run')).not.toBeInTheDocument()
+      expect(screen.queryByText('cancelled-run')).not.toBeInTheDocument()
+    })
+
+    it('shows the active option in the status filter dropdown', () => {
+      render(<RunListView {...activeStatusProps} />)
+      // The status dropdown is the second select element
+      const selects = document.querySelectorAll('select')
+      expect(selects[1]).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument()
+    })
+  })
 })
