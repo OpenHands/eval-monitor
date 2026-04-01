@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react'
 
 import SectionMenu from './SectionMenu'
+import { getResultsUrl } from '../api'
 
 interface JsonCardProps {
   title: string
   data: Record<string, unknown> | null | undefined
   icon: string
   isError?: boolean
+  slug?: string
+  file?: string
 }
 
 const SDK_COMMIT_BASE_URL = 'https://github.com/OpenHands/software-agent-sdk/commit/'
@@ -27,8 +30,9 @@ function findFirstUrl(text: string): { url: string; href: string; start: number;
   return { url, href, start: m.index, end: m.index + url.length }
 }
 
-export default function JsonCard({ title, data, icon, isError }: JsonCardProps) {
+export default function JsonCard({ title, data, icon, isError, slug, file }: JsonCardProps) {
   const sectionId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const download = slug && file ? { url: getResultsUrl(slug, `metadata/${file}`), filename: file } : undefined
 
   if (data === null || data === undefined) {
     return (
@@ -38,7 +42,7 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
             <span>{icon}</span>
             <h3 className="text-sm font-medium text-oh-text-muted">{title}</h3>
           </div>
-          <SectionMenu id={sectionId} />
+          <SectionMenu id={sectionId} download={download} />
         </div>
         <p className="text-xs text-oh-text-muted italic">Not available yet</p>
       </div>
@@ -55,7 +59,7 @@ export default function JsonCard({ title, data, icon, isError }: JsonCardProps) 
           <span>{icon}</span>
           <h3 className="text-sm font-medium text-oh-text">{title}</h3>
         </div>
-        <SectionMenu id={sectionId} />
+        <SectionMenu id={sectionId} download={download} />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
