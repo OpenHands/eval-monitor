@@ -32,28 +32,20 @@ describe('Header', () => {
     expect(screen.getByText('OpenHands Eval Monitor')).toBeTruthy()
   })
 
-  it('renders the logo as a button when selectedRun is set', () => {
+  it('renders the logo as a link when selectedRun is set', () => {
     const props = { ...defaultProps, selectedRun: 'test-run-123' }
     render(<Header {...props} />)
     const logoContainer = screen.getByTestId('openhands-logo').parentElement
-    expect(logoContainer?.tagName).toBe('BUTTON')
+    expect(logoContainer?.tagName).toBe('A')
     expect(logoContainer?.className).toContain('cursor-pointer')
+    expect((logoContainer as HTMLAnchorElement).href).toContain('/')
   })
 
-  it('logo button is not clickable when selectedRun is not set', () => {
+  it('logo is not a link when selectedRun is not set', () => {
     const props = { ...defaultProps, selectedRun: null }
     render(<Header {...props} />)
     const logoContainer = screen.getByTestId('openhands-logo').parentElement
-    expect(logoContainer?.tagName).toBe('BUTTON')
-    expect(logoContainer?.className).toContain('cursor-default')
-  })
-
-  it('calls onBack when clicking logo when on detail page', () => {
-    const onBack = vi.fn()
-    const props = { ...defaultProps, selectedRun: 'test-run-123', onBack }
-    render(<Header {...props} />)
-    const logoContainer = screen.getByTestId('openhands-logo').parentElement
-    logoContainer?.click()
-    expect(onBack).toHaveBeenCalledTimes(1)
+    expect(logoContainer?.tagName).toBe('DIV')
+    expect(logoContainer?.className).not.toContain('cursor-pointer')
   })
 })
