@@ -34,17 +34,9 @@ export default function SectionMenu({ id, download }: SectionMenuProps) {
     }, 1500);
   };
 
-  const handleDownload = (event: React.MouseEvent) => {
+  const handleDownload = () => {
     if (!download) return;
-    // Open in new tab if command (Mac) or ctrl (Windows/Linux) is pressed
-    if (event.metaKey || event.ctrlKey) {
-      window.open(download.url, '_blank', 'noopener,noreferrer');
-    } else {
-      const a = document.createElement('a');
-      a.href = download.url;
-      a.download = download.filename;
-      a.click();
-    }
+    window.open(download.url, '_blank', 'noopener,noreferrer');
     setIsOpen(false);
   };
 

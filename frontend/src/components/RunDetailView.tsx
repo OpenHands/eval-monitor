@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData } from '../api'
+import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData, getResultsUrl } from '../api'
 import type { RunMetadata, SubmissionData } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
@@ -150,7 +150,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
                 </div>
               </div>
             </div>
-            <SectionMenu id="cancelled-section" />
+            <SectionMenu id="cancelled-section" download={{ url: getResultsUrl(slug, 'metadata/cancel-eval.json'), filename: 'cancel-eval.json' }} />
           </div>
         </div>
       )}
@@ -158,7 +158,7 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
       {/* Error Section */}
       {metadata?.error && (
         <div data-testid="error-section">
-          <JsonCard title="Error" data={metadata.error} icon="❌" isError />
+          <JsonCard title="Error" data={metadata.error} icon="❌" isError slug={slug} file="error.json" />
         </div>
       )}
 
