@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData } from '../api'
+import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData, getResultsUrl } from '../api'
 import type { RunMetadata, SubmissionData } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
@@ -171,12 +171,12 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
       {/* Metadata Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ErrorReportSection slug={slug} status={status} />
-        <ParametersCard data={metadata?.params} />
-        <JsonCard title="Init" data={metadata?.init} icon="🚀" />
-        <JsonCard title="Run Infer Start" data={metadata?.runInferStart} icon="▶️" />
-        <JsonCard title="Run Infer End" data={metadata?.runInferEnd} icon="⏹️" />
-        <JsonCard title="Eval Infer Start" data={metadata?.evalInferStart} icon="🔍" />
-        <JsonCard title="Eval Infer End" data={metadata?.evalInferEnd} icon="✅" />
+        <ParametersCard data={metadata?.params} slug={slug} />
+        <JsonCard title="Init" data={metadata?.init} icon="🚀" slug={slug} file="init.json" />
+        <JsonCard title="Run Infer Start" data={metadata?.runInferStart} icon="▶️" slug={slug} file="run-infer-start.json" />
+        <JsonCard title="Run Infer End" data={metadata?.runInferEnd} icon="⏹️" slug={slug} file="run-infer-end.json" />
+        <JsonCard title="Eval Infer Start" data={metadata?.evalInferStart} icon="🔍" slug={slug} file="eval-infer-start.json" />
+        <JsonCard title="Eval Infer End" data={metadata?.evalInferEnd} icon="✅" slug={slug} file="eval-infer-end.json" />
       </div>
 
       {/* Cancel Evaluation Section */}

@@ -2,9 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 
 interface SectionMenuProps {
   id: string;
+  download?: {
+    url: string;
+    filename: string;
+  };
 }
 
-export default function SectionMenu({ id }: SectionMenuProps) {
+export default function SectionMenu({ id, download }: SectionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -30,6 +34,20 @@ export default function SectionMenu({ id }: SectionMenuProps) {
     }, 1500);
   };
 
+  const handleDownload = (event: React.MouseEvent) => {
+    if (!download) return;
+    // Open in new tab if command (Mac) or ctrl (Windows/Linux) is pressed
+    if (event.metaKey || event.ctrlKey) {
+      window.open(download.url, '_blank', 'noopener,noreferrer');
+    } else {
+      const a = document.createElement('a');
+      a.href = download.url;
+      a.download = download.filename;
+      a.click();
+    }
+    setIsOpen(false);
+  };
+
   return (
     <div className="relative inline-block" ref={menuRef}>
       <button
@@ -43,7 +61,7 @@ export default function SectionMenu({ id }: SectionMenuProps) {
       </button>
       
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-36 bg-oh-surface border border-oh-border rounded shadow-lg z-10">
+        <div className="absolute right-0 mt-1 w-44 bg-oh-surface border border-oh-border rounded shadow-lg z-10">
           <button
             onClick={handleCopyLink}
             className="w-full text-left px-3 py-2 text-sm text-oh-text hover:bg-oh-bg hover:text-oh-primary transition-colors flex items-center gap-2"
@@ -62,6 +80,15 @@ export default function SectionMenu({ id }: SectionMenuProps) {
               </>
             )}
           </button>
+          {download && (
+            <button
+              onClick={handleDownload}
+              className="w-full text-left px-3 py-2 text-sm text-oh-text hover:bg-oh-bg hover:text-oh-primary transition-colors flex items-center gap-2"
+            >
+              <span>📥</span>
+              <span>Download file</span>
+            </button>
+          )}
         </div>
       )}
     </div>

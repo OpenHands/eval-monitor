@@ -1,11 +1,14 @@
 import { formatValue } from './JsonCard'
 import SectionMenu from './SectionMenu'
+import { getResultsUrl } from '../api'
 
 interface ParametersCardProps {
   data: Record<string, unknown> | null | undefined
+  slug?: string
 }
 
-export default function ParametersCard({ data }: ParametersCardProps) {
+export default function ParametersCard({ data, slug }: ParametersCardProps) {
+  const download = slug ? { url: getResultsUrl(slug, 'metadata/params.json'), filename: 'params.json' } : undefined
 
   if (data === null || data === undefined) {
     return (
@@ -15,7 +18,7 @@ export default function ParametersCard({ data }: ParametersCardProps) {
             <span>⚙️</span>
             <h3 className="text-sm font-medium text-oh-text-muted">Parameters</h3>
           </div>
-          <SectionMenu id="parameters" />
+          <SectionMenu id="parameters" download={download} />
         </div>
         <p className="text-xs text-oh-text-muted italic">Not available yet</p>
       </div>
@@ -31,7 +34,7 @@ export default function ParametersCard({ data }: ParametersCardProps) {
           <span>⚙️</span>
           <h3 className="text-sm font-medium text-oh-text">Parameters</h3>
         </div>
-        <SectionMenu id={sectionId} />
+        <SectionMenu id={sectionId} download={download} />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
