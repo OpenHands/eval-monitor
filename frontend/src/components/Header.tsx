@@ -39,8 +39,14 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
               </button>
             )}
             {selectedRun ? (
-              <a
-                href="/"
+              <button
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey) {
+                    window.open('/', '_blank')
+                  } else {
+                    onBack()
+                  }
+                }}
                 className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
                 title="Back to run list"
               >
@@ -53,7 +59,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
                 <h1 className="text-lg font-semibold text-oh-text hidden sm:block">
                   OpenHands Eval Monitor
                 </h1>
-              </a>
+              </button>
             ) : (
               <div className="flex items-center gap-2">
                 <img
