@@ -38,7 +38,12 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
                 </svg>
               </button>
             )}
-            <div className="flex items-center gap-2">
+            <button
+              onClick={selectedRun ? onBack : undefined}
+              className={`flex items-center gap-2 ${selectedRun ? 'cursor-pointer hover:opacity-80 transition-opacity' : 'cursor-default'}`}
+              disabled={!selectedRun}
+              title={selectedRun ? 'Back to run list' : undefined}
+            >
               <img
                 src="/openhands-logo.svg"
                 alt="OpenHands"
@@ -46,9 +51,9 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
                 data-testid="openhands-logo"
               />
               <h1 className="text-lg font-semibold text-oh-text hidden sm:block">
-                Eval Monitor
+                OpenHands Eval Monitor
               </h1>
-            </div>
+            </button>
           </div>
 
           {/* Center: Date Navigation + Days Selector */}
