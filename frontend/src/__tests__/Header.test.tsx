@@ -27,8 +27,25 @@ describe('Header', () => {
     expect(ohPlaceholders).toHaveLength(0)
   })
 
-  it('renders the Eval Monitor title', () => {
+  it('renders the OpenHands Eval Monitor title', () => {
     render(<Header {...defaultProps} />)
-    expect(screen.getByText('Eval Monitor')).toBeTruthy()
+    expect(screen.getByText('OpenHands Eval Monitor')).toBeTruthy()
+  })
+
+  it('renders the logo as a link when selectedRun is set', () => {
+    const props = { ...defaultProps, selectedRun: 'test-run-123' }
+    render(<Header {...props} />)
+    const logoContainer = screen.getByTestId('openhands-logo').parentElement
+    expect(logoContainer?.tagName).toBe('A')
+    expect(logoContainer?.className).toContain('cursor-pointer')
+    expect((logoContainer as HTMLAnchorElement).href).toContain('/')
+  })
+
+  it('logo is not a link when selectedRun is not set', () => {
+    const props = { ...defaultProps, selectedRun: null }
+    render(<Header {...props} />)
+    const logoContainer = screen.getByTestId('openhands-logo').parentElement
+    expect(logoContainer?.tagName).toBe('DIV')
+    expect(logoContainer?.className).not.toContain('cursor-pointer')
   })
 })
