@@ -8,6 +8,8 @@ interface ErrorReportSectionProps {
   status?: 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
 }
 
+const ERROR_REPORT_FILE = 'conversation-error-report.txt'
+
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <a
@@ -52,6 +54,7 @@ export default function ErrorReportSection({ slug, status }: ErrorReportSectionP
   }, [loading, errorReport])
 
   const isEvalStarted = status === 'running-eval' || status === 'completed'
+  const download = { url: getResultsUrl(slug, ERROR_REPORT_FILE), filename: ERROR_REPORT_FILE }
 
   if (loading) return null
 
@@ -64,7 +67,7 @@ export default function ErrorReportSection({ slug, status }: ErrorReportSectionP
               <span className="text-xl">⏳</span>
               <h3 className="text-lg font-semibold text-oh-text">Error Report</h3>
             </div>
-            <SectionMenu id="error-report" />
+            <SectionMenu id="error-report" download={download} />
           </div>
           <div className="flex items-center gap-2 text-sm text-oh-warning mt-2">
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -91,7 +94,7 @@ export default function ErrorReportSection({ slug, status }: ErrorReportSectionP
           <span className="text-xl">{icon}</span>
           <h3 className="text-lg font-semibold text-oh-text">{title}</h3>
         </div>
-        <SectionMenu id="error-report" />
+        <SectionMenu id="error-report" download={download} />
       </div>
       {!noErrors && (
         <div className="mb-4">
