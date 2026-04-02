@@ -354,7 +354,15 @@ describe('augmentParams', () => {
     expect(augmentParams(null)).toBeNull()
   })
 
-  it('synthesizes build_action from github_run_id and inserts it after sdk_commit', () => {
+  it('synthesizes build_action from github_run_id and model_id and inserts it after sdk_commit', () => {
+    const params = { sdk_commit: 'abc123', github_run_id: '23459137418', model_id: 'claude-4-6', eval_limit: 5 }
+    const result = augmentParams(params)!
+    const keys = Object.keys(result)
+    expect(result.build_action).toBe('dispatch-23459137418-claude-4-6')
+    expect(keys.indexOf('build_action')).toBe(keys.indexOf('sdk_commit') + 1)
+  })
+
+  it('synthesizes build_action from github_run_id only when model_id is missing', () => {
     const params = { sdk_commit: 'abc123', github_run_id: '23459137418', eval_limit: 5 }
     const result = augmentParams(params)!
     const keys = Object.keys(result)
@@ -362,11 +370,17 @@ describe('augmentParams', () => {
     expect(keys.indexOf('build_action')).toBe(keys.indexOf('sdk_commit') + 1)
   })
 
+  it('uses first 10 chars of model_id in build_action', () => {
+    const params = { github_run_id: '99999', model_id: 'gemini-3-flash-pro' }
+    const result = augmentParams(params)!
+    expect(result.build_action).toBe('dispatch-99999-gemini-3-f')
+  })
+
   it('appends build_action at the end when sdk_commit is absent', () => {
-    const params = { eval_limit: 5, github_run_id: '99999' }
+    const params = { eval_limit: 5, github_run_id: '99999', model_id: 'claude-4' }
     const result = augmentParams(params)!
     const keys = Object.keys(result)
-    expect(result.build_action).toBe('dispatch-99999')
+    expect(result.build_action).toBe('dispatch-99999-claude-4')
     expect(keys[keys.length - 1]).toBe('build_action')
   })
 
