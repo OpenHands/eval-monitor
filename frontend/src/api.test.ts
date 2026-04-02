@@ -370,10 +370,17 @@ describe('augmentParams', () => {
     expect(keys.indexOf('build_action')).toBe(keys.indexOf('sdk_commit') + 1)
   })
 
-  it('uses first 10 chars of model_id in build_action', () => {
+  it('uses first 10 chars of model_id (without dots) in build_action', () => {
     const params = { github_run_id: '99999', model_id: 'gemini-3-flash-pro' }
     const result = augmentParams(params)!
     expect(result.build_action).toBe('dispatch-99999-gemini-3-f')
+  })
+
+  it('removes dots from model_id before taking first 10 chars', () => {
+    const params = { github_run_id: '12345', model_id: 'claude-sonnet-4.5' }
+    const result = augmentParams(params)!
+    // "claude-sonnet-4.5" -> "claude-sonnet-45" -> "claude-son" (first 10)
+    expect(result.build_action).toBe('dispatch-12345-claude-son')
   })
 
   it('appends build_action at the end when sdk_commit is absent', () => {
