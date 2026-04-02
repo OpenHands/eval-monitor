@@ -376,10 +376,10 @@ describe('augmentParams', () => {
     expect(result.build_action).toBe('dispatch-99999-gemini-3-f')
   })
 
-  it('removes dots from model_id before taking first 10 chars', () => {
+  it('replaces dots with hyphens in model_id before taking first 10 chars', () => {
     const params = { github_run_id: '12345', model_id: 'claude-sonnet-4.5' }
     const result = augmentParams(params)!
-    // "claude-sonnet-4.5" -> "claude-sonnet-45" -> "claude-son" (first 10)
+    // "claude-sonnet-4.5" -> "claude-sonnet-4-5" -> "claude-son" (first 10)
     expect(result.build_action).toBe('dispatch-12345-claude-son')
   })
 
