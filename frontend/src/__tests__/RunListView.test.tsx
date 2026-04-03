@@ -281,4 +281,166 @@ describe('RunListView', () => {
       expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument()
     })
   })
+
+  describe('active runs summary', () => {
+    const createMetadata = (status: string, triggeredBy: string = 'user1') => {
+      const base = {
+        init: null,
+        params: triggeredBy ? { triggered_by: triggeredBy } : null,
+        error: null,
+        runInferStart: null,
+        runInferEnd: null,
+        evalInferStart: null,
+        evalInferEnd: null,
+        cancelEval: null
+      }
+      switch (status) {
+        case 'pending':
+          return { ...base }
+        case 'building':
+          return { ...base, params: { ...base.params, timestamp: '2025-01-01T00:00:00Z' } }
+        case 'running-infer':
+          return { ...base, runInferStart: { timestamp: '2025-01-01T00:00:00Z' } }
+        case 'running-eval':
+          return { ...base, evalInferStart: { timestamp: '2025-01-01T00:00:00Z' } }
+        case 'completed':
+          return { ...base, evalInferEnd: { timestamp: '2025-01-01T00:00:00Z' } }
+        default:
+          return base
+      }
+    }
+
+    it('shows total active runs count', () => {
+      const props = {
+        runs: [
+          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' },
+          { slug: 'swebench/run2/2', benchmark: 'swebench', model: 'run2', jobId: '2' },
+          { slug: 'swebench/run3/3', benchmark: 'swebench', model: 'run3', jobId: '3' }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {
+          'swebench/run1/1': createMetadata('running-infer', 'user1'),
+          'swebench/run2/2': createMetadata('building', 'user1'),
+          'swebench/run3/3': createMetadata('completed', 'user1')
+        },
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: ['swebench/run1/1', 'swebench/run2/2', 'swebench/run3/3'] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn()
+      }
+      render(<RunListView {...props} />)
+      expect(screen.getByTestId('total-active-runs').textContent).toBe('2')
+    })
+
+    it('shows per-author breakdown for active runs', () => {
+      const props = {
+        runs: [
+          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' },
+          { slug: 'swebench/run2/2', benchmark: 'swebench', model: 'run2', jobId: '2' },
+          { slug: 'swebench/run3/3', benchmark: 'swebench', model: 'run3', jobId: '3' }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {
+          'swebench/run1/1': createMetadata('running-infer', 'alice'),
+          'swebench/run2/2': createMetadata('building', 'alice'),
+          'swebench/run3/3': createMetadata('running-infer', 'bob')
+        },
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: ['swebench/run1/1', 'swebench/run2/2', 'swebench/run3/3'] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn()
+      }
+      render(<RunListView {...props} />)
+      expect(screen.getByTestId('active-runs-author-alice').textContent).toContain('alice: 2')
+      expect(screen.getByTestId('active-runs-author-bob').textContent).toContain('bob: 1')
+    })
+
+    it('shows error color when total active >= 12', () => {
+      const runs = Array.from({ length: 12 }, (_, i) => ({
+        slug: `swebench/run${i}/${i}`,
+        benchmark: 'swebench',
+        model: `run${i}`,
+        jobId: String(i)
+      }))
+      const runMetadataMap: Record<string, ReturnType<typeof createMetadata>> = {}
+      runs.forEach((run) => {
+        runMetadataMap[run.slug] = createMetadata('running-infer', 'user1')
+      })
+      const props = {
+        runs,
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap,
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: runs.map(r => r.slug) }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn()
+      }
+      render(<RunListView {...props} />)
+      expect(screen.getByTestId('total-active-runs').className).toContain('text-oh-error')
+    })
+
+    it('shows primary color when total active < 12', () => {
+      const props = {
+        runs: [
+          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {
+          'swebench/run1/1': createMetadata('running-infer', 'user1')
+        },
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: ['swebench/run1/1'] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn()
+      }
+      render(<RunListView {...props} />)
+      expect(screen.getByTestId('total-active-runs').className).toContain('text-oh-primary')
+    })
+
+    it('does not show active summary when loading metadata', () => {
+      const props = {
+        runs: [
+          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: true,
+        dayGroups: [{ date: '2025-01-01', runs: ['swebench/run1/1'] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn()
+      }
+      render(<RunListView {...props} />)
+      expect(screen.queryByTestId('total-active-runs')).not.toBeInTheDocument()
+    })
+  })
 })
