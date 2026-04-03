@@ -8,6 +8,7 @@ import CompletedRunResults from './CompletedRunResults'
 import CopyCommandButton from './CopyCommandButton'
 
 import ErrorReportSection from './ErrorReportSection'
+import InferProgressGraph from './InferProgressGraph'
 
 import SectionMenu from './SectionMenu'
 
@@ -172,6 +173,10 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ErrorReportSection slug={slug} status={status} />
         <ParametersCard data={metadata?.params} slug={slug} />
+        <InferProgressGraph slug={slug} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <JsonCard title="Init" data={metadata?.init} icon="🚀" slug={slug} file="init.json" />
         <JsonCard title="Run Infer Start" data={metadata?.runInferStart} icon="▶️" slug={slug} file="run-infer-start.json" />
         <JsonCard title="Run Infer End" data={metadata?.runInferEnd} icon="⏹️" slug={slug} file="run-infer-end.json" />
