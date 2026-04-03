@@ -58,7 +58,7 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
 
   return (
     <div id="pipeline-progress" className="bg-oh-surface border border-oh-border rounded-lg p-5 scroll-mt-24">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col items-center mb-4">
         <h3 className="text-sm font-medium text-oh-text-muted">Pipeline Progress</h3>
         <SectionMenu id="pipeline-progress" />
       </div>
