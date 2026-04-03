@@ -84,6 +84,79 @@ describe('InferProgressGraph', () => {
     expect(speedTexts.length).toBe(2)
   })
 
+  it('renders accepted instances for each critic', async () => {
+    // lastPoint: output=10, critic1=5, critic2=2, critic3=1
+    // acceptedCritic1 = 10/5 = 2
+    // acceptedCritic2 = (10*2)/2 = 10
+    // acceptedCritic3 = (10*2*10)/1 = 200
+    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
+2026-03-26 21:31:20 UTC, 10, 5, 2, 1`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Accepted instances critic 1:')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('Accepted instances critic 2:')).toBeInTheDocument()
+    expect(screen.getByText('Accepted instances critic 3:')).toBeInTheDocument()
+    expect(screen.getByText('2.00')).toBeInTheDocument() // acceptedCritic1
+    expect(screen.getByText('10.00')).toBeInTheDocument() // acceptedCritic2
+    expect(screen.getByText('200.00')).toBeInTheDocument() // acceptedCritic3
+  })
+
+  it('shows 0.00 when critic denominator is 0', async () => {
+    // lastPoint: output=10, critic1=0, critic2=0, critic3=0
+    // All accepted instances should be 0
+    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
+2026-03-26 21:31:20 UTC, 10, 0, 0, 0`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Accepted instances critic 1:')).toBeInTheDocument()
+    })
+
+    // All should show 0.00
+    const zeroValues = screen.getAllByText('0.00')
+    expect(zeroValues.length).toBe(3)
+  })
+
+  it('shows 0.00 when intermediate critic denominator is 0', async () => {
+    // lastPoint: output=10, critic1=5, critic2=0, critic3=0
+    // acceptedCritic1 = 10/5 = 2
+    // acceptedCritic2 = 0 (denominator is 0)
+    // acceptedCritic3 = 0 (denominator is 0)
+    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
+2026-03-26 21:31:20 UTC, 10, 5, 0, 0`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Accepted instances critic 1:')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('2.00')).toBeInTheDocument() // acceptedCritic1
+    // acceptedCritic2 and acceptedCritic3 should be 0
+    const zeroValues = screen.getAllByText('0.00')
+    expect(zeroValues.length).toBe(2)
+  })
+
   it('has section menu with download link', async () => {
     const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
 2026-03-26 21:31:20 UTC, 0, 2, 0, 0`

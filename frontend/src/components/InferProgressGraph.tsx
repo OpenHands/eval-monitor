@@ -309,16 +309,37 @@ function SpeedStats({ data }: SpeedStatsProps) {
     currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
   }
 
+  // Calculate accepted instances for each critic
+  const acceptedCritic1 = lastPoint.critic1 !== 0 ? lastPoint.output / lastPoint.critic1 : 0
+  const acceptedCritic2 = lastPoint.critic2 !== 0 ? (lastPoint.output * acceptedCritic1) / lastPoint.critic2 : 0
+  const acceptedCritic3 = lastPoint.critic3 !== 0 ? (lastPoint.output * acceptedCritic1 * acceptedCritic2) / lastPoint.critic3 : 0
+
   return (
-    <div className="mt-4 pt-4 border-t border-oh-border/50 grid grid-cols-2 gap-4 text-sm">
-      <div>
-        <span className="text-oh-text-muted">Average Speed:</span>{' '}
-        <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+    <>
+      <div className="mt-4 pt-4 border-t border-oh-border/50 grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span className="text-oh-text-muted">Average Speed:</span>{' '}
+          <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+        </div>
+        <div>
+          <span className="text-oh-text-muted">Current Speed:</span>{' '}
+          <span className="font-mono text-oh-text">{currentSpeed.toFixed(2)} instances/min</span>
+        </div>
       </div>
-      <div>
-        <span className="text-oh-text-muted">Current Speed:</span>{' '}
-        <span className="font-mono text-oh-text">{currentSpeed.toFixed(2)} instances/min</span>
+      <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+        <div>
+          <span className="text-oh-text-muted">Accepted instances critic 1:</span>{' '}
+          <span className="font-mono text-oh-text">{acceptedCritic1.toFixed(2)}</span>
+        </div>
+        <div>
+          <span className="text-oh-text-muted">Accepted instances critic 2:</span>{' '}
+          <span className="font-mono text-oh-text">{acceptedCritic2.toFixed(2)}</span>
+        </div>
+        <div>
+          <span className="text-oh-text-muted">Accepted instances critic 3:</span>{' '}
+          <span className="font-mono text-oh-text">{acceptedCritic3.toFixed(2)}</span>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
