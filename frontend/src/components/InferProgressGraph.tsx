@@ -23,7 +23,8 @@ export default function InferProgressGraph({ slug }: InferProgressGraphProps) {
     let cancelled = false
     const fetchData = async () => {
       try {
-        const url = getResultsUrl(slug, 'metadata/run-infer-progress.txt')
+        const cleanSlug = slug.replace(/\/$/, '')
+        const url = `/api/${cleanSlug}/metadata/run-infer-progress.txt`
         const res = await fetch(url)
         if (cancelled) return
         if (!res.ok) {
