@@ -101,7 +101,7 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
           const durationColor = isCompleted ? 'text-oh-success' : isActive ? 'text-oh-primary' : 'text-oh-text-muted'
 
           return (
-            <div key={stage.label} className="flex items-center flex-1">
+            <div key={stage.label} className="flex items-center">
               <div className="flex flex-col items-center">
                 <div className={`w-3 h-3 rounded-full ${dotColors[stageStatus]} ${stageStatus === 'active' ? 'ring-4 ring-oh-primary/20' : ''}`} />
                 <p className="text-xs font-medium text-oh-text mt-2 whitespace-nowrap">{stage.label}</p>
@@ -110,7 +110,7 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
                 )}
               </div>
               {i < STAGES.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 ${isPending ? lineColors.pending : lineColors[stageStatus]}`} />
+                <div className={`h-0.5 mx-2 min-w-[40px] ${isPending ? lineColors.pending : lineColors[stageStatus]}`} />
               )}
             </div>
           )
