@@ -117,7 +117,7 @@ describe('InferProgressGraph', () => {
     
     await waitFor(() => {
       const svgs = container.querySelectorAll('svg')
-      const chartSvg = Array.from(svgs).find(svg => svg.getAttribute('viewBox') === '0 0 800 300')
+      const chartSvg = Array.from(svgs).find(svg => svg.getAttribute('viewBox') === '0 0 800 200')
       expect(chartSvg).toBeInTheDocument()
     })
   })
@@ -150,7 +150,7 @@ describe('InferProgressGraph', () => {
     })
 
     const svgs = container.querySelectorAll('svg')
-    const chartSvg = Array.from(svgs).find(svg => svg.getAttribute('viewBox') === '0 0 800 300')
+    const chartSvg = Array.from(svgs).find(svg => svg.getAttribute('viewBox') === '0 0 800 200')
     expect(chartSvg).toBeInTheDocument()
     
     const paths = chartSvg?.querySelectorAll('path[stroke]')

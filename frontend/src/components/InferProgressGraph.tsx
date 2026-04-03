@@ -18,6 +18,7 @@ export default function InferProgressGraph({ slug }: InferProgressGraphProps) {
   const [data, setData] = useState<ProgressDataPoint[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -69,30 +70,74 @@ export default function InferProgressGraph({ slug }: InferProgressGraphProps) {
   const downloadUrl = getResultsUrl(slug, 'metadata/run-infer-progress.txt')
   
   return (
-    <div id="infer-progress" className="bg-oh-surface border border-oh-border rounded-lg p-4 scroll-mt-24">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span>📊</span>
-          <h3 className="text-sm font-medium text-oh-text">Inference Progress</h3>
+    <>
+      <div id="infer-progress" className="bg-oh-surface border border-oh-border rounded-lg p-4 scroll-mt-24">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span>📊</span>
+            <h3 className="text-sm font-medium text-oh-text">Inference Progress</h3>
+          </div>
+          <SectionMenu id="infer-progress" download={{ url: downloadUrl, filename: 'run-infer-progress.txt' }} />
         </div>
-        <SectionMenu id="infer-progress" download={{ url: downloadUrl, filename: 'run-infer-progress.txt' }} />
+        
+        <div 
+          className="cursor-pointer hover:opacity-80 transition-opacity relative group"
+          onClick={() => setIsExpanded(true)}
+          title="Click to expand"
+        >
+          <ProgressChart data={data} compact />
+          <div className="absolute top-2 right-2 bg-oh-surface/80 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg className="w-4 h-4 text-oh-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+          </div>
+        </div>
+        <SpeedStats data={data} />
       </div>
-      
-      <ProgressChart data={data} />
-      <SpeedStats data={data} />
-    </div>
+
+      {isExpanded && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsExpanded(false)}
+        >
+          <div 
+            className="bg-oh-surface border border-oh-border rounded-lg p-6 max-w-6xl w-full max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span>📊</span>
+                <h3 className="text-lg font-semibold text-oh-text">Inference Progress</h3>
+              </div>
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="text-oh-text-muted hover:text-oh-text transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <ProgressChart data={data} />
+            <SpeedStats data={data} />
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
 interface ProgressChartProps {
   data: ProgressDataPoint[]
+  compact?: boolean
 }
 
-function ProgressChart({ data }: ProgressChartProps) {
+function ProgressChart({ data, compact = false }: ProgressChartProps) {
   if (data.length === 0) return null
 
   const width = 800
-  const height = 300
+  const height = compact ? 200 : 300
   const padding = { top: 20, right: 20, bottom: 40, left: 60 }
   const chartWidth = width - padding.left - padding.right
   const chartHeight = height - padding.top - padding.bottom
@@ -170,8 +215,15 @@ function ProgressChart({ data }: ProgressChartProps) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="text-oh-text-muted">
+    <div className={compact ? "w-full" : "overflow-x-auto"}>
+      <svg 
+        width="100%" 
+        height={height} 
+        viewBox={`0 0 ${width} ${height}`} 
+        className="text-oh-text-muted"
+        preserveAspectRatio="xMidYMid meet"
+        style={{ minWidth: compact ? 'auto' : `${width}px` }}
+      >
         <rect x={padding.left} y={padding.top} width={chartWidth} height={chartHeight} fill="none" stroke="currentColor" opacity="0.2" />
         
         {timeLabels}
