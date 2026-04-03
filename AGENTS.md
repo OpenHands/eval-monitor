@@ -45,6 +45,10 @@ cd frontend && npm run lint   # run eslint
   - `evaluation_branch` / `eval_branch` → `https://github.com/OpenHands/evaluation/tree/<branch>` (strips `refs/heads/`)
   - `benchmarks_branch` → `https://github.com/OpenHands/benchmarks/tree/<branch>` (strips `refs/heads/`)
 
+## Export Paths Modal Notes
+- `frontend/src/components/ExportPathsModal.tsx` can export both results-bucket file URLs and an `eval_monitor_url` detail-page link for each run.
+- `eval_monitor_url` is built from the current monitor URL, preserves existing query params like date/days/filters, and clears any hash before adding `run=<slug>`.
+
 ## Coding Style
 - TypeScript strict mode, React functional components with hooks
 - Tailwind CSS for styling with custom `oh-*` color theme (defined in `tailwind.config.js`)
