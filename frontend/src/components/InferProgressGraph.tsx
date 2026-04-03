@@ -170,10 +170,10 @@ function ProgressChart({ data, compact = false }: ProgressChartProps) {
       .join(' ')
   }
 
-  const outputPath = createPath(d => d.output, 0)
-  const critic1Path = createPath(d => d.critic1, -3)
-  const critic2Path = createPath(d => d.critic2, 3)
-  const critic3Path = createPath(d => d.critic3, 6)
+  const outputPath = createPath(d => d.output, -10)
+  const critic1Path = createPath(d => d.critic1, -5)
+  const critic2Path = createPath(d => d.critic2, 0)
+  const critic3Path = createPath(d => d.critic3, 5)
 
   const formatTime = (ms: number) => {
     const totalMinutes = Math.floor(ms / 60000)
@@ -239,10 +239,10 @@ function ProgressChart({ data, compact = false }: ProgressChartProps) {
           const x = xScale(d.timestamp.getTime())
           return (
             <g key={i}>
-              <circle cx={x} cy={yScale(d.output) + 0} r="3" fill="#22c55e" />
-              <circle cx={x} cy={yScale(d.critic1) - 3} r="3" fill="#eab308" />
-              <circle cx={x} cy={yScale(d.critic2) + 3} r="3" fill="#f97316" />
-              <circle cx={x} cy={yScale(d.critic3) + 6} r="3" fill="#ef4444" />
+              <circle cx={x} cy={yScale(d.output) - 10} r="3" fill="#22c55e" />
+              <circle cx={x} cy={yScale(d.critic1) - 5} r="3" fill="#eab308" />
+              <circle cx={x} cy={yScale(d.critic2) + 0} r="3" fill="#f97316" />
+              <circle cx={x} cy={yScale(d.critic3) + 5} r="3" fill="#ef4444" />
             </g>
           )
         })}
