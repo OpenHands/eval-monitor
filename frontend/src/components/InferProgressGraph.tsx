@@ -160,20 +160,20 @@ function ProgressChart({ data, compact = false }: ProgressChartProps) {
     return padding.top + chartHeight - (count / maxCount) * chartHeight
   }
 
-  const createPath = (getValue: (d: ProgressDataPoint) => number) => {
+  const createPath = (getValue: (d: ProgressDataPoint) => number, offset = 0) => {
     return data
       .map((d, i) => {
         const x = xScale(d.timestamp.getTime())
-        const y = yScale(getValue(d))
+        const y = yScale(getValue(d)) + offset
         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`
       })
       .join(' ')
   }
 
-  const outputPath = createPath(d => d.output)
-  const critic1Path = createPath(d => d.critic1)
-  const critic2Path = createPath(d => d.critic2)
-  const critic3Path = createPath(d => d.critic3)
+  const outputPath = createPath(d => d.output, 0)
+  const critic1Path = createPath(d => d.critic1, -3)
+  const critic2Path = createPath(d => d.critic2, 3)
+  const critic3Path = createPath(d => d.critic3, 6)
 
   const formatTime = (ms: number) => {
     const totalMinutes = Math.floor(ms / 60000)
@@ -233,6 +233,19 @@ function ProgressChart({ data, compact = false }: ProgressChartProps) {
         <path d={critic1Path} fill="none" stroke="#eab308" strokeWidth="2" />
         <path d={critic2Path} fill="none" stroke="#f97316" strokeWidth="2" />
         <path d={critic3Path} fill="none" stroke="#ef4444" strokeWidth="2" />
+
+        {/* Data point markers */}
+        {data.map((d, i) => {
+          const x = xScale(d.timestamp.getTime())
+          return (
+            <g key={i}>
+              <circle cx={x} cy={yScale(d.output) + 0} r="3" fill="#22c55e" />
+              <circle cx={x} cy={yScale(d.critic1) - 3} r="3" fill="#eab308" />
+              <circle cx={x} cy={yScale(d.critic2) + 3} r="3" fill="#f97316" />
+              <circle cx={x} cy={yScale(d.critic3) + 6} r="3" fill="#ef4444" />
+            </g>
+          )
+        })}
 
         <g transform={`translate(${padding.left + chartWidth / 2}, ${height - 5})`}>
           <text fill="currentColor" fontSize="12" textAnchor="middle" opacity="0.8">
