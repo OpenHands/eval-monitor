@@ -176,4 +176,32 @@ describe('InferProgressGraph', () => {
     expect(fetchUrl).toMatch(/\/api\/swebench\/litellm_proxy-claude-sonnet\/123\/metadata\/run-infer-progress\.txt\?\d+/)
     expect(fetchUrl).toContain('/metadata/run-infer-progress.txt?')
   })
+
+  it('renders chart with correct colors for each line', async () => {
+    const mockData = `2026-03-26 21:30:20 UTC, 5, 3, 2, 1
+2026-03-26 21:31:20 UTC, 10, 6, 4, 2`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    const { container } = render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      const svgs = container.querySelectorAll('svg')
+      const chartSvg = Array.from(svgs).find(svg => svg.getAttribute('viewBox') === '0 0 800 200')
+      expect(chartSvg).toBeInTheDocument()
+
+      const paths = chartSvg?.querySelectorAll('path[stroke]')
+      expect(paths?.length).toBe(4)
+
+      const colors = Array.from(paths!).map(p => p.getAttribute('stroke'))
+      // output: cyan-green, critic1: green-yellow, critic2: orange, critic3: red
+      expect(colors).toContain('#14b8a6') // cyan-green for output
+      expect(colors).toContain('#a3e635') // green-yellow for critic1
+      expect(colors).toContain('#f97316') // orange for critic2
+      expect(colors).toContain('#ef4444') // red for critic3
+    })
+  })
 })
