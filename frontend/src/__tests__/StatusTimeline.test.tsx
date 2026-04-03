@@ -128,4 +128,17 @@ describe('StatusTimeline', () => {
     expect(text).not.toContain('UTC')
     expect(text).not.toMatch(/\d{2}:\d{2}:\d{2}/)
   })
+
+  it('centers the pipeline stages', () => {
+    const metadata = makeMetadata({
+      params: { timestamp: '2025-03-15T10:00:00Z' },
+      init: { timestamp: '2025-03-15T10:05:00Z' },
+      runInferStart: { timestamp: '2025-03-15T10:06:00Z' },
+      runInferEnd: { timestamp: '2025-03-15T11:06:00Z' },
+    })
+    const { container } = render(<StatusTimeline metadata={metadata} now={Date.now()} />)
+    const pipelineSection = container.querySelector('.bg-oh-surface')!
+    const stagesContainer = pipelineSection.querySelector('.justify-center')
+    expect(stagesContainer).not.toBeNull()
+  })
 })
