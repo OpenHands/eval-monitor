@@ -202,6 +202,23 @@ export default function RunListView({
     return counts
   }, [runsWithStatus])
 
+  // Active runs count and per-author breakdown (from all runs, independent of filters)
+  const { totalActive, activeByAuthor } = useMemo(() => {
+    let totalActive = 0
+    const activeByAuthor: Record<string, number> = {}
+    const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
+    runsWithStatus.forEach(r => {
+      if (activeStatuses.includes(r.status)) {
+        totalActive++
+        const author = r.triggeredBy
+        if (author && author !== '—') {
+          activeByAuthor[author] = (activeByAuthor[author] || 0) + 1
+        }
+      }
+    })
+    return { totalActive, activeByAuthor }
+  }, [runsWithStatus])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -255,17 +272,31 @@ export default function RunListView({
             </span>
           )}
         </h2>
-        <div className="flex items-center gap-3 flex-wrap">
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
-              className={`text-xs px-2 py-1 rounded transition-colors ${filterStatus === status ? 'ring-1 ring-oh-primary' : 'opacity-70 hover:opacity-100'}`}
-            >
-              <StatusBadge status={status as StatusType} />
-              <span className="ml-1 text-oh-text-muted">{count}</span>
-            </button>
-          ))}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            {Object.entries(statusCounts).map(([status, count]) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${filterStatus === status ? 'ring-1 ring-oh-primary' : 'opacity-70 hover:opacity-100'}`}
+              >
+                <StatusBadge status={status as StatusType} />
+                <span className="ml-1 text-oh-text-muted">{count}</span>
+              </button>
+            ))}
+          </div>
+          {!loadingMetadataList && totalActive > 0 && (
+            <div className="flex items-center gap-3 flex-wrap text-xs">
+              <span className="text-oh-text-muted">
+                Active: <span data-testid="total-active-runs" className={`font-bold ${totalActive >= 12 ? 'text-oh-error' : 'text-oh-primary'}`}>{totalActive}</span>
+              </span>
+              {Object.entries(activeByAuthor).sort((a, b) => b[1] - a[1]).map(([author, count]) => (
+                <span key={author} data-testid={`active-runs-author-${author}`} className="text-oh-text-muted">
+                  <span className="font-medium text-oh-text">{author}</span>: {count}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
