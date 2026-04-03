@@ -156,4 +156,24 @@ describe('InferProgressGraph', () => {
     const paths = chartSvg?.querySelectorAll('path[stroke]')
     expect(paths?.length).toBeGreaterThanOrEqual(4)
   })
+
+  it('includes cache bust parameter in fetch URL', async () => {
+    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0`
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+    globalThis.fetch = mockFetch
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled()
+    })
+
+    const fetchUrl = mockFetch.mock.calls[0][0]
+    expect(fetchUrl).toMatch(/\/api\/swebench\/litellm_proxy-claude-sonnet\/123\/metadata\/run-infer-progress\.txt\?\d+/)
+    expect(fetchUrl).toContain('/metadata/run-infer-progress.txt?')
+  })
 })
