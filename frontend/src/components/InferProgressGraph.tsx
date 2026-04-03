@@ -230,9 +230,9 @@ function ProgressChart({ data, compact = false }: ProgressChartProps) {
         {timeLabels}
         {countLabels}
 
-        <path d={outputPath} fill="none" stroke="#22c55e" strokeWidth="2" />
-        <path d={critic1Path} fill="none" stroke="#eab308" strokeWidth="2" />
-        <path d={critic2Path} fill="none" stroke="#f97316" strokeWidth="2" />
+        <path d={outputPath} fill="none" stroke="#0ea5e9" strokeWidth="2" />
+        <path d={critic1Path} fill="none" stroke="#a3e635" strokeWidth="2" />
+        <path d={critic2Path} fill="none" stroke="#fb923c" strokeWidth="2" />
         <path d={critic3Path} fill="none" stroke="#ef4444" strokeWidth="2" />
 
         {/* Data point markers */}
@@ -240,9 +240,9 @@ function ProgressChart({ data, compact = false }: ProgressChartProps) {
           const x = xScale(d.timestamp.getTime())
           return (
             <g key={i}>
-              <circle cx={x} cy={yScale(d.output) - 10} r="3" fill="#22c55e" />
-              <circle cx={x} cy={yScale(d.critic1) - 5} r="3" fill="#eab308" />
-              <circle cx={x} cy={yScale(d.critic2) + 0} r="3" fill="#f97316" />
+              <circle cx={x} cy={yScale(d.output) - 10} r="3" fill="#0ea5e9" />
+              <circle cx={x} cy={yScale(d.critic1) - 5} r="3" fill="#a3e635" />
+              <circle cx={x} cy={yScale(d.critic2) + 0} r="3" fill="#fb923c" />
               <circle cx={x} cy={yScale(d.critic3) + 5} r="3" fill="#ef4444" />
             </g>
           )
@@ -263,15 +263,15 @@ function ProgressChart({ data, compact = false }: ProgressChartProps) {
       
       <div className="flex items-center justify-center gap-6 mt-2 text-xs">
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-[#22c55e]" />
+          <div className="w-4 h-0.5 bg-[#0ea5e9]" />
           <span className="text-oh-text-muted">Output</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-[#eab308]" />
+          <div className="w-4 h-0.5 bg-[#a3e635]" />
           <span className="text-oh-text-muted">Critic 1</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-[#f97316]" />
+          <div className="w-4 h-0.5 bg-[#fb923c]" />
           <span className="text-oh-text-muted">Critic 2</span>
         </div>
         <div className="flex items-center gap-1.5">
