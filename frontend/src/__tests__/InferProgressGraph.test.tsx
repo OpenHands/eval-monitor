@@ -198,9 +198,9 @@ describe('InferProgressGraph', () => {
 
       const colors = Array.from(paths!).map(p => p.getAttribute('stroke'))
       // output: cyan-green, critic1: green-yellow, critic2: orange, critic3: red
-      expect(colors).toContain('#14b8a6') // cyan-green for output
+      expect(colors).toContain('#0ea5e9') // skyblue for output
       expect(colors).toContain('#a3e635') // green-yellow for critic1
-      expect(colors).toContain('#f97316') // orange for critic2
+      expect(colors).toContain('#fb923c') // yellowish orange for critic2
       expect(colors).toContain('#ef4444') // red for critic3
     })
   })
