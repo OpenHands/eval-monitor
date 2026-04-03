@@ -5,12 +5,14 @@ export interface ExportableFile {
   filename: string
   subdir?: string // e.g., 'metadata' for params.json
   defaultChecked: boolean
+  type?: 'results-file' | 'detail-page'
 }
 
 export const EXPORTABLE_FILES: ExportableFile[] = [
   { filename: 'params.json', subdir: 'metadata', defaultChecked: true },
   { filename: 'results.tar.gz', defaultChecked: true },
   { filename: 'output.report.json', defaultChecked: true },
+  { filename: 'eval_monitor_url', defaultChecked: false, type: 'detail-page' },
   { filename: 'init.json', subdir: 'metadata', defaultChecked: false },
   { filename: 'error.json', subdir: 'metadata', defaultChecked: false },
   { filename: 'run-infer-start.json', subdir: 'metadata', defaultChecked: false },
@@ -59,6 +61,13 @@ export function buildFilterString(filterBenchmark: string, filterStatus: string,
 
 export function getFilePath(file: ExportableFile): string {
   return file.subdir ? `${file.subdir}/${file.filename}` : file.filename
+}
+
+export function getEvalMonitorUrl(currentUrl: string, slug: string): string {
+  const url = new URL(currentUrl)
+  url.searchParams.set('run', slug)
+  url.hash = ''
+  return url.toString()
 }
 
 export default function ExportPathsModal({ isOpen, onClose, filteredRuns, filterBenchmark, filterStatus, filterText }: ExportPathsModalProps) {
@@ -112,10 +121,15 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns, filter
     return filteredRuns.map(run => {
       const entry: Record<string, string> = { eval_job_id: run.jobId }
       EXPORTABLE_FILES.forEach(file => {
-        if (selectedFiles.has(file.filename)) {
-          const path = getFilePath(file)
-          entry[file.filename] = getResultsUrl(run.slug, path)
+        if (!selectedFiles.has(file.filename)) return
+
+        if (file.type === 'detail-page') {
+          entry[file.filename] = getEvalMonitorUrl(window.location.href, run.slug)
+          return
         }
+
+        const path = getFilePath(file)
+        entry[file.filename] = getResultsUrl(run.slug, path)
       })
       return entry
     })
@@ -173,7 +187,7 @@ export default function ExportPathsModal({ isOpen, onClose, filteredRuns, filter
         </div>
 
         <p className="text-sm text-oh-text-muted mb-4">
-          Select which files to include in the export ({filteredRuns.length} run{filteredRuns.length !== 1 ? 's' : ''})
+          Select which files or links to include in the export ({filteredRuns.length} run{filteredRuns.length !== 1 ? 's' : ''})
         </p>
 
         <div className="flex items-center gap-2 mb-3 pb-3 border-b border-oh-border">

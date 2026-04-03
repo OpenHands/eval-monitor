@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import ExportPathsModal, { EXPORTABLE_FILES, getFilePath, buildFilterString } from '../components/ExportPathsModal'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
+import ExportPathsModal, { EXPORTABLE_FILES, getFilePath, buildFilterString, getEvalMonitorUrl } from '../components/ExportPathsModal'
 
 describe('ExportPathsModal', () => {
   const mockOnClose = vi.fn()
@@ -9,14 +9,20 @@ describe('ExportPathsModal', () => {
     { slug: 'swebench/model-a/123', jobId: '123' },
     { slug: 'gaia/model-b/456', jobId: '456' },
   ]
+  const originalCreateObjectURL = URL.createObjectURL
+  const originalRevokeObjectURL = URL.revokeObjectURL
 
   beforeEach(() => {
     mockOnClose.mockClear()
-    // Mock URL.createObjectURL and URL.revokeObjectURL
-    vi.stubGlobal('URL', {
-      createObjectURL: vi.fn(() => 'blob:test'),
-      revokeObjectURL: vi.fn(),
-    })
+    window.history.replaceState({}, '', '/')
+    URL.createObjectURL = vi.fn(() => 'blob:test')
+    URL.revokeObjectURL = vi.fn()
+  })
+
+  afterEach(() => {
+    URL.createObjectURL = originalCreateObjectURL
+    URL.revokeObjectURL = originalRevokeObjectURL
+    vi.restoreAllMocks()
   })
 
   it('does not render when closed', () => {
@@ -45,7 +51,7 @@ describe('ExportPathsModal', () => {
       />
     )
     expect(screen.getByText('Export current instances paths to JSON')).toBeInTheDocument()
-    expect(screen.getByText(/Select which files to include.*2 runs/)).toBeInTheDocument()
+    expect(screen.getByText(/Select which files or links to include.*2 runs/)).toBeInTheDocument()
   })
 
   it('shows all exportable file checkboxes', () => {
@@ -235,13 +241,50 @@ describe('ExportPathsModal', () => {
       />
     )
 
-    fireEvent.click(screen.getByTestId('copy-button'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-button'))
+    })
 
     expect(mockWriteText).toHaveBeenCalled()
     const copiedJson = JSON.parse(mockWriteText.mock.calls[0][0])
     expect(copiedJson).toHaveLength(2)
     expect(copiedJson[0].eval_job_id).toBe('123')
     expect(copiedJson[0]['params.json']).toContain('swebench/model-a/123')
+  })
+
+  it('includes eval monitor detail links when selected for export', async () => {
+    const mockWriteText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: { writeText: mockWriteText }
+    })
+    window.history.replaceState({}, '', '/?date=2025-01-01&days=2&status=completed#ignore-me')
+
+    render(
+      <ExportPathsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        filteredRuns={mockFilteredRuns}
+        filterBenchmark="all"
+        filterStatus="completed"
+        filterText=""
+      />
+    )
+
+    fireEvent.click(screen.getByTestId('checkbox-eval_monitor_url'))
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-button'))
+    })
+
+    expect(mockWriteText).toHaveBeenCalled()
+    const copiedJson = JSON.parse(mockWriteText.mock.calls[0][0])
+    const detailUrl = new URL(copiedJson[0].eval_monitor_url)
+
+    expect(detailUrl.searchParams.get('date')).toBe('2025-01-01')
+    expect(detailUrl.searchParams.get('days')).toBe('2')
+    expect(detailUrl.searchParams.get('status')).toBe('completed')
+    expect(detailUrl.searchParams.get('run')).toBe('swebench/model-a/123')
+    expect(detailUrl.hash).toBe('')
   })
 
   it('shows Copied! text after clicking copy button', async () => {
@@ -264,9 +307,10 @@ describe('ExportPathsModal', () => {
     const copyButton = screen.getByTestId('copy-button')
     expect(copyButton).toHaveTextContent('Copy')
 
-    fireEvent.click(copyButton)
+    await act(async () => {
+      fireEvent.click(copyButton)
+    })
 
-    // Wait for state update
     await vi.waitFor(() => {
       expect(screen.getByTestId('copy-button')).toHaveTextContent('Copied!')
     })
@@ -377,11 +421,19 @@ describe('EXPORTABLE_FILES', () => {
     expect(filenames).toContain('params.json')
     expect(filenames).toContain('results.tar.gz')
     expect(filenames).toContain('output.report.json')
+    expect(filenames).toContain('eval_monitor_url')
     expect(filenames).toContain('init.json')
     expect(filenames).toContain('error.json')
     expect(filenames).toContain('cost_report_v2.jsonl')
     expect(filenames).toContain('cost_report.jsonl')
     expect(filenames).toContain('conversation-error-report.txt')
+  })
+})
+
+describe('getEvalMonitorUrl', () => {
+  it('preserves current filters and clears hashes while selecting the run', () => {
+    expect(getEvalMonitorUrl('https://eval.example.com/?date=2025-01-01&days=2#section', 'swebench/model/123'))
+      .toBe('https://eval.example.com/?date=2025-01-01&days=2&run=swebench%2Fmodel%2F123')
   })
 })
 
