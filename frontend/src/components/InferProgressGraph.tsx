@@ -309,10 +309,10 @@ function SpeedStats({ data }: SpeedStatsProps) {
     currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
   }
 
-  // Calculate accepted instances for each critic
+  // Calculate accepted for each critic
   const acceptedCritic1 = lastPoint.critic1 !== 0 ? lastPoint.output / lastPoint.critic1 : 0
-  const acceptedCritic2 = lastPoint.critic2 !== 0 ? (lastPoint.output * acceptedCritic1) / lastPoint.critic2 : 0
-  const acceptedCritic3 = lastPoint.critic3 !== 0 ? (lastPoint.output * acceptedCritic1 * acceptedCritic2) / lastPoint.critic3 : 0
+  const acceptedCritic2 = lastPoint.critic2 !== 0 ? (lastPoint.output * (1 - acceptedCritic1)) / lastPoint.critic2 : 0
+  const acceptedCritic3 = lastPoint.critic3 !== 0 ? ((lastPoint.output * (1 - acceptedCritic1)) * (1 - acceptedCritic2)) / lastPoint.critic3 : 0
 
   return (
     <>
