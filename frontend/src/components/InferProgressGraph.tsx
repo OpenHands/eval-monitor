@@ -316,7 +316,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
 
   const formatAccepted = (value: number) => {
     if (value === 1.0) return '-'
-    return value.toFixed(2)
+    return `${(value * 100).toFixed(2)}%`
   }
 
   return (
@@ -334,7 +334,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
         <div>
           <span className="text-oh-text-muted">Accepted critic 1:</span>{' '}
-          <span className="font-mono text-oh-text">{acceptedCritic1.toFixed(2)}</span>
+          <span className="font-mono text-oh-text">{acceptedCritic1 === 1.0 ? '-' : `${(acceptedCritic1 * 100).toFixed(2)}%`}</span>
         </div>
         <div>
           <span className="text-oh-text-muted">Accepted critic 2:</span>{' '}
