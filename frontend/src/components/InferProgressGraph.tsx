@@ -332,7 +332,8 @@ function SpeedStats({ data }: SpeedStatsProps) {
     : 0
 
   const formatAccepted = (value: number) => {
-    return `${(value * 100).toFixed(2)}%`
+    if (value === 1.0) return '-'
+    return `${Math.round(value * 100)}%`
   }
 
   return (
@@ -354,11 +355,11 @@ function SpeedStats({ data }: SpeedStatsProps) {
         </div>
         <div>
           <span className="text-oh-text-muted">Accepted critic 2:</span>{' '}
-          <span className="font-mono text-oh-text">{formatAccepted(acceptedCritic2)}</span>
+          <span className="font-mono text-oh-text">{acceptedCritic1 === 1.0 ? '-' : formatAccepted(acceptedCritic2)}</span>
         </div>
         <div>
           <span className="text-oh-text-muted">Accepted critic 3:</span>{' '}
-          <span className="font-mono text-oh-text">{formatAccepted(acceptedCritic3)}</span>
+          <span className="font-mono text-oh-text">{acceptedCritic1 === 1.0 || acceptedCritic2 === 1.0 ? '-' : formatAccepted(acceptedCritic3)}</span>
         </div>
       </div>
     </>
