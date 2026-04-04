@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance } from '../api'
 import type { RunMetadata } from '../api'
 
 const originalFetch = globalThis.fetch
@@ -446,6 +446,72 @@ describe('fetchCostReport', () => {
     await fetchCostReport('swebench/model/123/')
     const calledUrls = (fetchMock as ReturnType<typeof vi.fn>).mock.calls.map((call: unknown[]) => String(call[0]))
     expect(calledUrls.every(u => !u.includes('//'))).toBe(true)
+  })
+})
+
+describe('getActiveWorkersForInstance', () => {
+  it('returns min(num_infer_workers, eval_limit) when both are set', () => {
+    const metadata = makeMetadata({
+      params: { num_infer_workers: 30, eval_limit: 100 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(30)
+  })
+
+  it('returns num_infer_workers when eval_limit is not set', () => {
+    const metadata = makeMetadata({
+      params: { num_infer_workers: 50 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(50)
+  })
+
+  it('returns eval_limit when num_infer_workers is not set', () => {
+    const metadata = makeMetadata({
+      params: { eval_limit: 15 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(15)
+  })
+
+  it('returns 20 when neither num_infer_workers nor eval_limit is set', () => {
+    const metadata = makeMetadata()
+    expect(getActiveWorkersForInstance(metadata)).toBe(20)
+  })
+
+  it('returns 20 when params is null', () => {
+    const metadata = makeMetadata({ params: null })
+    expect(getActiveWorkersForInstance(metadata)).toBe(20)
+  })
+
+  it('returns 20 when params is empty object', () => {
+    const metadata = makeMetadata({ params: {} })
+    expect(getActiveWorkersForInstance(metadata)).toBe(20)
+  })
+
+  it('ignores non-numeric num_infer_workers and uses eval_limit', () => {
+    const metadata = makeMetadata({
+      params: { num_infer_workers: 'string' as unknown as number, eval_limit: 10 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(10)
+  })
+
+  it('ignores null num_infer_workers and uses eval_limit', () => {
+    const metadata = makeMetadata({
+      params: { num_infer_workers: null, eval_limit: 5 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(5)
+  })
+
+  it('ignores null eval_limit and uses num_infer_workers', () => {
+    const metadata = makeMetadata({
+      params: { num_infer_workers: 30, eval_limit: null },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(30)
+  })
+
+  it('returns min when both are set and num_infer_workers < eval_limit', () => {
+    const metadata = makeMetadata({
+      params: { num_infer_workers: 10, eval_limit: 50 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(10)
   })
 })
 

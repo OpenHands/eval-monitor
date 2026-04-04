@@ -328,3 +328,30 @@ export async function fetchSubmissionData(slug: string): Promise<SubmissionData 
     url: data.url,
   }
 }
+
+/** Calculate active workers for a single instance based on its metadata.
+ *  active_workers = if num_infer_workers != null and eval_limit != null then min(num_infer_workers, eval_limit)
+ *                   else if num_infer_workers != null then num_infer_workers
+ *                   else if eval_limit != null then eval_limit
+ *                   else 20
+ */
+export function getActiveWorkersForInstance(metadata: RunMetadata): number {
+  const params = metadata.params
+  if (params) {
+    const numInferWorkers = params.num_infer_workers
+    const evalLimit = params.eval_limit
+    const hasNumInferWorkers = typeof numInferWorkers === 'number' && numInferWorkers !== null
+    const hasEvalLimit = typeof evalLimit === 'number' && evalLimit !== null
+    
+    if (hasNumInferWorkers && hasEvalLimit) {
+      return Math.min(numInferWorkers as number, evalLimit as number)
+    }
+    if (hasNumInferWorkers) {
+      return numInferWorkers as number
+    }
+    if (hasEvalLimit) {
+      return evalLimit as number
+    }
+  }
+  return 20
+}

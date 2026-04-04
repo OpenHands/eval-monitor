@@ -70,6 +70,16 @@ describe('RunListView', () => {
     filterText: '',
     setFilterText: vi.fn()
   }
+
+  beforeEach(() => {
+    mockOnSelectRun.mockClear()
+    vi.stubGlobal('window', {
+      ...window,
+      location: { href: 'http://localhost/' },
+      open: vi.fn()
+    })
+  })
+
   const defaultProps = {
     runs: [
       {
@@ -90,17 +100,9 @@ describe('RunListView', () => {
     filterStatus: 'all',
     setFilterStatus: vi.fn(),
     filterText: '',
-    setFilterText: vi.fn()
+    setFilterText: vi.fn(),
+    showDetail: false
   }
-
-  beforeEach(() => {
-    mockOnSelectRun.mockClear()
-    vi.stubGlobal('window', {
-      ...window,
-      location: { href: 'http://localhost/' },
-      open: vi.fn()
-    })
-  })
 
   it('calls onSelectRun on normal click', () => {
     render(<RunListView {...defaultProps} />)
@@ -282,11 +284,11 @@ describe('RunListView', () => {
     })
   })
 
-  describe('active runs summary', () => {
-    const createMetadata = (status: string, triggeredBy: string = 'user1') => {
+  describe('active workers summary', () => {
+    const createMetadata = (status: string, triggeredBy: string = 'user1', extraParams: Record<string, unknown> = {}) => {
       const base = {
         init: null,
-        params: triggeredBy ? { triggered_by: triggeredBy } : null,
+        params: triggeredBy ? { triggered_by: triggeredBy, ...extraParams } : null,
         error: null,
         runInferStart: null,
         runInferEnd: null,
@@ -298,7 +300,7 @@ describe('RunListView', () => {
         case 'pending':
           return { ...base }
         case 'building':
-          return { ...base, params: { ...base.params, timestamp: '2025-01-01T00:00:00Z' } }
+          return { ...base, params: base.params ? { ...base.params, timestamp: '2025-01-01T00:00:00Z' } : { timestamp: '2025-01-01T00:00:00Z' } }
         case 'running-infer':
           return { ...base, runInferStart: { timestamp: '2025-01-01T00:00:00Z' } }
         case 'running-eval':
@@ -310,7 +312,7 @@ describe('RunListView', () => {
       }
     }
 
-    it('shows total active runs count', () => {
+    it('shows total active workers count', () => {
       const props = {
         runs: [
           { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' },
@@ -332,13 +334,15 @@ describe('RunListView', () => {
         filterStatus: 'all',
         setFilterStatus: vi.fn(),
         filterText: '',
-        setFilterText: vi.fn()
+        setFilterText: vi.fn(),
+        showDetail: false
       }
       render(<RunListView {...props} />)
-      expect(screen.getByTestId('total-active-runs').textContent).toBe('2')
+      // 2 active runs with default 20 workers each = 40 workers
+      expect(screen.getByTestId('total-active-workers').textContent).toBe('40')
     })
 
-    it('shows per-author breakdown for active runs', () => {
+    it('shows per-author breakdown for active workers based on worker count', () => {
       const props = {
         runs: [
           { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' },
@@ -349,9 +353,9 @@ describe('RunListView', () => {
         error: null,
         onSelectRun: mockOnSelectRun,
         runMetadataMap: {
-          'swebench/run1/1': createMetadata('running-infer', 'alice'),
-          'swebench/run2/2': createMetadata('building', 'alice'),
-          'swebench/run3/3': createMetadata('running-infer', 'bob')
+          'swebench/run1/1': createMetadata('running-infer', 'alice', { num_infer_workers: 10 }),
+          'swebench/run2/2': createMetadata('building', 'alice', { num_infer_workers: 5 }),
+          'swebench/run3/3': createMetadata('running-infer', 'bob', { num_infer_workers: 2 })
         },
         loadingMetadataList: false,
         dayGroups: [{ date: '2025-01-01', runs: ['swebench/run1/1', 'swebench/run2/2', 'swebench/run3/3'] }],
@@ -360,44 +364,44 @@ describe('RunListView', () => {
         filterStatus: 'all',
         setFilterStatus: vi.fn(),
         filterText: '',
-        setFilterText: vi.fn()
+        setFilterText: vi.fn(),
+        showDetail: false
       }
       render(<RunListView {...props} />)
-      expect(screen.getByTestId('active-runs-author-alice').textContent).toContain('alice: 2')
-      expect(screen.getByTestId('active-runs-author-bob').textContent).toContain('bob: 1')
+      expect(screen.getByTestId('total-active-workers').textContent).toBe('17')
+      expect(screen.getByTestId('active-workers-author-alice').textContent).toContain('alice: 15')
+      expect(screen.getByTestId('active-workers-author-bob').textContent).toContain('bob: 2')
     })
 
-    it('shows error color when total active >= 12', () => {
-      const runs = Array.from({ length: 12 }, (_, i) => ({
-        slug: `swebench/run${i}/${i}`,
-        benchmark: 'swebench',
-        model: `run${i}`,
-        jobId: String(i)
-      }))
-      const runMetadataMap: Record<string, ReturnType<typeof createMetadata>> = {}
-      runs.forEach((run) => {
-        runMetadataMap[run.slug] = createMetadata('running-infer', 'user1')
-      })
+    it('calculates workers from eval_limit when num_infer_workers not set', () => {
       const props = {
-        runs,
+        runs: [
+          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' },
+          { slug: 'swebench/run2/2', benchmark: 'swebench', model: 'run2', jobId: '2' }
+        ],
         loading: false,
         error: null,
         onSelectRun: mockOnSelectRun,
-        runMetadataMap,
+        runMetadataMap: {
+          'swebench/run1/1': createMetadata('running-infer', 'user1', { eval_limit: 50 }),
+          'swebench/run2/2': createMetadata('running-infer', 'user1', { eval_limit: 10 })
+        },
         loadingMetadataList: false,
-        dayGroups: [{ date: '2025-01-01', runs: runs.map(r => r.slug) }],
+        dayGroups: [{ date: '2025-01-01', runs: ['swebench/run1/1', 'swebench/run2/2'] }],
         filterBenchmark: 'all',
         setFilterBenchmark: vi.fn(),
         filterStatus: 'all',
         setFilterStatus: vi.fn(),
         filterText: '',
-        setFilterText: vi.fn()
+        setFilterText: vi.fn(),
+        showDetail: false
       }
       render(<RunListView {...props} />)
-      expect(screen.getByTestId('total-active-runs').className).toContain('text-oh-error')
+      // eval_limit: 50 -> 50 (no cap), eval_limit: 10 -> 10
+      expect(screen.getByTestId('total-active-workers').textContent).toBe('60')
     })
 
-    it('shows primary color when total active < 12', () => {
+    it('shows primary color when total active workers < 240', () => {
       const props = {
         runs: [
           { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' }
@@ -415,10 +419,102 @@ describe('RunListView', () => {
         filterStatus: 'all',
         setFilterStatus: vi.fn(),
         filterText: '',
-        setFilterText: vi.fn()
+        setFilterText: vi.fn(),
+        showDetail: false
       }
       render(<RunListView {...props} />)
-      expect(screen.getByTestId('total-active-runs').className).toContain('text-oh-primary')
+      expect(screen.getByTestId('total-active-workers').className).toContain('text-oh-primary')
+    })
+
+    it('shows orange color when total active workers >= 240 and <= 256', () => {
+      const runs = Array.from({ length: 12 }, (_, i) => ({
+        slug: `swebench/run${i}/${i}`,
+        benchmark: 'swebench',
+        model: `run${i}`,
+        jobId: String(i)
+      }))
+      const runMetadataMap: Record<string, ReturnType<typeof createMetadata>> = {}
+      runs.forEach((run) => {
+        // 12 runs * 20 workers each = 240 workers (orange threshold)
+        runMetadataMap[run.slug] = createMetadata('running-infer', 'user1', { num_infer_workers: 20 })
+      })
+      const props = {
+        runs,
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap,
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: runs.map(r => r.slug) }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+      render(<RunListView {...props} />)
+      expect(screen.getByTestId('total-active-workers').textContent).toBe('240')
+      expect(screen.getByTestId('total-active-workers').className).toContain('text-orange-400')
+    })
+
+    it('shows error color when total active workers > 256', () => {
+      const runs = Array.from({ length: 13 }, (_, i) => ({
+        slug: `swebench/run${i}/${i}`,
+        benchmark: 'swebench',
+        model: `run${i}`,
+        jobId: String(i)
+      }))
+      const runMetadataMap: Record<string, ReturnType<typeof createMetadata>> = {}
+      runs.forEach((run) => {
+        // 13 runs * 20 workers each = 260 workers (red threshold)
+        runMetadataMap[run.slug] = createMetadata('running-infer', 'user1', { num_infer_workers: 20 })
+      })
+      const props = {
+        runs,
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap,
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: runs.map(r => r.slug) }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+      render(<RunListView {...props} />)
+      expect(screen.getByTestId('total-active-workers').textContent).toBe('260')
+      expect(screen.getByTestId('total-active-workers').className).toContain('text-oh-error')
+    })
+
+    it('hides active workers summary when showDetail is true', () => {
+      const props = {
+        runs: [
+          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {
+          'swebench/run1/1': createMetadata('running-infer', 'user1')
+        },
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: ['swebench/run1/1'] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: true
+      }
+      render(<RunListView {...props} />)
+      expect(screen.queryByTestId('total-active-workers')).not.toBeInTheDocument()
     })
 
     it('does not show active summary when loading metadata', () => {
