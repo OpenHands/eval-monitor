@@ -311,8 +311,13 @@ function SpeedStats({ data }: SpeedStatsProps) {
 
   // Calculate accepted for each critic
   const acceptedCritic1 = lastPoint.critic1 !== 0 ? lastPoint.output / lastPoint.critic1 : 0
-  const acceptedCritic2 = lastPoint.critic2 !== 0 ? (lastPoint.output * (1 - acceptedCritic1)) / lastPoint.critic2 : 0
-  const acceptedCritic3 = lastPoint.critic3 !== 0 ? ((lastPoint.output * (1 - acceptedCritic1)) * (1 - acceptedCritic2)) / lastPoint.critic3 : 0
+  const acceptedCritic2 = acceptedCritic1 === 1.0 ? 1.0 : (lastPoint.critic2 !== 0 ? (lastPoint.output * (1 - acceptedCritic1)) / lastPoint.critic2 : 0)
+  const acceptedCritic3 = acceptedCritic1 === 1.0 || acceptedCritic2 === 1.0 ? 1.0 : (lastPoint.critic3 !== 0 ? ((lastPoint.output * (1 - acceptedCritic1)) * (1 - acceptedCritic2)) / lastPoint.critic3 : 0)
+
+  const formatAccepted = (value: number) => {
+    if (value === 1.0) return '-'
+    return value.toFixed(2)
+  }
 
   return (
     <>
@@ -333,11 +338,11 @@ function SpeedStats({ data }: SpeedStatsProps) {
         </div>
         <div>
           <span className="text-oh-text-muted">Accepted critic 2:</span>{' '}
-          <span className="font-mono text-oh-text">{acceptedCritic2.toFixed(2)}</span>
+          <span className="font-mono text-oh-text">{formatAccepted(acceptedCritic2)}</span>
         </div>
         <div>
           <span className="text-oh-text-muted">Accepted critic 3:</span>{' '}
-          <span className="font-mono text-oh-text">{acceptedCritic3.toFixed(2)}</span>
+          <span className="font-mono text-oh-text">{formatAccepted(acceptedCritic3)}</span>
         </div>
       </div>
     </>

@@ -160,8 +160,8 @@ describe('InferProgressGraph', () => {
   it('renders accepted with positive values', async () => {
     // lastPoint: output=100, critic1=200, critic2=50, critic3=20
     // acceptedCritic1 = 100/200 = 0.5
-    // acceptedCritic2 = (100*(1-0.5))/50 = 1
-    // acceptedCritic3 = ((100*(1-0.5))*(1-1))/20 = 0
+    // acceptedCritic2 = (100*(1-0.5))/50 = 1, display "-"
+    // acceptedCritic3 = display "-" (because acceptedCritic2 is 1.0)
     const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
 2026-03-26 21:31:20 UTC, 100, 200, 50, 20`
 
@@ -177,8 +177,84 @@ describe('InferProgressGraph', () => {
     })
 
     expect(screen.getByText('0.50')).toBeInTheDocument() // acceptedCritic1
-    expect(screen.getByText('1.00')).toBeInTheDocument() // acceptedCritic2
-    expect(screen.getByText('0.00')).toBeInTheDocument() // acceptedCritic3
+    expect(screen.getAllByText('-').length).toBe(2) // acceptedCritic2 and acceptedCritic3 both show "-"
+  })
+
+  it('shows dash for critic 2 and 3 when critic 1 is 1.0', async () => {
+    // lastPoint: output=100, critic1=100, critic2=50, critic3=20
+    // acceptedCritic1 = 100/100 = 1.0, display "1.00"
+    // acceptedCritic2 = display "-"
+    // acceptedCritic3 = display "-"
+    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
+2026-03-26 21:31:20 UTC, 100, 100, 50, 20`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('1.00')).toBeInTheDocument() // acceptedCritic1
+    expect(screen.getAllByText('-').length).toBe(2) // acceptedCritic2 and acceptedCritic3 both show "-"
+  })
+
+  it('shows dash for critic 3 when critic 2 is 1.0', async () => {
+    // lastPoint: output=100, critic1=200, critic2=100, critic3=20
+    // acceptedCritic1 = 100/200 = 0.5, display "0.50"
+    // acceptedCritic2 = (100*(1-0.5))/100 = 0.5, NOT 1.0 so we calculate normally
+    // Let's use output=100, critic1=50, critic2=100, critic3=20
+    // acceptedCritic1 = 100/50 = 2.0
+    // acceptedCritic2 = (100*(1-2.0))/100 = -1.0, display "-1.00"
+    // acceptedCritic3 = display "-"
+    // Actually let's make acceptedCritic2 = 1.0: output=100, critic1=50, critic2=100
+    // acceptedCritic1 = 100/50 = 2.0
+    // acceptedCritic2 = (100*(1-2))/100 = -1, not 1.0
+    // Let's try: output=100, critic1=200, critic2=50, critic3=25
+    // acceptedCritic1 = 100/200 = 0.5
+    // acceptedCritic2 = (100*(1-0.5))/50 = 1.0, display "-"
+    // acceptedCritic3 = display "-"
+    // Use: output=200, critic1=100, critic2=100, critic3=50
+    // acceptedCritic1 = 200/100 = 2.0
+    // acceptedCritic2 = (200*(1-2))/100 = -2.0
+    // Let's use: output=100, critic1=50, critic2=50, critic3=20
+    // acceptedCritic1 = 100/50 = 2.0
+    // acceptedCritic2 = (100*(1-2))/50 = -2.0
+    // To get acceptedCritic2 = 1.0: output=100, critic1=50, critic2=100
+    // acceptedCritic1 = 100/50 = 2.0, not what we want
+    // To get acceptedCritic1 = 0.5 AND acceptedCritic2 = 1.0:
+    // output=100, critic1=200, critic2=50 -> acceptedCritic1 = 0.5, acceptedCritic2 = 1.0
+    // This means critic 3 will also be "-" due to critic 1 = 1.0 check
+    // Let's use: output=50, critic1=100, critic2=50, critic3=20
+    // acceptedCritic1 = 50/100 = 0.5
+    // acceptedCritic2 = (50*(1-0.5))/50 = 0.5
+    // acceptedCritic3 = ((50*(1-0.5))*(1-0.5))/20 = 0.125
+    // To get acceptedCritic2 = 1.0, we need acceptedCritic1 = 0.5 AND (output * 0.5) / critic2 = 1.0
+    // So output * 0.5 = critic2, meaning critic2 = output * 0.5
+    // If output=100, critic1=200 (acceptedCritic1=0.5), then critic2 should be 50
+    // acceptedCritic2 = (100 * 0.5) / 50 = 1.0 -> display "-"
+    // acceptedCritic3 = display "-" (because acceptedCritic2 is 1.0)
+    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
+2026-03-26 21:31:20 UTC, 100, 200, 50, 20`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('0.50')).toBeInTheDocument() // acceptedCritic1
+    // Note: critic 3 will also be "-" because critic 2 is 1.0
+    expect(screen.getAllByText('-').length).toBe(2) // acceptedCritic2 and acceptedCritic3 both show "-"
   })
 
   it('has section menu with download link', async () => {
