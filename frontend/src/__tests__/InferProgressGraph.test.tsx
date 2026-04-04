@@ -100,11 +100,11 @@ describe('InferProgressGraph', () => {
     render(<InferProgressGraph slug={defaultSlug} />)
     
     await waitFor(() => {
-      expect(screen.getByText('Accepted instances critic 1:')).toBeInTheDocument()
+      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Accepted instances critic 2:')).toBeInTheDocument()
-    expect(screen.getByText('Accepted instances critic 3:')).toBeInTheDocument()
+    expect(screen.getByText('Accepted critic 2:')).toBeInTheDocument()
+    expect(screen.getByText('Accepted critic 3:')).toBeInTheDocument()
     expect(screen.getByText('2.00')).toBeInTheDocument() // acceptedCritic1
     expect(screen.getByText('10.00')).toBeInTheDocument() // acceptedCritic2
     expect(screen.getByText('200.00')).toBeInTheDocument() // acceptedCritic3
@@ -124,7 +124,7 @@ describe('InferProgressGraph', () => {
     render(<InferProgressGraph slug={defaultSlug} />)
     
     await waitFor(() => {
-      expect(screen.getByText('Accepted instances critic 1:')).toBeInTheDocument()
+      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
     })
 
     // All should show 0.00
@@ -148,7 +148,7 @@ describe('InferProgressGraph', () => {
     render(<InferProgressGraph slug={defaultSlug} />)
     
     await waitFor(() => {
-      expect(screen.getByText('Accepted instances critic 1:')).toBeInTheDocument()
+      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
     })
 
     expect(screen.getByText('2.00')).toBeInTheDocument() // acceptedCritic1

@@ -328,15 +328,15 @@ function SpeedStats({ data }: SpeedStatsProps) {
       </div>
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
         <div>
-          <span className="text-oh-text-muted">Accepted instances critic 1:</span>{' '}
+          <span className="text-oh-text-muted">Accepted critic 1:</span>{' '}
           <span className="font-mono text-oh-text">{acceptedCritic1.toFixed(2)}</span>
         </div>
         <div>
-          <span className="text-oh-text-muted">Accepted instances critic 2:</span>{' '}
+          <span className="text-oh-text-muted">Accepted critic 2:</span>{' '}
           <span className="font-mono text-oh-text">{acceptedCritic2.toFixed(2)}</span>
         </div>
         <div>
-          <span className="text-oh-text-muted">Accepted instances critic 3:</span>{' '}
+          <span className="text-oh-text-muted">Accepted critic 3:</span>{' '}
           <span className="font-mono text-oh-text">{acceptedCritic3.toFixed(2)}</span>
         </div>
       </div>
