@@ -85,12 +85,17 @@ describe('InferProgressGraph', () => {
   })
 
   it('renders accepted for each critic', async () => {
-    // lastPoint: output=10, critic1=5, critic2=2, critic3=1
-    // acceptedCritic1 = 10/5 = 2 -> 200.00%
-    // acceptedCritic2 = (10*(1-2))/2 = -5 -> -500.00%
-    // acceptedCritic3 = ((10*(1-2))*(1-(-5)))/1 = -60 -> -6000.00%
-    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
-2026-03-26 21:31:20 UTC, 10, 5, 2, 1`
+    // Based on real data format:
+    // Line 1: critic2=0, critic3=0 -> lastCritic1OnlyPoint
+    // Line 2: critic3=0 -> lastCritic2DonePoint
+    // Line 3: final point
+    //
+    // acceptedCritic1 = 430 / 432 = 0.9954 -> 99.54%
+    // acceptedCritic2 = (431 - 430) / 4 = 0.25 -> 25.00%
+    // acceptedCritic3 = (433 - 431) / 3 = 0.6667 -> 66.67%
+    const mockData = `2026-04-04 05:38:41 UTC, 430, 432, 0, 0
+2026-04-04 13:33:18 UTC, 431, 432, 4, 0
+2026-04-04 15:25:40 UTC, 433, 432, 4, 3`
 
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -103,67 +108,39 @@ describe('InferProgressGraph', () => {
       expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Accepted critic 2:')).toBeInTheDocument()
-    expect(screen.getByText('Accepted critic 3:')).toBeInTheDocument()
-    expect(screen.getByText('200.00%')).toBeInTheDocument() // acceptedCritic1
-    expect(screen.getByText('-500.00%')).toBeInTheDocument() // acceptedCritic2
-    expect(screen.getByText('-6000.00%')).toBeInTheDocument() // acceptedCritic3
+    expect(screen.getByText('99.54%')).toBeInTheDocument() // acceptedCritic1
+    expect(screen.getByText('25.00%')).toBeInTheDocument() // acceptedCritic2
+    expect(screen.getByText('66.67%')).toBeInTheDocument() // acceptedCritic3
   })
 
-  it('shows - when critic denominator is 0', async () => {
-    // lastPoint: output=10, critic1=0, critic2=0, critic3=0
-    // All accepted should be 0 -> 0.00%
-    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
-2026-03-26 21:31:20 UTC, 10, 0, 0, 0`
-
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockData,
-    })
-
-    render(<InferProgressGraph slug={defaultSlug} />)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
-    })
-
-    // All should show 0.00%
-    const zeroValues = screen.getAllByText('0.00%')
-    expect(zeroValues.length).toBe(3)
-  })
-
-  it('shows 0.00% when intermediate critic denominator is 0', async () => {
-    // lastPoint: output=10, critic1=5, critic2=0, critic3=0
-    // acceptedCritic1 = 10/5 = 2 -> 200.00%
-    // acceptedCritic2 = 0 (denominator is 0) -> 0.00%
-    // acceptedCritic3 = 0 (denominator is 0) -> 0.00%
-    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
-2026-03-26 21:31:20 UTC, 10, 5, 0, 0`
-
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockData,
-    })
-
-    render(<InferProgressGraph slug={defaultSlug} />)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
-    })
-
-    expect(screen.getByText('200.00%')).toBeInTheDocument() // acceptedCritic1
+  it('handles case where only critic 1 ran', async () => {
+    // Only critic 1 ran, so only acceptedCritic1 can be calculated
+    // acceptedCritic1 = 430 / 432 = 0.9954 -> 99.54%
     // acceptedCritic2 and acceptedCritic3 should be 0.00%
+    const mockData = `2026-04-04 05:38:41 UTC, 430, 432, 0, 0`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('99.54%')).toBeInTheDocument() // acceptedCritic1
     const zeroValues = screen.getAllByText('0.00%')
-    expect(zeroValues.length).toBe(2)
+    expect(zeroValues.length).toBe(2) // acceptedCritic2 and acceptedCritic3
   })
 
-  it('renders accepted with positive values', async () => {
-    // lastPoint: output=100, critic1=200, critic2=50, critic3=20
-    // acceptedCritic1 = 100/200 = 0.5 -> 50.00%
-    // acceptedCritic2 = (100*(1-0.5))/50 = 1, display "-"
-    // acceptedCritic3 = display "-" (because acceptedCritic2 is 1.0)
-    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
-2026-03-26 21:31:20 UTC, 100, 200, 50, 20`
+  it('handles case where critic 1 and 2 ran but not 3', async () => {
+    // acceptedCritic1 = 430 / 432 = 0.9954 -> 99.54%
+    // acceptedCritic2 = (431 - 430) / 4 = 0.25 -> 25.00%
+    // acceptedCritic3 = 0.00% (critic3 never ran)
+    const mockData = `2026-04-04 05:38:41 UTC, 430, 432, 0, 0
+2026-04-04 13:33:18 UTC, 431, 432, 4, 0`
 
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -176,53 +153,9 @@ describe('InferProgressGraph', () => {
       expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('50.00%')).toBeInTheDocument() // acceptedCritic1
-    expect(screen.getAllByText('-').length).toBe(2) // acceptedCritic2 and acceptedCritic3 both show "-"
-  })
-
-  it('shows dash for critic 2 and 3 when critic 1 is 1.0', async () => {
-    // lastPoint: output=100, critic1=100, critic2=50, critic3=20
-    // acceptedCritic1 = 100/100 = 1.0, display "-"
-    // acceptedCritic2 = display "-"
-    // acceptedCritic3 = display "-"
-    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
-2026-03-26 21:31:20 UTC, 100, 100, 50, 20`
-
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockData,
-    })
-
-    render(<InferProgressGraph slug={defaultSlug} />)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
-    })
-
-    expect(screen.getAllByText('-').length).toBe(3) // all three show "-"
-  })
-
-  it('shows dash for critic 3 when critic 2 is 1.0', async () => {
-    // lastPoint: output=100, critic1=200, critic2=50, critic3=20
-    // acceptedCritic1 = 100/200 = 0.5 -> 50.00%
-    // acceptedCritic2 = (100*(1-0.5))/50 = 1.0, display "-"
-    // acceptedCritic3 = display "-" (because acceptedCritic2 is 1.0)
-    const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
-2026-03-26 21:31:20 UTC, 100, 200, 50, 20`
-
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockData,
-    })
-
-    render(<InferProgressGraph slug={defaultSlug} />)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
-    })
-
-    expect(screen.getByText('50.00%')).toBeInTheDocument() // acceptedCritic1
-    expect(screen.getAllByText('-').length).toBe(2) // acceptedCritic2 and acceptedCritic3 both show "-"
+    expect(screen.getByText('99.54%')).toBeInTheDocument() // acceptedCritic1
+    expect(screen.getByText('25.00%')).toBeInTheDocument() // acceptedCritic2
+    expect(screen.getByText('0.00%')).toBeInTheDocument() // acceptedCritic3
   })
 
   it('has section menu with download link', async () => {
