@@ -586,6 +586,63 @@ describe('RunDetailView', () => {
       const helmEl = screen.getByTestId('helm-releases-found')
       expect(helmEl.textContent).toContain('4')
     })
+
+    it('shows reason when present in cancelEval', () => {
+      const metadata = makeMetadata({
+        cancelEval: {
+          timestamp: '2025-03-15T10:45:00Z',
+          cancelled_by: 'alice',
+          reason: 'seems stuck in build images stage, running another one',
+        },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      const reasonEl = screen.getByTestId('cancelled-reason')
+      expect(reasonEl.textContent).toContain('Reason:')
+      expect(reasonEl.textContent).toContain('seems stuck in build images stage, running another one')
+    })
+
+    it('does not show reason when absent from cancelEval', () => {
+      const metadata = makeMetadata({
+        cancelEval: {
+          timestamp: '2025-03-15T10:45:00Z',
+          cancelled_by: 'alice',
+        },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      expect(screen.queryByTestId('cancelled-reason')).toBeNull()
+    })
+
+    it('does not show reason when reason is empty string', () => {
+      const metadata = makeMetadata({
+        cancelEval: {
+          timestamp: '2025-03-15T10:45:00Z',
+          cancelled_by: 'alice',
+          reason: '',
+        },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      expect(screen.queryByTestId('cancelled-reason')).toBeNull()
+    })
+
+    it('does not show reason when reason is not a string', () => {
+      const metadata = makeMetadata({
+        cancelEval: {
+          timestamp: '2025-03-15T10:45:00Z',
+          cancelled_by: 'alice',
+          reason: 123,
+        },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="cancelled" />
+      )
+      expect(screen.queryByTestId('cancelled-reason')).toBeNull()
+    })
   })
 
   describe('Submission badge', () => {
