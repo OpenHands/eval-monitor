@@ -550,9 +550,14 @@ describe('getPartialArchiveUrl', () => {
     expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: '' } }))).toBeNull()
   })
 
-  it('returns the partial_archive_url when present', () => {
-    const url = 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz'
-    expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: url } }))).toBe(url)
+  it('returns the partial_archive_url path when it is a full URL', () => {
+    const fullUrl = 'https://results.eval.all-hands.dev/swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz'
+    expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: fullUrl } }))).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz')
+  })
+
+  it('returns the partial_archive_url when it is just a path', () => {
+    const path = 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz'
+    expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: path } }))).toBe(path)
   })
 })
 

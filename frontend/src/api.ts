@@ -362,12 +362,21 @@ export function getActiveWorkersForInstance(metadata: RunMetadata): number {
 
 /** Get the partial archive URL from metadata.
  *  Returns the partial_archive_url if it exists and is non-empty.
+ *  If it's a full URL, extracts just the path portion.
  */
 export function getPartialArchiveUrl(metadata: RunMetadata | null): string | null {
   if (!metadata?.params) return null
   const partialArchiveUrl = metadata.params.partial_archive_url
   if (typeof partialArchiveUrl !== 'string' || !partialArchiveUrl) return null
-  return partialArchiveUrl
+  
+  // If it's a full URL, extract the path portion
+  try {
+    const url = new URL(partialArchiveUrl)
+    return url.pathname.replace(/^\//, '') // Remove leading slash
+  } catch {
+    // If URL parsing fails, return as-is (might be just a path)
+    return partialArchiveUrl
+  }
 }
 
 /** Extract the benchmark/model path from a partial_archive_url.
