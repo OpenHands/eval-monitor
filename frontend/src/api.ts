@@ -340,17 +340,24 @@ export function getActiveWorkersForInstance(metadata: RunMetadata): number {
   if (params) {
     const numInferWorkers = params.num_infer_workers
     const evalLimit = params.eval_limit
-    const hasNumInferWorkers = typeof numInferWorkers === 'number' && numInferWorkers !== null
-    const hasEvalLimit = typeof evalLimit === 'number' && evalLimit !== null
+    // Handle both number and string types (JSON might have numbers as strings)
+    const parsedNumInferWorkers = numInferWorkers !== null && numInferWorkers !== undefined 
+      ? Number(numInferWorkers) 
+      : null
+    const parsedEvalLimit = evalLimit !== null && evalLimit !== undefined 
+      ? Number(evalLimit) 
+      : null
+    const hasNumInferWorkers = parsedNumInferWorkers !== null && !isNaN(parsedNumInferWorkers)
+    const hasEvalLimit = parsedEvalLimit !== null && !isNaN(parsedEvalLimit)
     
     if (hasNumInferWorkers && hasEvalLimit) {
-      return Math.min(numInferWorkers as number, evalLimit as number)
+      return Math.min(parsedNumInferWorkers!, parsedEvalLimit!)
     }
     if (hasNumInferWorkers) {
-      return numInferWorkers as number
+      return parsedNumInferWorkers!
     }
     if (hasEvalLimit) {
-      return evalLimit as number
+      return parsedEvalLimit!
     }
   }
   return 20
