@@ -68,7 +68,8 @@ describe('RunListView', () => {
     filterStatus: 'all',
     setFilterStatus: vi.fn(),
     filterText: '',
-    setFilterText: vi.fn()
+    setFilterText: vi.fn(),
+    showDetail: false
   }
 
   beforeEach(() => {
@@ -259,7 +260,8 @@ describe('RunListView', () => {
       filterStatus: 'all',
       setFilterStatus: vi.fn(),
       filterText: '',
-      setFilterText: vi.fn()
+      setFilterText: vi.fn(),
+      showDetail: false
     }
 
     it('shows all active statuses when filterStatus is "active"', () => {
@@ -324,7 +326,7 @@ describe('RunListView', () => {
         onSelectRun: mockOnSelectRun,
         runMetadataMap: {
           'swebench/run1/1': createMetadata('running-infer', 'user1'),
-          'swebench/run2/2': createMetadata('building', 'user1'),
+          'swebench/run2/2': createMetadata('running-infer', 'user1'),
           'swebench/run3/3': createMetadata('completed', 'user1')
         },
         loadingMetadataList: false,
@@ -338,7 +340,7 @@ describe('RunListView', () => {
         showDetail: false
       }
       render(<RunListView {...props} />)
-      // 2 active runs with default 20 workers each = 40 workers
+      // 2 running-infer runs with default 20 workers each = 40 workers
       expect(screen.getByTestId('total-active-workers').textContent).toBe('40')
     })
 
@@ -354,7 +356,7 @@ describe('RunListView', () => {
         onSelectRun: mockOnSelectRun,
         runMetadataMap: {
           'swebench/run1/1': createMetadata('running-infer', 'alice', { num_infer_workers: 10 }),
-          'swebench/run2/2': createMetadata('building', 'alice', { num_infer_workers: 5 }),
+          'swebench/run2/2': createMetadata('running-infer', 'alice', { num_infer_workers: 5 }),
           'swebench/run3/3': createMetadata('running-infer', 'bob', { num_infer_workers: 2 })
         },
         loadingMetadataList: false,
@@ -368,6 +370,7 @@ describe('RunListView', () => {
         showDetail: false
       }
       render(<RunListView {...props} />)
+      // Only running-infer runs: alice has 10+5=15, bob has 2, total=17
       expect(screen.getByTestId('total-active-workers').textContent).toBe('17')
       expect(screen.getByTestId('active-workers-author-alice').textContent).toContain('alice: 15')
       expect(screen.getByTestId('active-workers-author-bob').textContent).toContain('bob: 2')
@@ -533,10 +536,11 @@ describe('RunListView', () => {
         filterStatus: 'all',
         setFilterStatus: vi.fn(),
         filterText: '',
-        setFilterText: vi.fn()
+        setFilterText: vi.fn(),
+        showDetail: false
       }
       render(<RunListView {...props} />)
-      expect(screen.queryByTestId('total-active-runs')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('total-active-workers')).not.toBeInTheDocument()
     })
   })
 })

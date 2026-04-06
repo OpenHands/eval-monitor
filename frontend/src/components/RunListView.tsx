@@ -205,15 +205,16 @@ export default function RunListView({
   }, [runsWithStatus])
 
   // Active workers count and per-author breakdown (from all runs, independent of filters)
-  // active_workers = num_infer_workers if set, else min(eval_limit || 20, 20)
+  // Only count runs in inference stage (running-infer)
   const { totalActiveWorkers, activeWorkersByAuthor } = useMemo(() => {
     let totalActiveWorkers = 0
     const activeWorkersByAuthor: Record<string, number> = {}
-    const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
+    // Only count runs in running-infer stage
+    const inferStatuses: StatusType[] = ['running-infer']
     runsWithStatus.forEach(r => {
-      if (activeStatuses.includes(r.status)) {
+      if (inferStatuses.includes(r.status)) {
         const metadata = runMetadataMap[r.slug]
-        const workers = metadata ? getActiveWorkersForInstance(metadata) : 1
+        const workers = metadata ? getActiveWorkersForInstance(metadata) : 20
         totalActiveWorkers += workers
         const author = r.triggeredBy
         if (author && author !== '—') {
