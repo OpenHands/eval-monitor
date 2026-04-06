@@ -309,16 +309,59 @@ function SpeedStats({ data }: SpeedStatsProps) {
     currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
   }
 
+  // Calculate accepted for each critic
+  // Find the last point where critic2=0 AND critic3=0 (only critic 1 ran)
+  const lastCritic1OnlyPoint = [...data].reverse().find(d => d.critic2 === 0 && d.critic3 === 0)
+  // Find the last point where critic3=0 (critic 1 and 2 ran, but not 3)
+  const lastCritic2DonePoint = [...data].reverse().find(d => d.critic3 === 0 && d.critic2 > 0)
+
+  // Accepted by critic 1: output / critic1 at the last point where only critic 1 ran
+  const acceptedCritic1 = lastCritic1OnlyPoint && lastCritic1OnlyPoint.critic1 !== 0
+    ? lastCritic1OnlyPoint.output / lastCritic1OnlyPoint.critic1
+    : 0
+
+  // Accepted by critic 2: (output - previousOutput) / critic2 at the last point where critic 3=0
+  const acceptedCritic2 = lastCritic2DonePoint && lastCritic2DonePoint.critic2 !== 0
+    ? (lastCritic2DonePoint.output - (lastCritic1OnlyPoint?.output || 0)) / lastCritic2DonePoint.critic2
+    : 0
+
+  // Accepted by critic 3: (output - previousOutput) / critic3 at the final point
+  const previousOutput = lastCritic2DonePoint?.output || lastCritic1OnlyPoint?.output || 0
+  const acceptedCritic3 = lastPoint.critic3 !== 0
+    ? (lastPoint.output - previousOutput) / lastPoint.critic3
+    : 0
+
+  const formatAccepted = (value: number) => {
+    if (value === 1.0) return '100%'
+    return `${Math.round(value * 100)}%`
+  }
+
   return (
-    <div className="mt-4 pt-4 border-t border-oh-border/50 grid grid-cols-2 gap-4 text-sm">
-      <div>
-        <span className="text-oh-text-muted">Average Speed:</span>{' '}
-        <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+    <>
+      <div className="mt-4 pt-4 border-t border-oh-border/50 grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span className="text-oh-text-muted">Average Speed:</span>{' '}
+          <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+        </div>
+        <div>
+          <span className="text-oh-text-muted">Current Speed:</span>{' '}
+          <span className="font-mono text-oh-text">{currentSpeed.toFixed(2)} instances/min</span>
+        </div>
       </div>
-      <div>
-        <span className="text-oh-text-muted">Current Speed:</span>{' '}
-        <span className="font-mono text-oh-text">{currentSpeed.toFixed(2)} instances/min</span>
+      <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+        <div>
+          <span className="text-oh-text-muted">Accepted critic 1:</span>{' '}
+          <span className="font-mono text-oh-text">{formatAccepted(acceptedCritic1)}</span>
+        </div>
+        <div>
+          <span className="text-oh-text-muted">Accepted critic 2:</span>{' '}
+          <span className="font-mono text-oh-text">{acceptedCritic1 === 1.0 ? '-' : formatAccepted(acceptedCritic2)}</span>
+        </div>
+        <div>
+          <span className="text-oh-text-muted">Accepted critic 3:</span>{' '}
+          <span className="font-mono text-oh-text">{acceptedCritic1 === 1.0 || acceptedCritic2 === 1.0 ? '-' : formatAccepted(acceptedCritic3)}</span>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

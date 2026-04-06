@@ -84,6 +84,29 @@ describe('InferProgressGraph', () => {
     expect(speedTexts.length).toBe(2)
   })
 
+  it('renders accepted section with correct labels', async () => {
+    // Use data that allows calculating accepted percentages
+    const mockData = `2026-04-04 05:38:41 UTC, 430, 432, 0, 0
+2026-04-04 13:33:18 UTC, 431, 432, 4, 0
+2026-04-04 15:25:40 UTC, 433, 432, 4, 3`
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => mockData,
+    })
+
+    render(<InferProgressGraph slug={defaultSlug} />)
+    
+    // Wait for the component to render
+    await waitFor(() => {
+      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
+    })
+
+    // Verify all labels are present
+    expect(screen.getByText('Accepted critic 2:')).toBeInTheDocument()
+    expect(screen.getByText('Accepted critic 3:')).toBeInTheDocument()
+  })
+
   it('has section menu with download link', async () => {
     const mockData = `2026-03-26 21:30:20 UTC, 0, 0, 0, 0
 2026-03-26 21:31:20 UTC, 0, 2, 0, 0`
