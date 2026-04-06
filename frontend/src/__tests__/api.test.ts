@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl } from '../api'
 import type { RunMetadata } from '../api'
 
@@ -653,27 +653,41 @@ describe('getOriginalRunSlug', () => {
 })
 
 describe('buildOriginalRunUrl', () => {
+  const originalLocation = window.location
+
+  beforeEach(() => {
+    // Mock window.location
+    Object.defineProperty(window, 'location', {
+      value: {
+        protocol: 'https:',
+        host: 'example.com',
+        pathname: '/',
+      },
+      writable: true,
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      writable: true,
+    })
+  })
+
   it('builds URL with run and text params', () => {
     const result = buildOriginalRunUrl('https://example.com/?run=test/123', 'swtbench/model/456')
     expect(result).toContain('run=swtbench%2Fmodel%2F456')
     expect(result).toContain('text=456')
   })
 
-  it('overwrites existing run param', () => {
-    const result = buildOriginalRunUrl('https://example.com/?run=old/run/123&days=7', 'swtbench/model/456')
-    expect(result).toContain('run=swtbench%2Fmodel%2F456')
-    expect(result).not.toContain('old%2Frun%2F123')
+  it('uses current host and path', () => {
+    const result = buildOriginalRunUrl('https://example.com/', 'swtbench/model/456')
+    expect(result).toMatch(/^https:\/\/example\.com\//)
   })
 
-  it('removes hash from URL', () => {
-    const result = buildOriginalRunUrl('https://example.com/?run=test#some-hash', 'swtbench/model/456')
-    expect(result).not.toContain('#')
-  })
-
-  it('handles invalid URLs gracefully', () => {
-    const result = buildOriginalRunUrl('invalid-url', 'swtbench/model/456')
-    expect(result).toContain('run=')
-    expect(result).toContain('text=')
+  it('sets text filter to timestamp', () => {
+    const result = buildOriginalRunUrl('https://example.com/', 'swtbench/model/789')
+    expect(result).toContain('text=789')
   })
 })
 

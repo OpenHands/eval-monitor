@@ -435,26 +435,20 @@ export function getOriginalRunSlug(metadata: RunMetadata | null, _currentSlug: s
 }
 
 /** Build the eval monitor URL for the original run.
- *  Takes the current page URL, replaces the run parameter with the original run slug,
- *  and sets the text filter to help locate the run.
+ *  Constructs the monitor URL with the original run slug and text filter.
  */
-export function buildOriginalRunUrl(currentUrl: string, originalRunSlug: string): string {
+export function buildOriginalRunUrl(_currentUrl: string, originalRunSlug: string): string {
   // Extract the original timestamp from the slug (last part after the last /)
   const parts = originalRunSlug.split('/')
   const originalTimestamp = parts[parts.length - 1]
   
-  try {
-    const url = new URL(currentUrl)
-    // Clear any existing run and set the new one
-    url.searchParams.set('run', originalRunSlug)
-    // Set text filter to the original timestamp to help locate the run
-    if (originalTimestamp) {
-      url.searchParams.set('text', originalTimestamp)
-    }
-    // Remove hash if present
-    url.hash = ''
-    return url.toString()
-  } catch {
-    return `/?run=${encodeURIComponent(originalRunSlug)}&text=${encodeURIComponent(originalTimestamp)}`
+  // Build the monitor URL directly using the current host
+  // This avoids issues when window.location.href points to a different domain (e.g., results bucket)
+  const baseUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}`
+  const params = new URLSearchParams()
+  params.set('run', originalRunSlug)
+  if (originalTimestamp) {
+    params.set('text', originalTimestamp)
   }
+  return `${baseUrl}?${params.toString()}`
 }
