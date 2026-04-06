@@ -332,7 +332,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
     : 0
 
   const formatAccepted = (value: number) => {
-    if (value === 1.0) return '-'
+    if (value === 1.0) return '100%'
     return `${Math.round(value * 100)}%`
   }
 
