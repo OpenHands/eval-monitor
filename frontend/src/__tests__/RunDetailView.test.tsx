@@ -685,4 +685,87 @@ describe('RunDetailView', () => {
       expect(screen.queryByTestId('submission-badge')).toBeNull()
     })
   })
+
+  describe('Resumed run badge', () => {
+    const originalOpen = window.open
+
+    beforeEach(() => {
+      window.open = vi.fn()
+    })
+
+    afterEach(() => {
+      window.open = originalOpen
+    })
+
+    it('shows resumed run badge when partial_archive_url is present', () => {
+      const metadata = makeMetadata({
+        params: {
+          partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+          original_run_id: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309',
+        },
+      })
+      render(
+        <RunDetailView slug="swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569" metadata={metadata} loading={false} status="pending" />
+      )
+      expect(screen.getByTestId('resumed-run-badge')).toBeTruthy()
+      expect(screen.getByTestId('resumed-run-badge').textContent).toContain('Resumed run')
+    })
+
+    it('does not show resumed run badge when partial_archive_url is not present', () => {
+      const metadata = makeMetadata({
+        params: { model_id: 'test-model' },
+      })
+      render(
+        <RunDetailView slug={defaultSlug} metadata={metadata} loading={false} status="pending" />
+      )
+      expect(screen.queryByTestId('resumed-run-badge')).toBeNull()
+    })
+
+    it('does not show resumed run badge when metadata is null', () => {
+      render(
+        <RunDetailView slug={defaultSlug} metadata={null} loading={false} status="pending" />
+      )
+      expect(screen.queryByTestId('resumed-run-badge')).toBeNull()
+    })
+
+    it('opens original run URL when badge is clicked', () => {
+      const metadata = makeMetadata({
+        params: {
+          partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+          original_run_id: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309',
+        },
+      })
+      
+      // Mock window.location.href
+      Object.defineProperty(window, 'location', {
+        value: { href: 'https://example.com/?run=swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569' },
+        writable: true,
+      })
+
+      render(
+        <RunDetailView slug="swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569" metadata={metadata} loading={false} status="pending" />
+      )
+
+      fireEvent.click(screen.getByTestId('resumed-run-badge'))
+      expect(window.open).toHaveBeenCalled()
+      const openCall = (window.open as ReturnType<typeof vi.fn>).mock.calls[0]
+      expect(openCall[0]).toContain('run=swtbench%2Flitellm_proxy-minimax-MiniMax-M2-7%2F23324404309')
+      expect(openCall[0]).toContain('text=23324404309')
+    })
+
+    it('has correct styling with orange colors', () => {
+      const metadata = makeMetadata({
+        params: {
+          partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+          original_run_id: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309',
+        },
+      })
+      render(
+        <RunDetailView slug="swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569" metadata={metadata} loading={false} status="pending" />
+      )
+      const badge = screen.getByTestId('resumed-run-badge')
+      expect(badge.className).toContain('bg-orange-500/20')
+      expect(badge.className).toContain('text-orange-400')
+    })
+  })
 })
