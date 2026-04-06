@@ -250,6 +250,7 @@ export default function App() {
             setFilterStatus={setFilterStatus}
             filterText={filterText}
             setFilterText={setFilterText}
+            showDetail={!!selectedRun}
           />
         )}
       </main>

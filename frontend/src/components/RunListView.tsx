@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import type { RunMetadata, DayRunGroup } from '../api'
-import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason } from '../api'
+import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason, getActiveWorkersForInstance } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -24,6 +24,7 @@ interface RunListViewProps {
   setFilterStatus: (value: string) => void
   filterText: string
   setFilterText: (value: string) => void
+  showDetail: boolean
 }
 
 type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
@@ -113,7 +114,8 @@ export default function RunListView({
   filterStatus,
   setFilterStatus,
   filterText,
-  setFilterText
+  setFilterText,
+  showDetail
 }: RunListViewProps) {
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -202,22 +204,26 @@ export default function RunListView({
     return counts
   }, [runsWithStatus])
 
-  // Active runs count and per-author breakdown (from all runs, independent of filters)
-  const { totalActive, activeByAuthor } = useMemo(() => {
-    let totalActive = 0
-    const activeByAuthor: Record<string, number> = {}
-    const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
+  // Active workers count and per-author breakdown (from all runs, independent of filters)
+  // Only count runs in inference stage (running-infer)
+  const { totalActiveWorkers, activeWorkersByAuthor } = useMemo(() => {
+    let totalActiveWorkers = 0
+    const activeWorkersByAuthor: Record<string, number> = {}
+    // Only count runs in running-infer stage
+    const inferStatuses: StatusType[] = ['running-infer']
     runsWithStatus.forEach(r => {
-      if (activeStatuses.includes(r.status)) {
-        totalActive++
+      if (inferStatuses.includes(r.status)) {
+        const metadata = runMetadataMap[r.slug]
+        const workers = metadata ? getActiveWorkersForInstance(metadata) : 20
+        totalActiveWorkers += workers
         const author = r.triggeredBy
         if (author && author !== '—') {
-          activeByAuthor[author] = (activeByAuthor[author] || 0) + 1
+          activeWorkersByAuthor[author] = (activeWorkersByAuthor[author] || 0) + workers
         }
       }
     })
-    return { totalActive, activeByAuthor }
-  }, [runsWithStatus])
+    return { totalActiveWorkers, activeWorkersByAuthor }
+  }, [runsWithStatus, runMetadataMap])
 
   if (loading) {
     return (
@@ -285,13 +291,13 @@ export default function RunListView({
               </button>
             ))}
           </div>
-          {!loadingMetadataList && totalActive > 0 && (
+          {!loadingMetadataList && !showDetail && totalActiveWorkers > 0 && (
             <div className="flex items-center gap-3 flex-wrap text-xs">
               <span className="text-oh-text-muted">
-                Active: <span data-testid="total-active-runs" className={`font-bold ${totalActive >= 12 ? 'text-oh-error' : 'text-oh-primary'}`}>{totalActive}</span>
+                Active Workers: <span data-testid="total-active-workers" className={`font-bold ${totalActiveWorkers > 256 ? 'text-oh-error' : totalActiveWorkers >= 240 ? 'text-orange-400' : 'text-oh-primary'}`}>{totalActiveWorkers}</span>
               </span>
-              {Object.entries(activeByAuthor).sort((a, b) => b[1] - a[1]).map(([author, count]) => (
-                <span key={author} data-testid={`active-runs-author-${author}`} className="text-oh-text-muted">
+              {Object.entries(activeWorkersByAuthor).sort((a, b) => b[1] - a[1]).map(([author, count]) => (
+                <span key={author} data-testid={`active-workers-author-${author}`} className="text-oh-text-muted">
                   <span className="font-medium text-oh-text">{author}</span>: {count}
                 </span>
               ))}
