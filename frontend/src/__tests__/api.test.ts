@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance } from '../api'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl } from '../api'
 import type { RunMetadata } from '../api'
 
 const originalFetch = globalThis.fetch
@@ -526,6 +526,173 @@ describe('getActiveWorkersForInstance', () => {
       params: { num_infer_workers: 10, eval_limit: 50 },
     })
     expect(getActiveWorkersForInstance(metadata)).toBe(10)
+  })
+})
+
+describe('getPartialArchiveUrl', () => {
+  it('returns null when metadata is null', () => {
+    expect(getPartialArchiveUrl(null)).toBeNull()
+  })
+
+  it('returns null when params is null', () => {
+    expect(getPartialArchiveUrl(makeMetadata({ params: null }))).toBeNull()
+  })
+
+  it('returns null when partial_archive_url is not present', () => {
+    expect(getPartialArchiveUrl(makeMetadata({ params: { model_id: 'test' } }))).toBeNull()
+  })
+
+  it('returns null when partial_archive_url is null', () => {
+    expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: null } }))).toBeNull()
+  })
+
+  it('returns null when partial_archive_url is empty string', () => {
+    expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: '' } }))).toBeNull()
+  })
+
+  it('returns the partial_archive_url path when it is a full URL', () => {
+    const fullUrl = 'https://results.eval.all-hands.dev/swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz'
+    expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: fullUrl } }))).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz')
+  })
+
+  it('returns the partial_archive_url when it is just a path', () => {
+    const path = 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz'
+    expect(getPartialArchiveUrl(makeMetadata({ params: { partial_archive_url: path } }))).toBe(path)
+  })
+})
+
+describe('extractBenchmarkModelFromPartialArchiveUrl', () => {
+  it('returns null for null input', () => {
+    expect(extractBenchmarkModelFromPartialArchiveUrl(null)).toBeNull()
+  })
+
+  it('returns null for undefined input', () => {
+    expect(extractBenchmarkModelFromPartialArchiveUrl(undefined)).toBeNull()
+  })
+
+  it('returns null for empty string', () => {
+    expect(extractBenchmarkModelFromPartialArchiveUrl('')).toBeNull()
+  })
+
+  it('extracts benchmark/model from valid partial_archive_url', () => {
+    const url = 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz'
+    expect(extractBenchmarkModelFromPartialArchiveUrl(url)).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7')
+  })
+
+  it('returns null for invalid URL format', () => {
+    expect(extractBenchmarkModelFromPartialArchiveUrl('invalid-url')).toBeNull()
+  })
+
+  it('handles URLs without results.tar.gz suffix', () => {
+    const url = 'swtbench/model/12345/some-other-file.tar.gz'
+    expect(extractBenchmarkModelFromPartialArchiveUrl(url)).toBe('swtbench/model')
+  })
+})
+
+describe('isResumedRun', () => {
+  it('returns false when metadata is null', () => {
+    expect(isResumedRun(null)).toBe(false)
+  })
+
+  it('returns false when params is null', () => {
+    expect(isResumedRun(makeMetadata({ params: null }))).toBe(false)
+  })
+
+  it('returns false when partial_archive_url is not present', () => {
+    expect(isResumedRun(makeMetadata({ params: { model_id: 'test' } }))).toBe(false)
+  })
+
+  it('returns true when partial_archive_url is present', () => {
+    expect(isResumedRun(makeMetadata({ params: { partial_archive_url: 'some/url/results.tar.gz' } }))).toBe(true)
+  })
+})
+
+describe('getOriginalRunSlug', () => {
+  it('returns null when metadata is null', () => {
+    expect(getOriginalRunSlug(null, 'swtbench/model/123')).toBeNull()
+  })
+
+  it('returns null when params is null', () => {
+    expect(getOriginalRunSlug(makeMetadata({ params: null }), 'swtbench/model/123')).toBeNull()
+  })
+
+  it('returns original_run_id when present', () => {
+    const metadata = makeMetadata({
+      params: {
+        original_run_id: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309',
+        partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+      },
+    })
+    expect(getOriginalRunSlug(metadata, 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569')).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309')
+  })
+
+  it('uses original_timestamp when original_run_id is not present', () => {
+    const metadata = makeMetadata({
+      params: {
+        original_timestamp: '23324404309',
+        partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+      },
+    })
+    expect(getOriginalRunSlug(metadata, 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569')).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309')
+  })
+
+  it('uses github_run_id when it looks like a timestamp', () => {
+    const metadata = makeMetadata({
+      params: {
+        github_run_id: '23324404309',
+        partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+      },
+    })
+    expect(getOriginalRunSlug(metadata, 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569')).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309')
+  })
+
+  it('returns original_run_id when partial_archive_url is not present', () => {
+    const metadata = makeMetadata({
+      params: {
+        original_run_id: 'swtbench/model/123',
+      },
+    })
+    // original_run_id is the most reliable source, so we return it directly
+    expect(getOriginalRunSlug(metadata, 'swtbench/model/456')).toBe('swtbench/model/123')
+  })
+})
+
+describe('buildOriginalRunUrl', () => {
+  const originalLocation = window.location
+
+  beforeEach(() => {
+    // Mock window.location
+    Object.defineProperty(window, 'location', {
+      value: {
+        protocol: 'https:',
+        host: 'example.com',
+        pathname: '/',
+      },
+      writable: true,
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      writable: true,
+    })
+  })
+
+  it('builds URL with run and text params', () => {
+    const result = buildOriginalRunUrl('https://example.com/?run=test/123', 'swtbench/model/456')
+    expect(result).toContain('run=swtbench%2Fmodel%2F456')
+    expect(result).toContain('text=456')
+  })
+
+  it('uses current host and path', () => {
+    const result = buildOriginalRunUrl('https://example.com/', 'swtbench/model/456')
+    expect(result).toMatch(/^https:\/\/example\.com\//)
+  })
+
+  it('sets text filter to timestamp', () => {
+    const result = buildOriginalRunUrl('https://example.com/', 'swtbench/model/789')
+    expect(result).toContain('text=789')
   })
 })
 

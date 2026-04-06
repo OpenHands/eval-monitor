@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData, getResultsUrl } from '../api'
+import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData, getResultsUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl } from '../api'
 import type { RunMetadata, SubmissionData } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
@@ -30,6 +30,10 @@ interface RunDetailViewProps {
 export default function RunDetailView({ slug, metadata, loading, status }: RunDetailViewProps) {
   const parsed = parseRunSlug(slug)
   const [submission, setSubmission] = useState<SubmissionData | null>(null)
+
+  // Check if this is a resumed run
+  const resumedRun = isResumedRun(metadata)
+  const originalRunSlug = getOriginalRunSlug(metadata, slug)
 
   useEffect(() => {
     fetchSubmissionData(slug).then(setSubmission)
@@ -92,6 +96,9 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <BenchmarkBadge name={parsed.benchmark} />
               {parsed.jobId && <CopyJobId jobId={parsed.jobId} />}
+              {resumedRun && originalRunSlug && (
+                <ResumedRunBadge originalRunSlug={originalRunSlug} />
+              )}
             </div>
             <div className="mt-2 text-sm text-oh-text-muted">
               <span data-testid="trigger-reason">
@@ -310,5 +317,23 @@ function StatusBadge({ status }: { status: string }) {
       )}
       {labels[status] || status}
     </span>
+  )
+}
+
+function ResumedRunBadge({ originalRunSlug }: { originalRunSlug: string }) {
+  const handleClick = () => {
+    const url = buildOriginalRunUrl(window.location.href, originalRunSlug)
+    window.open(url, '_blank')
+  }
+
+  return (
+    <button
+      data-testid="resumed-run-badge"
+      onClick={handleClick}
+      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30 hover:bg-orange-500/30 transition-colors cursor-pointer"
+      title={`View original run: ${originalRunSlug}`}
+    >
+      🔄 Resumed run
+    </button>
   )
 }
