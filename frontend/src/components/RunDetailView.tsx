@@ -148,6 +148,12 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
                       {String(metadata.cancelEval.helm_releases_found)}
                     </span>
                   )}
+                  {typeof metadata.cancelEval.reason === 'string' && metadata.cancelEval.reason && (
+                    <span data-testid="cancelled-reason">
+                      <span className="font-medium">Reason:</span>{' '}
+                      {metadata.cancelEval.reason}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
