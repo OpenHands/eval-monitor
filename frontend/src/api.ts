@@ -359,3 +359,102 @@ export function getActiveWorkersForInstance(metadata: RunMetadata): number {
   }
   return 20
 }
+
+/** Get the partial archive URL from metadata.
+ *  Returns the partial_archive_url if it exists and is non-empty.
+ */
+export function getPartialArchiveUrl(metadata: RunMetadata | null): string | null {
+  if (!metadata?.params) return null
+  const partialArchiveUrl = metadata.params.partial_archive_url
+  if (typeof partialArchiveUrl !== 'string' || !partialArchiveUrl) return null
+  return partialArchiveUrl
+}
+
+/** Extract the benchmark/model path from a partial_archive_url.
+ *  For example:
+ *  Input: "swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz"
+ *  Output: "swtbench/litellm_proxy-minimax-MiniMax-M2-7"
+ */
+export function extractBenchmarkModelFromPartialArchiveUrl(partialArchiveUrl: string | null | undefined): string | null {
+  if (!partialArchiveUrl || typeof partialArchiveUrl !== 'string') return null
+  
+  // Pattern to match: benchmark/model/timestamp/anything
+  // Extract benchmark/model by removing the timestamp and everything after
+  const match = partialArchiveUrl.match(/^(.+?)\/\d+\//)
+  if (!match) return null
+  
+  return match[1]
+}
+
+/** Check if a run is a resumed run by looking for partial_archive_url in params.
+ *  A resumed run has a partial_archive_url that points to another run's results.
+ */
+export function isResumedRun(metadata: RunMetadata | null): boolean {
+  const partialArchiveUrl = getPartialArchiveUrl(metadata)
+  return partialArchiveUrl !== null
+}
+
+/** Get the original run's slug from a partial_archive_url.
+ *  The partial_archive_url contains information about where the partial results came from.
+ *  We need to extract the benchmark/model path and find the original timestamp.
+ *  
+ *  The original timestamp is stored in params.original_run_id or can be inferred
+ *  from the partial_archive_url structure.
+ */
+export function getOriginalRunSlug(metadata: RunMetadata | null, _currentSlug: string): string | null {
+  if (!metadata?.params) return null
+  
+  // Check for original_run_id in params (this is the most reliable source)
+  const originalRunId = metadata.params.original_run_id
+  if (typeof originalRunId === 'string' && originalRunId) {
+    // The original_run_id should be the full slug (benchmark/model/timestamp)
+    return originalRunId
+  }
+  
+  // If original_run_id is not available, try to construct from partial_archive_url
+  const partialArchiveUrl = getPartialArchiveUrl(metadata)
+  if (!partialArchiveUrl) return null
+  
+  // Extract benchmark/model from partial_archive_url
+  const benchmarkModel = extractBenchmarkModelFromPartialArchiveUrl(partialArchiveUrl)
+  if (!benchmarkModel) return null
+  
+  // The original timestamp might be in params.original_timestamp
+  const originalTimestamp = metadata.params.original_timestamp
+  if (typeof originalTimestamp === 'string' && originalTimestamp) {
+    return `${benchmarkModel}/${originalTimestamp}`
+  }
+  
+  // Try to get timestamp from params.github_run_id if it's actually a timestamp
+  const githubRunId = metadata.params.github_run_id
+  if (typeof githubRunId === 'string' && githubRunId && /^\d+$/.test(githubRunId)) {
+    return `${benchmarkModel}/${githubRunId}`
+  }
+  
+  return null
+}
+
+/** Build the eval monitor URL for the original run.
+ *  Takes the current page URL, replaces the run parameter with the original run slug,
+ *  and sets the text filter to help locate the run.
+ */
+export function buildOriginalRunUrl(currentUrl: string, originalRunSlug: string): string {
+  // Extract the original timestamp from the slug (last part after the last /)
+  const parts = originalRunSlug.split('/')
+  const originalTimestamp = parts[parts.length - 1]
+  
+  try {
+    const url = new URL(currentUrl)
+    // Clear any existing run and set the new one
+    url.searchParams.set('run', originalRunSlug)
+    // Set text filter to the original timestamp to help locate the run
+    if (originalTimestamp) {
+      url.searchParams.set('text', originalTimestamp)
+    }
+    // Remove hash if present
+    url.hash = ''
+    return url.toString()
+  } catch {
+    return `/?run=${encodeURIComponent(originalRunSlug)}&text=${encodeURIComponent(originalTimestamp)}`
+  }
+}
