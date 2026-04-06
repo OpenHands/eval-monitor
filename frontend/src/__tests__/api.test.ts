@@ -450,25 +450,39 @@ describe('fetchCostReport', () => {
 })
 
 describe('getActiveWorkersForInstance', () => {
-  it('returns min(num_infer_workers, eval_limit) when both are set', () => {
-    const metadata = makeMetadata({
-      params: { num_infer_workers: 30, eval_limit: 100 },
-    })
-    expect(getActiveWorkersForInstance(metadata)).toBe(30)
-  })
-
-  it('returns num_infer_workers when eval_limit is not set', () => {
+  it('returns num_infer_workers when set', () => {
     const metadata = makeMetadata({
       params: { num_infer_workers: 50 },
     })
     expect(getActiveWorkersForInstance(metadata)).toBe(50)
   })
 
-  it('returns eval_limit when num_infer_workers is not set', () => {
+  it('returns num_infer_workers when eval_limit is also set', () => {
+    const metadata = makeMetadata({
+      params: { num_infer_workers: 30, eval_limit: 100 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(30)
+  })
+
+  it('returns min(eval_limit, 20) when num_infer_workers not set', () => {
+    const metadata = makeMetadata({
+      params: { eval_limit: 100 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(20)
+  })
+
+  it('returns eval_limit when eval_limit <= 20', () => {
     const metadata = makeMetadata({
       params: { eval_limit: 15 },
     })
     expect(getActiveWorkersForInstance(metadata)).toBe(15)
+  })
+
+  it('returns 20 when eval_limit is exactly 20', () => {
+    const metadata = makeMetadata({
+      params: { eval_limit: 20 },
+    })
+    expect(getActiveWorkersForInstance(metadata)).toBe(20)
   })
 
   it('returns 20 when neither num_infer_workers nor eval_limit is set', () => {
@@ -507,7 +521,7 @@ describe('getActiveWorkersForInstance', () => {
     expect(getActiveWorkersForInstance(metadata)).toBe(30)
   })
 
-  it('returns min when both are set and num_infer_workers < eval_limit', () => {
+  it('returns min when both are set and eval_limit > 20', () => {
     const metadata = makeMetadata({
       params: { num_infer_workers: 10, eval_limit: 50 },
     })

@@ -400,8 +400,8 @@ describe('RunListView', () => {
         showDetail: false
       }
       render(<RunListView {...props} />)
-      // eval_limit: 50 -> 50 (no cap), eval_limit: 10 -> 10
-      expect(screen.getByTestId('total-active-workers').textContent).toBe('60')
+      // eval_limit: 50 -> capped to 20, eval_limit: 10 -> 10
+      expect(screen.getByTestId('total-active-workers').textContent).toBe('30')
     })
 
     it('shows primary color when total active workers < 240', () => {
