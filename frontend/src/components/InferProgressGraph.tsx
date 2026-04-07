@@ -353,38 +353,39 @@ function SpeedStats({ data }: SpeedStatsProps) {
   }
 
   // Find when each phase ends (transition points between critics)
-  // Phase 1: ends when Critic 2 first starts (critic2 > 0)
-  // Phase 2: ends when Critic 3 first starts (critic3 > 0)  
-  // Phase 3: ends at the last point
+  // Phase 1 ends when Critic 2 first starts (critic2 > 0)
+  // Phase 2 ends when Critic 3 first starts (critic3 > 0)  
+  // Phase 3 ends at the last point
   
-  const phase1EndPoint = data.find(d => d.critic2 > 0)
-  const phase2EndPoint = data.find(d => d.critic3 > 0)
+  // Find indices of phase transition points
+  const phase1EndIdx = data.findIndex(d => d.critic2 > 0)
+  const phase2EndIdx = data.findIndex(d => d.critic3 > 0)
 
   // Phase 1: from start to when Critic 2 first starts
-  // Duration is from first timestamp to the point where Critic 2 first becomes non-zero
+  // End = the point just BEFORE critic2 becomes > 0 (last point in Phase 1)
   const phase1StartTime = firstPoint.timestamp.getTime()
-  const phase1EndTime = phase1EndPoint ? phase1EndPoint.timestamp.getTime() : lastPoint.timestamp.getTime()
+  const phase1EndTime = phase1EndIdx > 0 ? data[phase1EndIdx - 1].timestamp.getTime() : firstPoint.timestamp.getTime()
   const phase1Duration = (phase1EndTime - phase1StartTime) / 1000 / 60
-  // Count = critic1 value at the end of Phase 1
-  const phase1Count = phase1EndPoint ? phase1EndPoint.critic1 : lastPoint.critic1
+  // Count = critic1 value at the last point of Phase 1
+  const phase1Count = phase1EndIdx > 0 ? data[phase1EndIdx - 1].critic1 : 0
   const avgCritic1Speed = phase1Duration > 0 ? phase1Count / phase1Duration : 0
 
   // Phase 2: from when Critic 2 starts to when Critic 3 first starts
-  // Only if both phases have run
+  // End = the point just BEFORE critic3 becomes > 0 (last point in Phase 2)
   let avgCritic2Speed: number | string = '-'
-  if (phase1EndPoint && phase2EndPoint) {
-    const phase2StartTime = phase1EndPoint.timestamp.getTime()
-    const phase2EndTime = phase2EndPoint.timestamp.getTime()
+  if (phase1EndIdx >= 0 && phase2EndIdx > phase1EndIdx) {
+    const phase2StartTime = data[phase1EndIdx].timestamp.getTime()
+    const phase2EndTime = data[phase2EndIdx - 1].timestamp.getTime()
     const phase2Duration = (phase2EndTime - phase2StartTime) / 1000 / 60
-    // Count = critic2 value at the start of Critic 3 (total instances processed by Critic 2)
-    const phase2Count = phase2EndPoint.critic2
+    // Count = critic2 value at the last point of Phase 2
+    const phase2Count = data[phase2EndIdx - 1].critic2
     avgCritic2Speed = phase2Duration > 0 ? phase2Count / phase2Duration : 0
   }
 
   // Phase 3: from when Critic 3 starts to the end (or current time if running)
   let avgCritic3Speed: number | string = '-'
-  if (phase2EndPoint) {
-    const phase3StartTime = phase2EndPoint.timestamp.getTime()
+  if (phase2EndIdx >= 0) {
+    const phase3StartTime = data[phase2EndIdx].timestamp.getTime()
     const phase3EndTime = isRunning ? calculationTime.getTime() : lastPoint.timestamp.getTime()
     const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60
     const phase3Count = lastPoint.critic3
