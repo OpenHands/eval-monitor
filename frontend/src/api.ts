@@ -1,7 +1,44 @@
 const BASE_URL = '/api'
 const RESULTS_BASE_URL = 'https://results.eval.all-hands.dev'
 
-export async function fetchRunList(date: string): Promise<string[]> {
+export type RunListItemStatus = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
+
+export interface RunListItem {
+  slug: string
+  status?: RunListItemStatus
+}
+
+const VALID_STATUSES: readonly string[] = [
+  'pending',
+  'building',
+  'running-infer',
+  'running-eval',
+  'completed',
+  'error',
+  'cancelled',
+]
+
+/** Parse a line from the run list file.
+ *  Format: "path/to/run" or "path/to/run status"
+ *  Returns an object with slug and optional status if found.
+ */
+export function parseRunListLine(line: string): RunListItem {
+  const trimmed = line.trim()
+  if (!trimmed) return { slug: '' }
+
+  // Split on whitespace to find optional status
+  const parts = trimmed.split(/\s+/)
+  const slug = parts[0]
+  const potentialStatus = parts[1]?.toLowerCase()
+
+  if (potentialStatus && VALID_STATUSES.includes(potentialStatus)) {
+    return { slug, status: potentialStatus as RunListItemStatus }
+  }
+
+  return { slug }
+}
+
+export async function fetchRunList(date: string): Promise<RunListItem[]> {
   const cacheBust = Math.floor(Date.now() / 1000)
   const res = await fetch(`${BASE_URL}/metadata/${date}.txt?${cacheBust}`)
   if (!res.ok) {
@@ -11,8 +48,8 @@ export async function fetchRunList(date: string): Promise<string[]> {
   const text = await res.text()
   return text
     .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
+    .map(line => parseRunListLine(line))
+    .filter(item => item.slug.length > 0)
     .reverse()
 }
 
@@ -32,7 +69,7 @@ export function getDatesForRange(baseDate: string, numDays: number): string[] {
 
 export interface DayRunGroup {
   date: string
-  runs: string[]
+  runs: RunListItem[]
 }
 
 export async function fetchMultiDayRunList(baseDate: string, numDays: number): Promise<DayRunGroup[]> {
