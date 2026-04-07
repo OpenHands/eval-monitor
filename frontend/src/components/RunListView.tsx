@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import type { RunMetadata, DayRunGroup } from '../api'
+import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
 import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason, getActiveWorkersForInstance } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
@@ -8,6 +8,7 @@ interface RunInfo {
   benchmark: string
   model: string
   jobId: string
+  status?: RunListItemStatus
 }
 
 interface RunListViewProps {
@@ -124,8 +125,8 @@ export default function RunListView({
   const slugToDate = useMemo(() => {
     const map: Record<string, string> = {}
     for (const group of dayGroups) {
-      for (const slug of group.runs) {
-        map[slug] = group.date
+      for (const item of group.runs) {
+        map[item.slug] = group.date
       }
     }
     return map
@@ -148,10 +149,12 @@ export default function RunListView({
   }, [hasNonFinished])
 
   // Compute statuses, runtimes, and triggered-by
+  // Use pre-parsed status from list file if available, otherwise derive from metadata
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
-      const status: StatusType = metadata ? getStageStatus(metadata) : 'pending'
+      // Use pre-parsed status if available, otherwise derive from metadata
+      const status: StatusType = run.status || (metadata ? getStageStatus(metadata) : 'pending')
       const runtime: string | null = metadata ? getRuntime(metadata, now) : null
       const runFinished = metadata ? isFinished(metadata) : true
       const triggeredBy = extractTriggeredBy(metadata)

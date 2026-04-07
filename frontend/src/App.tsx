@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus } from './api'
-import type { RunMetadata, DayRunGroup } from './api'
+import type { RunMetadata, DayRunGroup, RunListItem } from './api'
 import RunListView from './components/RunListView'
 import RunDetailView from './components/RunDetailView'
 import Header from './components/Header'
@@ -63,7 +63,7 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState(initialState.filterStatus)
   const [filterText, setFilterText] = useState(initialState.filterText)
   
-  const [runs, setRuns] = useState<string[]>([])
+  const [runs, setRuns] = useState<RunListItem[]>([])
   const [dayGroups, setDayGroups] = useState<DayRunGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -122,20 +122,23 @@ export default function App() {
     }
   }, [date, numDays])
 
-  // Fetch metadata for all runs to show status in the list
-  const loadAllMetadata = useCallback(async (runSlugs: string[]) => {
-    if (runSlugs.length === 0) return
+  // Fetch metadata for runs that don't have pre-parsed status (for efficiency)
+  const loadAllMetadata = useCallback(async (runItems: RunListItem[]) => {
+    // Only fetch metadata for runs that don't already have a status
+    const runsNeedingMetadata = runItems.filter(r => !r.status)
+    if (runsNeedingMetadata.length === 0) return
+    
     setLoadingMetadataList(true)
     const batchSize = 10
-    for (let i = 0; i < runSlugs.length; i += batchSize) {
-      const batch = runSlugs.slice(i, i + batchSize)
+    for (let i = 0; i < runsNeedingMetadata.length; i += batchSize) {
+      const batch = runsNeedingMetadata.slice(i, i + batchSize)
       const results = await Promise.all(
-        batch.map(async slug => {
+        batch.map(async item => {
           try {
-            const metadata = await fetchRunMetadata(slug)
-            return { slug, metadata }
+            const metadata = await fetchRunMetadata(item.slug)
+            return { slug: item.slug, metadata }
           } catch {
-            return { slug, metadata: null }
+            return { slug: item.slug, metadata: null }
           }
         })
       )
@@ -152,7 +155,7 @@ export default function App() {
     loadRuns()
   }, [loadRuns])
 
-  // When runs are loaded, fetch all their metadata
+  // When runs are loaded, fetch metadata for runs that need it
   useEffect(() => {
     if (runs.length > 0 && !selectedRun) {
       loadAllMetadata(runs)
@@ -210,9 +213,9 @@ export default function App() {
     }
   }
 
-  const runSummaries = runs.map(slug => {
-    const parsed = parseRunSlug(slug)
-    return { slug, ...parsed }
+  const runSummaries = runs.map(runItem => {
+    const parsed = parseRunSlug(runItem.slug)
+    return { slug: runItem.slug, status: runItem.status, ...parsed }
   })
 
   return (
