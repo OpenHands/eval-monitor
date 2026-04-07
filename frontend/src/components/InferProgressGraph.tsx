@@ -348,20 +348,79 @@ function SpeedStats({ data }: SpeedStatsProps) {
     return `${Math.round(value * 100)}%`
   }
 
+  const formatSpeed = (value: number | string) => {
+    return typeof value === 'number' ? `${value.toFixed(2)}/min` : '-'
+  }
+
+  // Calculate average speed for each critic phase
+  // Find transition points (when each critic first starts receiving data)
+  const firstCritic2Point = data.find(d => d.critic2 > 0)
+  const firstCritic3Point = data.find(d => d.critic3 > 0)
+
+  // Average Critic 1 Speed: from start to first critic2 point (or end if still on critic 1)
+  const critic1Start = firstPoint.timestamp.getTime()
+  const critic1End = (firstCritic2Point && !isRunning) 
+    ? firstCritic2Point.timestamp.getTime() 
+    : calculationTime.getTime()
+  const critic1Time = (critic1End - critic1Start) / 1000 / 60
+  const avgCritic1Speed = critic1Time > 0 ? lastCritic1OnlyPoint!.critic1 / critic1Time : 0
+
+  // Average Critic 2 Speed: from first critic2 point to first critic3 point (or end if still on critic 2)
+  let avgCritic2Speed: number | string = '-'
+  if (firstCritic2Point) {
+    const critic2Start = firstCritic2Point.timestamp.getTime()
+    const critic2End = (firstCritic3Point && !isRunning)
+      ? firstCritic3Point.timestamp.getTime()
+      : calculationTime.getTime()
+    const critic2Time = (critic2End - critic2Start) / 1000 / 60
+    const critic2Count = lastCritic2DonePoint 
+      ? lastCritic2DonePoint.critic2 - firstCritic2Point.critic2 
+      : 0
+    avgCritic2Speed = critic2Time > 0 ? critic2Count / critic2Time : 0
+  }
+
+  // Average Critic 3 Speed: from first critic3 point to current time (or end)
+  let avgCritic3Speed: number | string = '-'
+  if (firstCritic3Point) {
+    const critic3Start = firstCritic3Point.timestamp.getTime()
+    const critic3End = isRunning ? calculationTime.getTime() : lastPoint.timestamp.getTime()
+    const critic3Time = (critic3End - critic3Start) / 1000 / 60
+    const critic3Count = lastPoint.critic3 - firstCritic3Point.critic3
+    avgCritic3Speed = critic3Time > 0 ? critic3Count / critic3Time : 0
+  }
+
   return (
     <>
-      <div className="mt-4 pt-4 border-t border-oh-border/50 grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-oh-text-muted">Average Speed:</span>{' '}
-          <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+      <div className="mt-4 pt-4 border-t border-oh-border/50 space-y-2 text-sm">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-oh-text-muted">Average Speed:</span>{' '}
+            <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+          </div>
+          <div>
+            <span className="text-oh-text-muted">Current Speed:</span>{' '}
+            <span className="font-mono text-oh-text">
+              {typeof currentSpeed === 'number' ? `${currentSpeed.toFixed(2)} instances/min` : '-'}
+            </span>
+          </div>
         </div>
-        <div>
-          <span className="text-oh-text-muted">Current Speed:</span>{' '}
-          <span className="font-mono text-oh-text">
-            {typeof currentSpeed === 'number' ? `${currentSpeed.toFixed(2)} instances/min` : '-'}
-          </span>
+        
+        <div className="grid grid-cols-3 gap-4 pt-2 border-t border-oh-border/30">
+          <div>
+            <span className="text-oh-text-muted">Avg Critic 1:</span>{' '}
+            <span className="font-mono text-oh-text">{formatSpeed(avgCritic1Speed)}</span>
+          </div>
+          <div>
+            <span className="text-oh-text-muted">Avg Critic 2:</span>{' '}
+            <span className="font-mono text-oh-text">{formatSpeed(avgCritic2Speed)}</span>
+          </div>
+          <div>
+            <span className="text-oh-text-muted">Avg Critic 3:</span>{' '}
+            <span className="font-mono text-oh-text">{formatSpeed(avgCritic3Speed)}</span>
+          </div>
         </div>
       </div>
+      
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
         <div>
           <span className="text-oh-text-muted">Accepted critic 1:</span>{' '}
