@@ -62,7 +62,7 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
         <h3 className="text-base font-semibold text-oh-text">Pipeline Progress</h3>
         <SectionMenu id="pipeline-progress" />
       </div>
-      <div className="flex items-center justify-center gap-0">
+      <div className="flex items-center justify-center w-full gap-0">
         {STAGES.map((stage, i) => {
           const startData = metadata[stage.startKey]
           const endData = stage.endKey ? metadata[stage.endKey] : startData
