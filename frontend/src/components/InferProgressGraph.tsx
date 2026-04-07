@@ -293,20 +293,32 @@ function SpeedStats({ data }: SpeedStatsProps) {
   const firstPoint = data[0]
   const lastPoint = data[data.length - 1]
   
-  const totalTime = (lastPoint.timestamp.getTime() - firstPoint.timestamp.getTime()) / 1000 / 60
+  // Use current UTC time for calculations during inference
+  const now = new Date()
+  const lastDataTime = lastPoint.timestamp.getTime()
+  
+  // Consider inference still running if last data point is within 1 minute of now
+  const isRunning = (now.getTime() - lastDataTime) < 60000
+  
+  // Use current time if running, otherwise use last data point time
+  const calculationTime = isRunning ? now : lastPoint.timestamp
+  
+  const totalTime = (calculationTime.getTime() - firstPoint.timestamp.getTime()) / 1000 / 60
   const totalCritics = lastPoint.critic1 + lastPoint.critic2 + lastPoint.critic3
   
   const avgSpeed = totalTime > 0 ? totalCritics / totalTime : 0
 
-  let currentSpeed = 0
-  const oneHourAgo = lastPoint.timestamp.getTime() - 3600000
-  const pointOneHourAgo = data.find(d => d.timestamp.getTime() >= oneHourAgo) || firstPoint
-  
-  if (pointOneHourAgo) {
-    const timeDiff = (lastPoint.timestamp.getTime() - pointOneHourAgo.timestamp.getTime()) / 1000 / 60
-    const currentCritics = totalCritics
-    const oldCritics = pointOneHourAgo.critic1 + pointOneHourAgo.critic2 + pointOneHourAgo.critic3
-    currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
+  let currentSpeed: number | string = '-'
+  if (isRunning) {
+    const oneHourAgo = calculationTime.getTime() - 3600000
+    const pointOneHourAgo = data.find(d => d.timestamp.getTime() >= oneHourAgo) || firstPoint
+    
+    if (pointOneHourAgo) {
+      const timeDiff = (calculationTime.getTime() - pointOneHourAgo.timestamp.getTime()) / 1000 / 60
+      const currentCritics = totalCritics
+      const oldCritics = pointOneHourAgo.critic1 + pointOneHourAgo.critic2 + pointOneHourAgo.critic3
+      currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
+    }
   }
 
   // Calculate accepted for each critic
@@ -345,7 +357,9 @@ function SpeedStats({ data }: SpeedStatsProps) {
         </div>
         <div>
           <span className="text-oh-text-muted">Current Speed:</span>{' '}
-          <span className="font-mono text-oh-text">{currentSpeed.toFixed(2)} instances/min</span>
+          <span className="font-mono text-oh-text">
+            {typeof currentSpeed === 'number' ? `${currentSpeed.toFixed(2)} instances/min` : '-'}
+          </span>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
