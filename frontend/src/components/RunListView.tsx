@@ -125,8 +125,8 @@ export default function RunListView({
   const slugToDate = useMemo(() => {
     const map: Record<string, string> = {}
     for (const group of dayGroups) {
-      for (const slug of group.runs) {
-        map[slug] = group.date
+      for (const item of group.runs) {
+        map[item.slug] = group.date
       }
     }
     return map
