@@ -314,7 +314,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
     const pointOneHourAgo = data.find(d => d.timestamp.getTime() >= oneHourAgo) || firstPoint
     
     if (pointOneHourAgo) {
-      const timeDiff = (calculationTime.getTime() - pointOneHourAgo.timestamp.getTime()) / 1000 / 60
+      const timeDiff = (calculationTime.getTime() - pointOneHourAgo.timestamp.getTime()) / 1000 / 60 / 60 // in hours
       const currentCritics = totalCritics
       const oldCritics = pointOneHourAgo.critic1 + pointOneHourAgo.critic2 + pointOneHourAgo.critic3
       currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
