@@ -87,9 +87,9 @@ describe('InferProgressGraph', () => {
     })
 
     expect(screen.getByText('Average Speed:')).toBeInTheDocument()
-    expect(screen.getByText('Current Speed:')).toBeInTheDocument()
+    expect(screen.getByText('Time Since Last Instance:')).toBeInTheDocument()
     const speedTexts = screen.getAllByText(/instances\/hr/)
-    expect(speedTexts.length).toBe(2)
+    expect(speedTexts.length).toBe(1)
     
     vi.useRealTimers()
   })
@@ -256,8 +256,8 @@ describe('InferProgressGraph', () => {
       expect(screen.getByText('Average Speed:')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Current Speed:')).toBeInTheDocument()
-    // When inference is complete, Current Speed shows "-" so only Average Speed matches "instances/hr"
+    expect(screen.getByText('Time Since Last Instance:')).toBeInTheDocument()
+    // When inference is complete, Time Since Last Instance shows "-" so only Average Speed matches "instances/hr"
     const speedTexts = screen.getAllByText(/instances\/hr/)
     expect(speedTexts.length).toBe(1)
   })
@@ -286,12 +286,12 @@ describe('InferProgressGraph', () => {
     })
 
     expect(screen.getByText('Average Speed:')).toBeInTheDocument()
-    expect(screen.getByText('Current Speed:')).toBeInTheDocument()
+    expect(screen.getByText('Time Since Last Instance:')).toBeInTheDocument()
     
     // Both speeds should show numeric values when inference appears running
     const speedTexts = screen.getAllByText(/instances\/hr/)
     // Should have 2 speed texts: Average Speed and Current Speed
-    expect(speedTexts.length).toBe(2)
+    expect(speedTexts.length).toBe(1)
     
     vi.useRealTimers()
   })

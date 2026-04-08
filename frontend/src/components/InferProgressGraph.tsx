@@ -308,17 +308,27 @@ function SpeedStats({ data }: SpeedStatsProps) {
   
   const avgSpeed = totalTime > 0 ? totalCritics / (totalTime / 60) : 0
 
-  let currentSpeed: number | string = '-'
-  if (isRunning) {
-    const oneHourAgo = calculationTime.getTime() - 3600000
-    const pointOneHourAgo = data.find(d => d.timestamp.getTime() >= oneHourAgo) || firstPoint
-    
-    if (pointOneHourAgo) {
-      const timeDiff = (calculationTime.getTime() - pointOneHourAgo.timestamp.getTime()) / 1000 / 60 / 60 // in hours
-      const currentCritics = totalCritics
-      const oldCritics = pointOneHourAgo.critic1 + pointOneHourAgo.critic2 + pointOneHourAgo.critic3
-      currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
+  // Calculate time since last instance was added
+  let timeSinceLastInstance: number | string = '-'
+  let lastInstanceTime: Date | null = null
+  
+  // Find the most recent point where any critic count increased
+  for (let i = data.length - 1; i >= 1; i--) {
+    const current = data[i]
+    const previous = data[i - 1]
+    const currentTotal = current.critic1 + current.critic2 + current.critic3
+    const previousTotal = previous.critic1 + previous.critic2 + previous.critic3
+    if (currentTotal > previousTotal) {
+      lastInstanceTime = current.timestamp
+      break
     }
+  }
+  
+  if (isRunning && lastInstanceTime) {
+    timeSinceLastInstance = (calculationTime.getTime() - lastInstanceTime.getTime()) / 1000 / 60 // in minutes
+  } else if (isRunning && !lastInstanceTime) {
+    // No instance created yet, show time since inference started
+    timeSinceLastInstance = (calculationTime.getTime() - firstPoint.timestamp.getTime()) / 1000 / 60 // in minutes
   }
 
   // Calculate accepted for each critic
@@ -414,9 +424,23 @@ function SpeedStats({ data }: SpeedStatsProps) {
             <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/hr</span>
           </div>
           <div>
-            <span className="text-oh-text-muted">Current Speed:</span>{' '}
-            <span className="font-mono text-oh-text">
-              {typeof currentSpeed === 'number' ? `${currentSpeed.toFixed(2)} instances/hr` : '-'}
+            <span className="text-oh-text-muted">Time Since Last Instance:</span>{' '}
+            <span className={`font-mono text-oh-text ${
+              typeof timeSinceLastInstance === 'number'
+                ? timeSinceLastInstance > 120
+                  ? 'text-red-500 font-bold'
+                  : timeSinceLastInstance > 60
+                    ? 'text-red-500'
+                    : timeSinceLastInstance > 30
+                      ? 'text-orange-500'
+                      : ''
+                : ''
+            }`}>
+              {typeof timeSinceLastInstance === 'number' 
+                ? timeSinceLastInstance > 120
+                  ? `${Math.round(timeSinceLastInstance)}m - probably stuck!`
+                  : `${Math.round(timeSinceLastInstance)}m`
+                : '-'}
             </span>
           </div>
         </div>
