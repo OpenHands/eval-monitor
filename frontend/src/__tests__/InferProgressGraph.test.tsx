@@ -109,12 +109,12 @@ describe('InferProgressGraph', () => {
     
     // Wait for the component to render
     await waitFor(() => {
-      expect(screen.getByText('Accepted critic 1:')).toBeInTheDocument()
+      expect(screen.getByText('Critic 1 Acceptance:')).toBeInTheDocument()
     })
 
     // Verify all labels are present
-    expect(screen.getByText('Accepted critic 2:')).toBeInTheDocument()
-    expect(screen.getByText('Accepted critic 3:')).toBeInTheDocument()
+    expect(screen.getByText('Critic 2 Acceptance:')).toBeInTheDocument()
+    expect(screen.getByText('Critic 3 Acceptance:')).toBeInTheDocument()
   })
 
   it('has section menu with download link', async () => {
