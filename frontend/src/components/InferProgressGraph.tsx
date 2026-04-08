@@ -424,15 +424,15 @@ function SpeedStats({ data }: SpeedStatsProps) {
         
         <div className="grid grid-cols-3 gap-4 pt-2 border-t border-oh-border/30">
           <div>
-            <span className="text-oh-text-muted">Avg Critic 1:</span>{' '}
+            <span className="text-oh-text-muted">Critic 1 Speed:</span>{' '}
             <span className="font-mono text-oh-text">{formatSpeed(avgCritic1Speed)}</span>
           </div>
           <div>
-            <span className="text-oh-text-muted">Avg Critic 2:</span>{' '}
+            <span className="text-oh-text-muted">Critic 2 Speed:</span>{' '}
             <span className="font-mono text-oh-text">{formatSpeed(avgCritic2Speed)}</span>
           </div>
           <div>
-            <span className="text-oh-text-muted">Avg Critic 3:</span>{' '}
+            <span className="text-oh-text-muted">Critic 3 Speed:</span>{' '}
             <span className="font-mono text-oh-text">{formatSpeed(avgCritic3Speed)}</span>
           </div>
         </div>
