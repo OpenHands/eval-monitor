@@ -293,20 +293,42 @@ function SpeedStats({ data }: SpeedStatsProps) {
   const firstPoint = data[0]
   const lastPoint = data[data.length - 1]
   
-  const totalTime = (lastPoint.timestamp.getTime() - firstPoint.timestamp.getTime()) / 1000 / 60
+  // Use current UTC time for calculations during inference
+  const now = new Date()
+  const lastDataTime = lastPoint.timestamp.getTime()
+  
+  // Consider inference still running if last data point is within 1 minute of now
+  const isRunning = (now.getTime() - lastDataTime) < 60000
+  
+  // Use current time if running, otherwise use last data point time
+  const calculationTime = isRunning ? now : lastPoint.timestamp
+  
+  const totalTime = (calculationTime.getTime() - firstPoint.timestamp.getTime()) / 1000 / 60
   const totalCritics = lastPoint.critic1 + lastPoint.critic2 + lastPoint.critic3
   
-  const avgSpeed = totalTime > 0 ? totalCritics / totalTime : 0
+  const avgSpeed = totalTime > 0 ? totalCritics / (totalTime / 60) : 0
 
-  let currentSpeed = 0
-  const oneHourAgo = lastPoint.timestamp.getTime() - 3600000
-  const pointOneHourAgo = data.find(d => d.timestamp.getTime() >= oneHourAgo) || firstPoint
+  // Calculate time since last instance was added
+  let timeSinceLastInstance: number | string = '-'
+  let lastInstanceTime: Date | null = null
   
-  if (pointOneHourAgo) {
-    const timeDiff = (lastPoint.timestamp.getTime() - pointOneHourAgo.timestamp.getTime()) / 1000 / 60
-    const currentCritics = totalCritics
-    const oldCritics = pointOneHourAgo.critic1 + pointOneHourAgo.critic2 + pointOneHourAgo.critic3
-    currentSpeed = timeDiff > 0 ? (currentCritics - oldCritics) / timeDiff : 0
+  // Find the most recent point where any critic count increased
+  for (let i = data.length - 1; i >= 1; i--) {
+    const current = data[i]
+    const previous = data[i - 1]
+    const currentTotal = current.critic1 + current.critic2 + current.critic3
+    const previousTotal = previous.critic1 + previous.critic2 + previous.critic3
+    if (currentTotal > previousTotal) {
+      lastInstanceTime = current.timestamp
+      break
+    }
+  }
+  
+  if (isRunning && lastInstanceTime) {
+    timeSinceLastInstance = (calculationTime.getTime() - lastInstanceTime.getTime()) / 1000 / 60 // in minutes
+  } else if (isRunning && !lastInstanceTime) {
+    // No instance created yet, show time since inference started
+    timeSinceLastInstance = (calculationTime.getTime() - firstPoint.timestamp.getTime()) / 1000 / 60 // in minutes
   }
 
   // Calculate accepted for each critic
@@ -336,18 +358,109 @@ function SpeedStats({ data }: SpeedStatsProps) {
     return `${Math.round(value * 100)}%`
   }
 
+  const formatSpeed = (value: number | string) => {
+    return typeof value === 'number' ? `${value.toFixed(2)}/hr` : '-'
+  }
+
+  // Find when each phase ends (transition points between critics)
+  // Phase 1 ends when Critic 2 first starts (critic2 > 0)
+  // Phase 2 ends when Critic 3 first starts (critic3 > 0)  
+  // Phase 3 ends at the last point
+  
+  // Find indices of phase transition points
+  const phase1EndIdx = data.findIndex(d => d.critic2 > 0)
+  const phase2EndIdx = data.findIndex(d => d.critic3 > 0)
+
+  // Phase 1: from start to when Critic 2 first starts
+  // End = the point just BEFORE critic2 becomes > 0 (last point in Phase 1)
+  const phase1StartTime = firstPoint.timestamp.getTime()
+  // If critic2 never starts, use the last data point as the end of Phase 1
+  const phase1EndTime = phase1EndIdx > 0 
+    ? data[phase1EndIdx - 1].timestamp.getTime() 
+    : data[data.length - 1].timestamp.getTime()
+  const phase1Duration = (phase1EndTime - phase1StartTime) / 1000 / 60 / 60 // in hours
+  // Count = critic1 value at the last point of Phase 1
+  const phase1EndIdxEffective = phase1EndIdx > 0 ? phase1EndIdx - 1 : data.length - 1
+  const phase1Count = data[phase1EndIdxEffective].critic1
+  const avgCritic1Speed = phase1Duration > 0 ? phase1Count / phase1Duration : 0
+
+  // Phase 2: from when Critic 2 starts to when Critic 3 first starts (or end of data if Critic 3 never started)
+  // Only show Critic 2 speed if critic2 actually ran (count > 0)
+  let avgCritic2Speed: number | string = '-'
+  if (lastPoint.critic2 > 0) {
+    const phase2StartIdx = data.findIndex(d => d.critic2 > 0)
+    if (phase2StartIdx >= 0) {
+      const phase2StartTime = data[phase2StartIdx].timestamp.getTime()
+      // If Critic 3 never started, use the last data point; otherwise use the point just before Critic 3 starts
+      const phase2EndIdxEffective = phase2EndIdx > 0 ? phase2EndIdx - 1 : data.length - 1
+      const phase2EndTime = data[phase2EndIdxEffective].timestamp.getTime()
+      const phase2Duration = (phase2EndTime - phase2StartTime) / 1000 / 60 / 60 // in hours
+      // Count = critic2 value at the last point of Phase 2
+      const phase2Count = data[phase2EndIdxEffective].critic2
+      avgCritic2Speed = phase2Duration > 0 ? phase2Count / phase2Duration : 0
+    }
+  }
+
+  // Phase 3: from when Critic 3 starts to the end (or current time if running)
+  // Only show Critic 3 speed if critic3 actually ran (count > 0)
+  let avgCritic3Speed: number | string = '-'
+  if (lastPoint.critic3 > 0) {
+    const phase3StartIdx = data.findIndex(d => d.critic3 > 0)
+    if (phase3StartIdx >= 0) {
+      const phase3StartTime = data[phase3StartIdx].timestamp.getTime()
+      const phase3EndTime = isRunning ? calculationTime.getTime() : lastPoint.timestamp.getTime()
+      const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60 / 60 // in hours
+      const phase3Count = lastPoint.critic3
+      avgCritic3Speed = phase3Duration > 0 ? phase3Count / phase3Duration : 0
+    }
+  }
+
   return (
     <>
-      <div className="mt-4 pt-4 border-t border-oh-border/50 grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-oh-text-muted">Average Speed:</span>{' '}
-          <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+      <div className="mt-4 pt-4 border-t border-oh-border/50 space-y-2 text-sm">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-oh-text-muted">Average Speed:</span>{' '}
+            <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/hr</span>
+          </div>
+          <div>
+            <span className="text-oh-text-muted">Time Since Last Instance:</span>{' '}
+            <span className={`font-mono text-oh-text ${
+              typeof timeSinceLastInstance === 'number'
+                ? timeSinceLastInstance > 120
+                  ? 'text-red-500 font-bold'
+                  : timeSinceLastInstance > 60
+                    ? 'text-red-500'
+                    : timeSinceLastInstance > 30
+                      ? 'text-orange-500'
+                      : ''
+                : ''
+            }`}>
+              {typeof timeSinceLastInstance === 'number' 
+                ? timeSinceLastInstance > 120
+                  ? `${Math.round(timeSinceLastInstance)}m - probably stuck!`
+                  : `${Math.round(timeSinceLastInstance)}m`
+                : '-'}
+            </span>
+          </div>
         </div>
-        <div>
-          <span className="text-oh-text-muted">Current Speed:</span>{' '}
-          <span className="font-mono text-oh-text">{currentSpeed.toFixed(2)} instances/min</span>
+        
+        <div className="grid grid-cols-3 gap-4 pt-2 border-t border-oh-border/30">
+          <div>
+            <span className="text-oh-text-muted">Critic 1 Speed:</span>{' '}
+            <span className="font-mono text-oh-text">{formatSpeed(avgCritic1Speed)}</span>
+          </div>
+          <div>
+            <span className="text-oh-text-muted">Critic 2 Speed:</span>{' '}
+            <span className="font-mono text-oh-text">{formatSpeed(avgCritic2Speed)}</span>
+          </div>
+          <div>
+            <span className="text-oh-text-muted">Critic 3 Speed:</span>{' '}
+            <span className="font-mono text-oh-text">{formatSpeed(avgCritic3Speed)}</span>
+          </div>
         </div>
       </div>
+      
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
         <div>
           <span className="text-oh-text-muted">Accepted critic 1:</span>{' '}
