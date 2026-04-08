@@ -306,7 +306,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
   const totalTime = (calculationTime.getTime() - firstPoint.timestamp.getTime()) / 1000 / 60
   const totalCritics = lastPoint.critic1 + lastPoint.critic2 + lastPoint.critic3
   
-  const avgSpeed = totalTime > 0 ? totalCritics / totalTime : 0
+  const avgSpeed = totalTime > 0 ? totalCritics / (totalTime / 60) : 0
 
   let currentSpeed: number | string = '-'
   if (isRunning) {
@@ -349,7 +349,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
   }
 
   const formatSpeed = (value: number | string) => {
-    return typeof value === 'number' ? `${value.toFixed(2)}/min` : '-'
+    return typeof value === 'number' ? `${value.toFixed(2)}/hr` : '-'
   }
 
   // Find when each phase ends (transition points between critics)
@@ -365,7 +365,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
   // End = the point just BEFORE critic2 becomes > 0 (last point in Phase 1)
   const phase1StartTime = firstPoint.timestamp.getTime()
   const phase1EndTime = phase1EndIdx > 0 ? data[phase1EndIdx - 1].timestamp.getTime() : firstPoint.timestamp.getTime()
-  const phase1Duration = (phase1EndTime - phase1StartTime) / 1000 / 60
+  const phase1Duration = (phase1EndTime - phase1StartTime) / 1000 / 60 / 60 // in hours
   // Count = critic1 value at the last point of Phase 1
   const phase1Count = phase1EndIdx > 0 ? data[phase1EndIdx - 1].critic1 : 0
   const avgCritic1Speed = phase1Duration > 0 ? phase1Count / phase1Duration : 0
@@ -379,7 +379,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
     // If Critic 3 never started, use the last data point; otherwise use the point just before Critic 3 starts
     const phase2EndIdxEffective = phase2EndIdx > 0 ? phase2EndIdx - 1 : data.length - 1
     const phase2EndTime = data[phase2EndIdxEffective].timestamp.getTime()
-    const phase2Duration = (phase2EndTime - phase2StartTime) / 1000 / 60
+    const phase2Duration = (phase2EndTime - phase2StartTime) / 1000 / 60 / 60 // in hours
     // Count = critic2 value at the last point of Phase 2
     const phase2Count = data[phase2EndIdxEffective].critic2
     avgCritic2Speed = phase2Duration > 0 ? phase2Count / phase2Duration : 0
@@ -391,7 +391,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
   if (phase2EndIdx >= 0 && lastPoint.critic3 > 0) {
     const phase3StartTime = data[phase2EndIdx].timestamp.getTime()
     const phase3EndTime = isRunning ? calculationTime.getTime() : lastPoint.timestamp.getTime()
-    const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60
+    const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60 / 60 // in hours
     const phase3Count = lastPoint.critic3
     avgCritic3Speed = phase3Duration > 0 ? phase3Count / phase3Duration : 0
   } else if (phase2EndIdx < 0 && lastPoint.critic3 > 0) {
@@ -400,7 +400,7 @@ function SpeedStats({ data }: SpeedStatsProps) {
     if (phase3StartIdx >= 0) {
       const phase3StartTime = data[phase3StartIdx].timestamp.getTime()
       const phase3EndTime = isRunning ? calculationTime.getTime() : lastPoint.timestamp.getTime()
-      const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60
+      const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60 / 60 // in hours
       const phase3Count = lastPoint.critic3
       avgCritic3Speed = phase3Duration > 0 ? phase3Count / phase3Duration : 0
     }
@@ -412,12 +412,12 @@ function SpeedStats({ data }: SpeedStatsProps) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <span className="text-oh-text-muted">Average Speed:</span>{' '}
-            <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/min</span>
+            <span className="font-mono text-oh-text">{avgSpeed.toFixed(2)} instances/hr</span>
           </div>
           <div>
             <span className="text-oh-text-muted">Current Speed:</span>{' '}
             <span className="font-mono text-oh-text">
-              {typeof currentSpeed === 'number' ? `${currentSpeed.toFixed(2)} instances/min` : '-'}
+              {typeof currentSpeed === 'number' ? `${currentSpeed.toFixed(2)} instances/hr` : '-'}
             </span>
           </div>
         </div>
