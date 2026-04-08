@@ -370,26 +370,40 @@ function SpeedStats({ data }: SpeedStatsProps) {
   const phase1Count = phase1EndIdx > 0 ? data[phase1EndIdx - 1].critic1 : 0
   const avgCritic1Speed = phase1Duration > 0 ? phase1Count / phase1Duration : 0
 
-  // Phase 2: from when Critic 2 starts to when Critic 3 first starts
-  // End = the point just BEFORE critic3 becomes > 0 (last point in Phase 2)
+  // Phase 2: from when Critic 2 starts to when Critic 3 first starts (or end of data if Critic 3 never started)
+  // End = the last data point (either just before Critic 3 starts, or the final point if Critic 3 never runs)
   let avgCritic2Speed: number | string = '-'
-  if (phase1EndIdx >= 0 && phase2EndIdx > phase1EndIdx) {
+  // Show Critic 2 speed if critic2 count > 0
+  if (phase1EndIdx >= 0 && lastPoint.critic2 > 0) {
     const phase2StartTime = data[phase1EndIdx].timestamp.getTime()
-    const phase2EndTime = data[phase2EndIdx - 1].timestamp.getTime()
+    // If Critic 3 never started, use the last data point; otherwise use the point just before Critic 3 starts
+    const phase2EndIdxEffective = phase2EndIdx > 0 ? phase2EndIdx - 1 : data.length - 1
+    const phase2EndTime = data[phase2EndIdxEffective].timestamp.getTime()
     const phase2Duration = (phase2EndTime - phase2StartTime) / 1000 / 60
     // Count = critic2 value at the last point of Phase 2
-    const phase2Count = data[phase2EndIdx - 1].critic2
+    const phase2Count = data[phase2EndIdxEffective].critic2
     avgCritic2Speed = phase2Duration > 0 ? phase2Count / phase2Duration : 0
   }
 
   // Phase 3: from when Critic 3 starts to the end (or current time if running)
   let avgCritic3Speed: number | string = '-'
-  if (phase2EndIdx >= 0) {
+  // Show Critic 3 speed if critic3 count > 0
+  if (phase2EndIdx >= 0 && lastPoint.critic3 > 0) {
     const phase3StartTime = data[phase2EndIdx].timestamp.getTime()
     const phase3EndTime = isRunning ? calculationTime.getTime() : lastPoint.timestamp.getTime()
     const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60
     const phase3Count = lastPoint.critic3
     avgCritic3Speed = phase3Duration > 0 ? phase3Count / phase3Duration : 0
+  } else if (phase2EndIdx < 0 && lastPoint.critic3 > 0) {
+    // Critic 3 started but never had an "end" point (still running or finished without phase transition)
+    const phase3StartIdx = data.findIndex(d => d.critic3 > 0)
+    if (phase3StartIdx >= 0) {
+      const phase3StartTime = data[phase3StartIdx].timestamp.getTime()
+      const phase3EndTime = isRunning ? calculationTime.getTime() : lastPoint.timestamp.getTime()
+      const phase3Duration = (phase3EndTime - phase3StartTime) / 1000 / 60
+      const phase3Count = lastPoint.critic3
+      avgCritic3Speed = phase3Duration > 0 ? phase3Count / phase3Duration : 0
+    }
   }
 
   return (
