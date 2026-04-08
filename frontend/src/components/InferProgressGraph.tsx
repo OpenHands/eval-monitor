@@ -463,15 +463,15 @@ function SpeedStats({ data }: SpeedStatsProps) {
       
       <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
         <div>
-          <span className="text-oh-text-muted">Accepted critic 1:</span>{' '}
+          <span className="text-oh-text-muted">Critic 1 Acceptance:</span>{' '}
           <span className="font-mono text-oh-text">{formatAccepted(acceptedCritic1)}</span>
         </div>
         <div>
-          <span className="text-oh-text-muted">Accepted critic 2:</span>{' '}
+          <span className="text-oh-text-muted">Critic 2 Acceptance:</span>{' '}
           <span className="font-mono text-oh-text">{acceptedCritic1 === 1.0 ? '-' : formatAccepted(acceptedCritic2)}</span>
         </div>
         <div>
-          <span className="text-oh-text-muted">Accepted critic 3:</span>{' '}
+          <span className="text-oh-text-muted">Critic 3 Acceptance:</span>{' '}
           <span className="font-mono text-oh-text">{acceptedCritic1 === 1.0 || acceptedCritic2 === 1.0 ? '-' : formatAccepted(acceptedCritic3)}</span>
         </div>
       </div>
