@@ -123,13 +123,20 @@ function CostReportCard({ report }: { report: CostReport }) {
 
 function ArchiveLink({ slug }: { slug: string }) {
   const archiveUrl = getResultsUrl(slug, 'results.tar.gz')
+  const PUSH_TO_INDEX_URL = 'https://github.com/OpenHands/evaluation/actions/workflows/push-to-index.yml'
+
+  const handleCopyAndOpen = async () => {
+    await navigator.clipboard.writeText(archiveUrl)
+    window.open(PUSH_TO_INDEX_URL, '_blank')
+  }
+
   return (
     <div className="bg-oh-surface border border-oh-border rounded-lg p-4">
       <div className="flex items-center gap-2">
         <span>📦</span>
         <h3 className="text-sm font-medium text-oh-text">Results Archive</h3>
       </div>
-      <div className="mt-3">
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
         <a
           href={archiveUrl}
           target="_blank"
@@ -141,6 +148,15 @@ function ArchiveLink({ slug }: { slug: string }) {
           </svg>
           Download results.tar.gz
         </a>
+        <button
+          onClick={handleCopyAndOpen}
+          className="inline-flex items-center gap-2 px-3 py-1.5 bg-oh-warning/10 text-oh-warning border border-oh-warning/30 rounded-md text-sm font-medium hover:bg-oh-warning/20 transition-colors cursor-pointer"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          Copy archive link and submit to index
+        </button>
       </div>
     </div>
   )
