@@ -9,9 +9,11 @@ interface HeaderProps {
   numDays: number
   onNumDaysChange: (days: number) => void
   refreshNonce: number
+  clusterHealthOpen: boolean
+  onClusterHealthToggle: (open: boolean) => void
 }
 
-export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack, numDays, onNumDaysChange, refreshNonce }: HeaderProps) {
+export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack, numDays, onNumDaysChange, refreshNonce, clusterHealthOpen, onClusterHealthToggle }: HeaderProps) {
   const handlePrevDay = () => {
     const d = new Date(date + 'T00:00:00Z')
     d.setUTCDate(d.getUTCDate() - 1)
@@ -122,7 +124,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
 
           {/* Right: Cluster health + Refresh */}
           <div className="flex items-center gap-2">
-            {!selectedRun && <ClusterHealthBadge refreshNonce={refreshNonce} />}
+            {!selectedRun && <ClusterHealthBadge refreshNonce={refreshNonce} isOpen={clusterHealthOpen} onToggle={onClusterHealthToggle} />}
           <button
             onClick={onRefresh}
             className="p-2 rounded-lg text-oh-text-muted hover:text-oh-text hover:bg-oh-surface-hover transition-colors"

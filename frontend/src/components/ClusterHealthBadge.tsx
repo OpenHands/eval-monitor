@@ -6,12 +6,25 @@ import ClusterHealthModal from './ClusterHealth/ClusterHealthModal'
 
 interface Props {
   refreshNonce: number
+  isOpen?: boolean
+  onToggle?: (open: boolean) => void
 }
 
-export default function ClusterHealthBadge({ refreshNonce }: Props) {
+export default function ClusterHealthBadge({ refreshNonce, isOpen: controlledOpen, onToggle }: Props) {
   const [report, setReport] = useState<ClusterHealthReport | null>(null)
   const [loading, setLoading] = useState(true)
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+
+  const isControlled = controlledOpen !== undefined && onToggle !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+
+  const handleToggle = (newOpen: boolean) => {
+    if (isControlled) {
+      onToggle(newOpen)
+    } else {
+      setInternalOpen(newOpen)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -47,9 +60,9 @@ export default function ClusterHealthBadge({ refreshNonce }: Props) {
         labelClass={styles.label}
         label={badgeLabel}
         title={`Updated ${formatAge(report.timestamp)}`}
-        onClick={() => setOpen(true)}
+        onClick={() => handleToggle(true)}
       />
-      {open && <ClusterHealthModal report={report} onClose={() => setOpen(false)} />}
+      {open && <ClusterHealthModal report={report} onClose={() => handleToggle(false)} />}
     </>
   )
 }
