@@ -483,6 +483,135 @@ export function getOriginalRunSlug(metadata: RunMetadata | null, _currentSlug: s
 /** Build the eval monitor URL for the original run.
  *  Constructs the monitor URL with the original run slug and text filter.
  */
+export interface ClusterHealthSummary {
+  healthy: boolean
+  issues: string[]
+  errors: string[]
+}
+
+export interface ClusterHealthPodPhases {
+  Running?: number
+  Pending?: number
+  Failed?: number
+  Succeeded?: number
+  Unknown?: number
+}
+
+export interface ClusterHealthPodProblem {
+  name: string
+  state: string
+  reason?: string
+  age_minutes?: number
+  restarts?: number
+}
+
+export interface ClusterHealthEventEntry {
+  name: string
+  reason: string
+  message: string
+  count?: number
+  last_seen?: string
+}
+
+export interface ClusterHealthReport {
+  timestamp: string
+  nodes: {
+    total: number
+    ready: number
+    not_ready: number
+    pressure: { memory: string[]; disk: string[]; pid: string[] }
+    resources: Array<{
+      name: string
+      cpu_allocatable: number
+      cpu_capacity: number
+      cpu_reserved_percent: number
+      memory_allocatable: number
+      memory_capacity: number
+      memory_reserved_percent: number
+    }>
+  }
+  pods: {
+    namespace: string
+    total: number
+    phases: ClusterHealthPodPhases
+    problems: ClusterHealthPodProblem[]
+  }
+  events: {
+    failed_scheduling: ClusterHealthEventEntry[]
+    warnings: ClusterHealthEventEntry[]
+    warnings_summary: Record<string, number>
+  }
+  pvcs: { unbound: Array<{ name: string; phase: string }> }
+  runtime_pods: { total: number; running: number }
+  summary: ClusterHealthSummary
+}
+
+export type ClusterHealthState = 'healthy' | 'warning' | 'critical' | 'stale'
+
+const CLUSTER_HEALTH_STALE_MS = 15 * 60 * 1000
+
+// Pod states that indicate the workload is actively failing — capacity loss
+// or hard errors. These trip the "critical" tier.
+const CRITICAL_POD_STATES = new Set([
+  'OOMKilled',
+  'CrashLoopBackOff',
+  'CreateContainerError',
+  'ImagePullBackOff',
+  'ErrImagePull',
+  'Error',
+  'Evicted',
+])
+
+// Pod states that indicate something is *off* but not actively destructive —
+// stuck pods, flapping containers. These trip the "warning" tier.
+const WARNING_POD_STATES = new Set([
+  'Pending',
+  'Terminating',
+  'Unknown',
+  'HighRestartCount',
+])
+
+// "Terminating" and "Unknown" pods are stuck in a half-dead state — the
+// upstream cluster-health collector groups them as "zombies". Subset of
+// WARNING_POD_STATES, exported so the UI can render a single zombie count.
+export const ZOMBIE_POD_STATES: ReadonlySet<string> = new Set(['Terminating', 'Unknown'])
+
+export async function fetchClusterHealth(): Promise<ClusterHealthReport | null> {
+  const cacheBust = Math.floor(Date.now() / 1000)
+  return (await fetchJson(`${BASE_URL}/cluster-health/latest.json?${cacheBust}`)) as ClusterHealthReport | null
+}
+
+/** Compute the cluster health severity tier from a report.
+ *  Returns 'stale' if data is older than CLUSTER_HEALTH_STALE_MS,
+ *  'critical' for capacity loss or hard pod failures,
+ *  'warning' for soft issues (PVCs, stuck/flapping pods, partial collector failures),
+ *  'healthy' otherwise. */
+export function getClusterHealthState(report: ClusterHealthReport, now: number = Date.now()): ClusterHealthState {
+  const ts = new Date(report.timestamp).getTime()
+  if (!isNaN(ts) && now - ts > CLUSTER_HEALTH_STALE_MS) return 'stale'
+
+  // Critical: lost capacity or pods can't run.
+  if (report.nodes.not_ready > 0) return 'critical'
+  if (
+    report.nodes.pressure.memory.length > 0 ||
+    report.nodes.pressure.disk.length > 0 ||
+    report.nodes.pressure.pid.length > 0
+  ) return 'critical'
+  if (report.events.failed_scheduling.length > 0) return 'critical'
+  if (report.pods.problems.some(p => CRITICAL_POD_STATES.has(p.state))) return 'critical'
+
+  // Warning: degraded but not capacity-impacting.
+  if (report.summary.errors.length > 0) return 'warning'
+  if (report.pvcs.unbound.length > 0) return 'warning'
+  if (report.pods.problems.some(p => WARNING_POD_STATES.has(p.state))) return 'warning'
+
+  // If the upstream healthy flag is false but nothing matched, surface as warning
+  // rather than silently green — there's an unaccounted issue we should see.
+  if (!report.summary.healthy) return 'warning'
+
+  return 'healthy'
+}
+
 export function buildOriginalRunUrl(_currentUrl: string, originalRunSlug: string): string {
   // Extract the original timestamp from the slug (last part after the last /)
   const parts = originalRunSlug.split('/')

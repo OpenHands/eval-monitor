@@ -1,3 +1,5 @@
+import ClusterHealthBadge from './ClusterHealthBadge'
+
 interface HeaderProps {
   date: string
   onDateChange: (date: string) => void
@@ -6,9 +8,10 @@ interface HeaderProps {
   onBack: () => void
   numDays: number
   onNumDaysChange: (days: number) => void
+  refreshNonce: number
 }
 
-export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack, numDays, onNumDaysChange }: HeaderProps) {
+export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack, numDays, onNumDaysChange, refreshNonce }: HeaderProps) {
   const handlePrevDay = () => {
     const d = new Date(date + 'T00:00:00Z')
     d.setUTCDate(d.getUTCDate() - 1)
@@ -117,7 +120,9 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
             </div>
           )}
 
-          {/* Right: Refresh */}
+          {/* Right: Cluster health + Refresh */}
+          <div className="flex items-center gap-2">
+            {!selectedRun && <ClusterHealthBadge refreshNonce={refreshNonce} />}
           <button
             onClick={onRefresh}
             className="p-2 rounded-lg text-oh-text-muted hover:text-oh-text hover:bg-oh-surface-hover transition-colors"
@@ -127,6 +132,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
+          </div>
         </div>
       </div>
     </header>

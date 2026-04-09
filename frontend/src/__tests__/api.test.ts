@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, parseRunListLine, fetchRunList } from '../api'
-import type { RunMetadata } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, parseRunListLine, fetchRunList, getClusterHealthState } from '../api'
+import type { RunMetadata, ClusterHealthReport } from '../api'
+
+function makeReport(overrides: Partial<ClusterHealthReport> = {}): ClusterHealthReport {
+  return {
+    timestamp: new Date().toISOString(),
+    nodes: { total: 6, ready: 6, not_ready: 0, pressure: { memory: [], disk: [], pid: [] }, resources: [] },
+    pods: { namespace: 'evaluation-jobs', total: 0, phases: {}, problems: [] },
+    events: { failed_scheduling: [], warnings: [], warnings_summary: {} },
+    pvcs: { unbound: [] },
+    runtime_pods: { total: 0, running: 0 },
+    summary: { healthy: true, issues: [], errors: [] },
+    ...overrides,
+  }
+}
 
 const originalFetch = globalThis.fetch
 
@@ -880,6 +893,113 @@ swebench/model2/456 completed
       { slug: 'swebench/model2/456', status: 'completed' },
       { slug: 'swebench/model1/123' },
     ])
+  })
+})
+
+describe('getClusterHealthState', () => {
+  const FRESH_NOW = new Date('2026-04-09T07:20:00Z').getTime()
+  const FRESH_TIMESTAMP = '2026-04-09T07:18:00Z' // 2 min old, fresh
+
+  it('returns healthy when nothing is wrong', () => {
+    const report = makeReport({ timestamp: FRESH_TIMESTAMP })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('healthy')
+  })
+
+  it('returns stale when the report is older than the threshold', () => {
+    const report = makeReport({ timestamp: '2026-04-09T07:00:00Z' }) // 20 min old
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('stale')
+  })
+
+  it('returns critical when a node is not ready', () => {
+    const report = makeReport({
+      timestamp: FRESH_TIMESTAMP,
+      nodes: { total: 6, ready: 5, not_ready: 1, pressure: { memory: [], disk: [], pid: [] }, resources: [] },
+      summary: { healthy: false, issues: ['1 node(s) not ready'], errors: [] },
+    })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('critical')
+  })
+
+  it('returns critical on node memory pressure', () => {
+    const report = makeReport({
+      timestamp: FRESH_TIMESTAMP,
+      nodes: { total: 6, ready: 6, not_ready: 0, pressure: { memory: ['node-a'], disk: [], pid: [] }, resources: [] },
+      summary: { healthy: false, issues: ['memory pressure on node-a'], errors: [] },
+    })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('critical')
+  })
+
+  it('returns critical on FailedScheduling events', () => {
+    const report = makeReport({
+      timestamp: FRESH_TIMESTAMP,
+      events: { failed_scheduling: [{ name: 'pod-a', reason: 'FailedScheduling', message: '0/6 nodes' }], warnings: [], warnings_summary: {} },
+      summary: { healthy: false, issues: ['FailedScheduling for pod-a'], errors: [] },
+    })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('critical')
+  })
+
+  it('returns critical on OOMKilled / CrashLoopBackOff / Error / Evicted pods', () => {
+    for (const state of ['OOMKilled', 'CrashLoopBackOff', 'Error', 'Evicted', 'ImagePullBackOff']) {
+      const report = makeReport({
+        timestamp: FRESH_TIMESTAMP,
+        pods: { namespace: 'evaluation-jobs', total: 1, phases: {}, problems: [{ name: 'p', state }] },
+        summary: { healthy: false, issues: [`p in ${state}`], errors: [] },
+      })
+      expect(getClusterHealthState(report, FRESH_NOW)).toBe('critical')
+    }
+  })
+
+  it('returns warning on unbound PVCs only', () => {
+    const report = makeReport({
+      timestamp: FRESH_TIMESTAMP,
+      pvcs: { unbound: [{ name: 'pvc-a', phase: 'Pending' }] },
+      summary: { healthy: false, issues: ['PVC pvc-a is Pending'], errors: [] },
+    })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('warning')
+  })
+
+  it('returns warning on stuck Pending / Terminating / Unknown pods', () => {
+    for (const state of ['Pending', 'Terminating', 'Unknown', 'HighRestartCount']) {
+      const report = makeReport({
+        timestamp: FRESH_TIMESTAMP,
+        pods: { namespace: 'evaluation-jobs', total: 1, phases: {}, problems: [{ name: 'p', state }] },
+        summary: { healthy: false, issues: [`p stuck ${state}`], errors: [] },
+      })
+      expect(getClusterHealthState(report, FRESH_NOW)).toBe('warning')
+    }
+  })
+
+  it('returns warning when collector errors are present (data degraded)', () => {
+    const report = makeReport({
+      timestamp: FRESH_TIMESTAMP,
+      summary: { healthy: false, issues: ['Health collection degraded: 1 API error(s)'], errors: ['nodes collection failed'] },
+    })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('warning')
+  })
+
+  it('critical takes precedence over warning when both are present', () => {
+    const report = makeReport({
+      timestamp: FRESH_TIMESTAMP,
+      pods: {
+        namespace: 'evaluation-jobs',
+        total: 2,
+        phases: {},
+        problems: [
+          { name: 'p1', state: 'Pending' },     // warning
+          { name: 'p2', state: 'OOMKilled' },   // critical
+        ],
+      },
+      pvcs: { unbound: [{ name: 'pvc-a', phase: 'Pending' }] },
+      summary: { healthy: false, issues: ['p2 in OOMKilled'], errors: [] },
+    })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('critical')
+  })
+
+  it('returns warning when summary.healthy is false but no known cause was matched', () => {
+    const report = makeReport({
+      timestamp: FRESH_TIMESTAMP,
+      summary: { healthy: false, issues: ['something we did not classify'], errors: [] },
+    })
+    expect(getClusterHealthState(report, FRESH_NOW)).toBe('warning')
   })
 })
 

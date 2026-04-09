@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import Header from '../components/Header'
 
@@ -10,7 +10,18 @@ const defaultProps = {
   onBack: vi.fn(),
   numDays: 2,
   onNumDaysChange: vi.fn(),
+  refreshNonce: 0,
 }
+
+// ClusterHealthBadge fetches on mount; stub fetch per-test so we don't hit the
+// network and the stub doesn't leak into other test files sharing the global.
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(null, { status: 404 }))))
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('Header', () => {
   it('renders the OpenHands logo image', () => {
