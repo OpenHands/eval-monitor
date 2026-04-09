@@ -11,6 +11,8 @@ const defaultProps = {
   numDays: 2,
   onNumDaysChange: vi.fn(),
   refreshNonce: 0,
+  clusterHealthOpen: false,
+  onClusterHealthToggle: vi.fn(),
 }
 
 // ClusterHealthBadge fetches on mount; stub fetch per-test so we don't hit the
