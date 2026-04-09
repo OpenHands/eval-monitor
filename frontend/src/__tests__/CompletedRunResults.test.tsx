@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import CompletedRunResults from '../components/CompletedRunResults'
 
 const originalFetch = globalThis.fetch
@@ -69,5 +69,55 @@ describe('CompletedRunResults', () => {
 
     await screen.findByText('Cost Report')
     expect(screen.queryByTestId('zero-cost-warning')).toBeNull()
+  })
+
+  describe('Submit to index button', () => {
+    const originalOpen = window.open
+
+    beforeEach(() => {
+      window.open = vi.fn()
+    })
+
+    afterEach(() => {
+      window.open = originalOpen
+      globalThis.fetch = originalFetch
+      vi.restoreAllMocks()
+    })
+
+    it('renders the submit to index button', async () => {
+      mockFetchWithCost(1.2345)
+
+      render(<CompletedRunResults slug="swebench/model/123" />)
+
+      await screen.findByText('Copy archive link and submit to index')
+    })
+
+    it('copies archive URL to clipboard and opens push-to-index workflow when clicked', async () => {
+      mockFetchWithCost(1.2345)
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+
+      render(<CompletedRunResults slug="swebench/model/123" />)
+
+      const button = await screen.findByText('Copy archive link and submit to index')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
+      expect(writeText).toHaveBeenCalledWith(expect.stringContaining('results.tar.gz'))
+      expect(window.open).toHaveBeenCalledWith(
+        'https://github.com/OpenHands/evaluation/actions/workflows/push-to-index.yml',
+        '_blank'
+      )
+    })
+
+    it('renders both download and submit to index buttons', async () => {
+      mockFetchWithCost(1.2345)
+
+      render(<CompletedRunResults slug="swebench/model/123" />)
+
+      await screen.findByText('Download results.tar.gz')
+      await screen.findByText('Copy archive link and submit to index')
+    })
   })
 })
