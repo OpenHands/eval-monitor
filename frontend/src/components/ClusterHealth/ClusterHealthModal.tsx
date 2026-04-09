@@ -2,33 +2,44 @@ import { getClusterHealthState, ZOMBIE_POD_STATES } from '../../api'
 import type { ClusterHealthReport, ClusterHealthPodProblem } from '../../api'
 import { Hint, Section, Stat, STATE_STYLES, UsageBar, formatAge, formatTimestamp } from './primitives'
 
+// The runtime-pods namespace is hardcoded in the upstream collector (see
+// cluster-health-job/scripts/collect_health.py RUNTIME_NAMESPACE) and not
+// included in the JSON report, so we reference it by literal name in the
+// copy-to-clipboard commands.
+const RUNTIME_NAMESPACE = 'runtime-pods'
+
 // Always-visible placeholder boxes for the most diagnostic problem states.
-// Each box owns its own count function so the data table is self-contained
-// (no special-case branching at the call site).
+// Each box owns its own count function and command template so the data
+// table is self-contained (no special-case branching at the call site).
 const PROBLEM_STATE_BOXES: Array<{
   label: string
   count: (problems: ClusterHealthPodProblem[]) => number
   hint: string
+  command: (namespace: string) => string
 }> = [
   {
     label: 'OOMKilled',
     count: ps => ps.filter(p => p.state === 'OOMKilled').length,
     hint: 'Pods whose container was killed by the Linux kernel out-of-memory killer. Almost always means the workload exceeded its memory limit and needs more headroom or a leak fix.',
+    command: ns => `kubectl get pods -n ${ns} | grep OOMKilled`,
   },
   {
     label: 'CrashLoopBackOff',
     count: ps => ps.filter(p => p.state === 'CrashLoopBackOff').length,
     hint: 'Containers that keep crashing on startup. Kubernetes adds an exponential delay between restarts. Indicates a persistent failure — bad config, missing dependency, panic on init, etc.',
+    command: ns => `kubectl get pods -n ${ns} | grep CrashLoopBackOff`,
   },
   {
     label: 'Terminating',
     count: ps => ps.filter(p => p.state === 'Terminating').length,
     hint: 'Pods stuck in the Terminating state past the collector threshold — deletion was requested but kubelet or a finalizer is blocking it. Usually safe to force-delete after investigation.',
+    command: ns => `kubectl get pods -n ${ns} | grep Terminating`,
   },
   {
     label: 'Zombies',
     count: ps => ps.filter(p => ZOMBIE_POD_STATES.has(p.state)).length,
     hint: 'Sum of Terminating and Unknown pods — pods that should be gone or recovered but linger in a half-dead state. Tracked together because both represent failed cleanup, not active workload.',
+    command: ns => `kubectl get pods -n ${ns} | grep -E 'Terminating|Unknown'`,
   },
 ]
 
@@ -81,31 +92,36 @@ export default function ClusterHealthModal({ report, onClose }: Props) {
             label="Nodes ready"
             value={`${report.nodes.ready} / ${report.nodes.total}`}
             hint="Nodes in Kubernetes Ready condition vs total nodes in the cluster. A node is Ready when kubelet reports healthy and can accept pods. Anything less than total means the cluster has lost capacity."
+            copyCommand="kubectl get nodes"
           />
           <Stat
             label="Orchestrator pods"
             value={`${report.pods.phases.Running ?? 0} / ${report.pods.total}`}
             hint="Pods in the evaluation-jobs namespace, one per evaluation run. Each runs the harness that drives a benchmark (swebench, swtbench, etc.) for a specific model. Shows running / total — total includes pending, failed, succeeded, and unknown."
+            copyCommand={`kubectl get pods -n ${report.pods.namespace}`}
           />
           <Stat
             label="Pods pending"
             value={String(report.pods.phases.Pending ?? 0)}
             hint="Eval orchestrator pods stuck in the Pending phase — typically waiting for a node with enough capacity, a missing image, or an unbound PVC. A growing pending count usually means the cluster is full."
+            copyCommand={`kubectl get pods -n ${report.pods.namespace} --field-selector=status.phase=Pending`}
           />
           <Stat
             label="Problem pods"
             value={String(report.pods.problems.length)}
             hint="Total count of evaluation-jobs pods the collector has flagged with a known failure state — OOMKilled, CrashLoopBackOff, Error, Evicted, ImagePullBackOff, or stuck Pending/Terminating. The breakdown by state is in the row below."
+            copyCommand={`kubectl get pods -n ${report.pods.namespace} -o wide`}
           />
           <Stat
             label="Instance pods"
             value={`${report.runtime_pods.running} / ${report.runtime_pods.total}`}
             hint="Pods in the runtime-pods namespace — sandboxed runtime containers spawned by the orchestrator pods so the agent can edit files and run code in isolation. They come and go as the agent works through instances. Shows running / total."
+            copyCommand={`kubectl get pods -n ${RUNTIME_NAMESPACE}`}
           />
         </div>
 
         <div className="grid grid-cols-4 gap-2 mb-4">
-          {PROBLEM_STATE_BOXES.map(({ label, count, hint }) => {
+          {PROBLEM_STATE_BOXES.map(({ label, count, hint, command }) => {
             const n = count(report.pods.problems)
             return (
               <Stat
@@ -114,6 +130,7 @@ export default function ClusterHealthModal({ report, onClose }: Props) {
                 value={String(n)}
                 valueClass={n > 0 ? 'text-oh-error' : 'text-oh-text-muted'}
                 hint={hint}
+                copyCommand={command(report.pods.namespace)}
               />
             )
           })}
