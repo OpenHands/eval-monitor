@@ -10,7 +10,11 @@ const defaultProps = {
   onBack: vi.fn(),
   numDays: 2,
   onNumDaysChange: vi.fn(),
+  refreshNonce: 0,
 }
+
+// ClusterHealthBadge fetches on mount; stub fetch globally so tests don't hit the network.
+vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(null, { status: 404 }))))
 
 describe('Header', () => {
   it('renders the OpenHands logo image', () => {

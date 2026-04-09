@@ -70,6 +70,7 @@ export default function App() {
   const [selectedRun, setSelectedRun] = useState<string | null>(initialState.run)
   const [runMetadata, setRunMetadata] = useState<RunMetadata | null>(null)
   const [loadingMetadata, setLoadingMetadata] = useState(false)
+  const [refreshNonce, setRefreshNonce] = useState(0)
 
   // Metadata map for all runs (used by the list view for status)
   const [runMetadataMap, setRunMetadataMap] = useState<Record<string, RunMetadata>>({})
@@ -206,6 +207,7 @@ export default function App() {
   }
 
   const handleRefresh = () => {
+    setRefreshNonce(n => n + 1)
     if (selectedRun) {
       handleSelectRun(selectedRun)
     } else {
@@ -228,6 +230,7 @@ export default function App() {
         onBack={handleBack}
         numDays={numDays}
         onNumDaysChange={setNumDays}
+        refreshNonce={refreshNonce}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
