@@ -612,6 +612,85 @@ export function getClusterHealthState(report: ClusterHealthReport, now: number =
   return 'healthy'
 }
 
+// ---------------------------------------------------------------------------
+// Eval Time Health — monitors how long active evals spend in each stage
+// ---------------------------------------------------------------------------
+
+export type EvalTimeState = 'healthy' | 'warning' | 'critical'
+
+/** Per-stage warning / critical thresholds (milliseconds). */
+export const EVAL_TIME_WARNING_MS = 10 * 60 * 60 * 1000  // 10 hours
+export const EVAL_TIME_CRITICAL_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+export interface EvalTimeEntry {
+  slug: string
+  status: RunListItemStatus
+  elapsedMs: number
+  stageLabel: string
+}
+
+export interface EvalTimeReport {
+  entries: EvalTimeEntry[]           // only entries that exceed the warning threshold
+  totalActive: number                // total non-finished evals inspected
+  state: EvalTimeState
+}
+
+/** Human-readable label for the stage an eval is stuck in. */
+function stageLabelFor(status: RunListItemStatus): string {
+  switch (status) {
+    case 'building': return 'Building'
+    case 'running-infer': return 'Inference'
+    case 'running-eval': return 'Evaluation'
+    case 'pending': return 'Pending'
+    default: return status
+  }
+}
+
+/** Return the timestamp (ms) at which the current stage started, or null. */
+function stageStartMs(metadata: RunMetadata, status: RunListItemStatus): number | null {
+  switch (status) {
+    case 'building': return getTimestampMs(metadata.params)
+    case 'pending': return getTimestampMs(metadata.init) ?? getTimestampMs(metadata.params)
+    case 'running-infer': return getTimestampMs(metadata.runInferStart)
+    case 'running-eval': return getTimestampMs(metadata.evalInferStart) ?? getTimestampMs(metadata.runInferEnd)
+    default: return null
+  }
+}
+
+/** Build an EvalTimeReport from all known run metadata.
+ *  Only non-finished runs are inspected; only entries exceeding the warning
+ *  threshold appear in `entries`. */
+export function computeEvalTimeReport(
+  metadataMap: Record<string, RunMetadata>,
+  preStatuses: Record<string, RunListItemStatus>,
+  now: number = Date.now(),
+): EvalTimeReport {
+  const entries: EvalTimeEntry[] = []
+  let totalActive = 0
+
+  for (const [slug, metadata] of Object.entries(metadataMap)) {
+    const status = preStatuses[slug] ?? getStageStatus(metadata)
+    if (status === 'completed' || status === 'error' || status === 'cancelled') continue
+    totalActive++
+
+    const start = stageStartMs(metadata, status)
+    if (start === null) continue
+    const elapsed = now - start
+    if (elapsed >= EVAL_TIME_WARNING_MS) {
+      entries.push({ slug, status, elapsedMs: elapsed, stageLabel: stageLabelFor(status) })
+    }
+  }
+
+  // Sort longest-running first
+  entries.sort((a, b) => b.elapsedMs - a.elapsedMs)
+
+  let state: EvalTimeState = 'healthy'
+  if (entries.some(e => e.elapsedMs >= EVAL_TIME_CRITICAL_MS)) state = 'critical'
+  else if (entries.length > 0) state = 'warning'
+
+  return { entries, totalActive, state }
+}
+
 export function buildOriginalRunUrl(_currentUrl: string, originalRunSlug: string): string {
   // Extract the original timestamp from the slug (last part after the last /)
   const parts = originalRunSlug.split('/')

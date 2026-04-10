@@ -10,7 +10,7 @@ function getTodayUTC(): string {
   return now.toISOString().split('T')[0]
 }
 
-export function parseSearchParams(search: string, defaultDate: string): { date: string; run: string | null; numDays: number; filterBenchmark: string; filterStatus: string; filterText: string; clusterHealth: boolean } {
+export function parseSearchParams(search: string, defaultDate: string): { date: string; run: string | null; numDays: number; filterBenchmark: string; filterStatus: string; filterText: string; clusterHealth: boolean; evalTime: boolean } {
   const params = new URLSearchParams(search)
   const date = params.get('date') || defaultDate
   const run = params.get('run') || null
@@ -20,10 +20,11 @@ export function parseSearchParams(search: string, defaultDate: string): { date: 
   const filterStatus = params.get('status') || 'all'
   const filterText = params.get('text') || ''
   const clusterHealth = params.get('clusterHealth') === 'true'
-  return { date, run, numDays, filterBenchmark, filterStatus, filterText, clusterHealth }
+  const evalTime = params.get('evalTime') === 'true'
+  return { date, run, numDays, filterBenchmark, filterStatus, filterText, clusterHealth, evalTime }
 }
 
-export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 3, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = '', clusterHealth: boolean = false): string {
+export function buildSearchString(date: string, run: string | null, todayDate: string, numDays: number = 3, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = '', clusterHealth: boolean = false, evalTime: boolean = false): string {
   const params = new URLSearchParams()
   if (date !== todayDate) {
     params.set('date', date)
@@ -46,6 +47,9 @@ export function buildSearchString(date: string, run: string | null, todayDate: s
   if (clusterHealth) {
     params.set('clusterHealth', 'true')
   }
+  if (evalTime) {
+    params.set('evalTime', 'true')
+  }
   const qs = params.toString()
   return qs ? `?${qs}` : ''
 }
@@ -54,8 +58,8 @@ function parseUrlState() {
   return parseSearchParams(window.location.search, getTodayUTC())
 }
 
-function buildUrl(date: string, run: string | null, numDays: number, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = '', clusterHealth: boolean = false): string {
-  const qs = buildSearchString(date, run, getTodayUTC(), numDays, filterBenchmark, filterStatus, filterText, clusterHealth)
+function buildUrl(date: string, run: string | null, numDays: number, filterBenchmark: string = 'all', filterStatus: string = 'all', filterText: string = '', clusterHealth: boolean = false, evalTime: boolean = false): string {
+  const qs = buildSearchString(date, run, getTodayUTC(), numDays, filterBenchmark, filterStatus, filterText, clusterHealth, evalTime)
   return qs || window.location.pathname
 }
 
@@ -67,7 +71,8 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState(initialState.filterStatus)
   const [filterText, setFilterText] = useState(initialState.filterText)
   const [clusterHealthOpen, setClusterHealthOpen] = useState(initialState.clusterHealth)
-  
+  const [evalTimeOpen, setEvalTimeOpen] = useState(initialState.evalTime)
+
   const [runs, setRuns] = useState<RunListItem[]>([])
   const [dayGroups, setDayGroups] = useState<DayRunGroup[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,9 +93,9 @@ export default function App() {
       setInitialized(true)
       return
     }
-    const url = buildUrl(date, selectedRun, numDays, filterBenchmark, filterStatus, filterText, clusterHealthOpen)
-    window.history.pushState({ date, run: selectedRun, numDays, filterBenchmark, filterStatus, filterText, clusterHealth: clusterHealthOpen }, '', url)
-  }, [date, selectedRun, numDays, filterBenchmark, filterStatus, filterText, clusterHealthOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+    const url = buildUrl(date, selectedRun, numDays, filterBenchmark, filterStatus, filterText, clusterHealthOpen, evalTimeOpen)
+    window.history.pushState({ date, run: selectedRun, numDays, filterBenchmark, filterStatus, filterText, clusterHealth: clusterHealthOpen, evalTime: evalTimeOpen }, '', url)
+  }, [date, selectedRun, numDays, filterBenchmark, filterStatus, filterText, clusterHealthOpen, evalTimeOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -103,6 +108,7 @@ export default function App() {
       setFilterStatus(state.filterStatus)
       setFilterText(state.filterText)
       setClusterHealthOpen(state.clusterHealth)
+      setEvalTimeOpen(state.evalTime)
       if (!state.run) {
         setRunMetadata(null)
       }
@@ -239,6 +245,11 @@ export default function App() {
         refreshNonce={refreshNonce}
         clusterHealthOpen={clusterHealthOpen}
         onClusterHealthToggle={setClusterHealthOpen}
+        evalTimeOpen={evalTimeOpen}
+        onEvalTimeToggle={setEvalTimeOpen}
+        runMetadataMap={runMetadataMap}
+        runs={runs}
+        onSelectRun={handleSelectRun}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
