@@ -451,6 +451,54 @@ describe('computeEvalTimeReport', () => {
   })
 
   // -------------------------------------------------------------------------
+  // triggeredBy is extracted from metadata
+  // -------------------------------------------------------------------------
+
+  describe('triggeredBy', () => {
+    it('extracts triggeredBy from params.triggered_by', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: tsAgo(NOW, AT_WARNING), triggered_by: 'juanmichelini' },
+      })
+      const report = computeEvalTimeReport({ 'bench/model/1': metadata }, {}, NOW)
+      expect(report.entries[0].triggeredBy).toBe('juanmichelini')
+    })
+
+    it('extracts triggeredBy from init.actor as fallback', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: tsAgo(NOW, AT_WARNING) },
+        init: { actor: 'alice' },
+      })
+      const report = computeEvalTimeReport({ 'bench/model/1': metadata }, {}, NOW)
+      expect(report.entries[0].triggeredBy).toBe('alice')
+    })
+
+    it('returns "—" when no trigger information is present', () => {
+      const metadata = makeMetadata({
+        params: { timestamp: tsAgo(NOW, AT_WARNING) },
+      })
+      const report = computeEvalTimeReport({ 'bench/model/1': metadata }, {}, NOW)
+      expect(report.entries[0].triggeredBy).toBe('—')
+    })
+
+    it('extracts different triggeredBy values for different entries', () => {
+      const metadata1 = makeMetadata({
+        params: { timestamp: tsAgo(NOW, AT_WARNING), triggered_by: 'user1' },
+      })
+      const metadata2 = makeMetadata({
+        params: { timestamp: tsAgo(NOW, AT_CRITICAL), triggered_by: 'user2' },
+      })
+      const report = computeEvalTimeReport(
+        { 'bench/model/1': metadata1, 'bench/model/2': metadata2 },
+        {},
+        NOW,
+      )
+      expect(report.entries).toHaveLength(2)
+      const triggeredBys = report.entries.map(e => e.triggeredBy).sort()
+      expect(triggeredBys).toEqual(['user1', 'user2'])
+    })
+  })
+
+  // -------------------------------------------------------------------------
   // totalActive counts all non-finished runs regardless of threshold
   // -------------------------------------------------------------------------
 

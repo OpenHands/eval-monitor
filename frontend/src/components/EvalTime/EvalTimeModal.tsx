@@ -86,6 +86,7 @@ export default function EvalTimeModal({ report, onClose, onSelectRun }: Props) {
                           </span>
                         )}
                         <span className="text-[11px] text-oh-text-muted">{parsed.jobId}</span>
+                        <span className="text-[11px] text-oh-text-muted">by {entry.triggeredBy}</span>
                       </div>
                       <div className="text-right shrink-0">
                         <div className={`text-sm font-medium ${isCritical ? 'text-oh-error' : 'text-oh-warning'}`}>
