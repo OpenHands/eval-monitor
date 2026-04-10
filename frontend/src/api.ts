@@ -627,6 +627,7 @@ export interface EvalTimeEntry {
   status: RunListItemStatus
   elapsedMs: number
   stageLabel: string
+  triggeredBy: string
 }
 
 export interface EvalTimeReport {
@@ -677,7 +678,7 @@ export function computeEvalTimeReport(
     if (start === null) continue
     const elapsed = now - start
     if (elapsed >= EVAL_TIME_WARNING_MS) {
-      entries.push({ slug, status, elapsedMs: elapsed, stageLabel: stageLabelFor(status) })
+      entries.push({ slug, status, elapsedMs: elapsed, stageLabel: stageLabelFor(status), triggeredBy: extractTriggeredBy(metadata) })
     }
   }
 
