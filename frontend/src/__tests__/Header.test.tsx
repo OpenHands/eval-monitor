@@ -13,6 +13,10 @@ const defaultProps = {
   refreshNonce: 0,
   clusterHealthOpen: false,
   onClusterHealthToggle: vi.fn(),
+  evalTimeOpen: false,
+  onEvalTimeToggle: vi.fn(),
+  runMetadataMap: {},
+  runs: [],
 }
 
 // ClusterHealthBadge fetches on mount; stub fetch per-test so we don't hit the

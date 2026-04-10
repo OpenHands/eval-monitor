@@ -6,37 +6,37 @@ describe('parseSearchParams', () => {
 
   it('returns defaults when search string is empty', () => {
     const result = parseSearchParams('', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('parses date from search params', () => {
     const result = parseSearchParams('?date=2025-01-15', defaultDate)
-    expect(result).toEqual({ date: '2025-01-15', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-01-15', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('parses run from search params', () => {
     const result = parseSearchParams('?run=swebench/model/123', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: 'swebench/model/123', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-03-17', run: 'swebench/model/123', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('parses both date and run from search params', () => {
     const result = parseSearchParams('?date=2025-02-20&run=gaia/litellm_proxy-gpt4/456', defaultDate)
-    expect(result).toEqual({ date: '2025-02-20', run: 'gaia/litellm_proxy-gpt4/456', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-02-20', run: 'gaia/litellm_proxy-gpt4/456', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('handles URL-encoded run slugs with slashes', () => {
     const result = parseSearchParams('?run=bench%2Fmodel%2Fjob', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: 'bench/model/job', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-03-17', run: 'bench/model/job', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('uses default date when date param is missing', () => {
     const result = parseSearchParams('?run=test/run/1', '2025-12-31')
-    expect(result).toEqual({ date: '2025-12-31', run: 'test/run/1', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-12-31', run: 'test/run/1', numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('parses days param', () => {
     const result = parseSearchParams('?days=3', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('clamps days param to valid range (1-7)', () => {
@@ -49,22 +49,27 @@ describe('parseSearchParams', () => {
 
   it('parses date, run, and days together', () => {
     const result = parseSearchParams('?date=2025-02-20&run=gaia/model/1&days=5', defaultDate)
-    expect(result).toEqual({ date: '2025-02-20', run: 'gaia/model/1', numDays: 5, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-02-20', run: 'gaia/model/1', numDays: 5, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('parses filters', () => {
     const result = parseSearchParams('?benchmark=swebench&status=completed&text=gpt4', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4', clusterHealth: false })
+    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4', clusterHealth: false, evalTime: false })
   })
 
   it('parses clusterHealth=true from search params', () => {
     const result = parseSearchParams('?clusterHealth=true', defaultDate)
-    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: true })
+    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: true, evalTime: false })
   })
 
   it('parses clusterHealth with other params', () => {
     const result = parseSearchParams('?date=2025-02-20&clusterHealth=true&benchmark=swebench', defaultDate)
-    expect(result).toEqual({ date: '2025-02-20', run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'all', filterText: '', clusterHealth: true })
+    expect(result).toEqual({ date: '2025-02-20', run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'all', filterText: '', clusterHealth: true, evalTime: false })
+  })
+
+  it('parses evalTime=true from search params', () => {
+    const result = parseSearchParams('?evalTime=true', defaultDate)
+    expect(result).toEqual({ date: '2025-03-17', run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: true })
   })
 })
 
@@ -135,6 +140,11 @@ describe('buildSearchString', () => {
     const result = buildSearchString(today, null, today, 3, 'swebench', 'all', '', true)
     expect(result).toBe('?benchmark=swebench&clusterHealth=true')
   })
+
+  it('includes evalTime param when true', () => {
+    const result = buildSearchString(today, null, today, 3, 'all', 'all', '', false, true)
+    expect(result).toBe('?evalTime=true')
+  })
 })
 
 describe('round-trip: buildSearchString -> parseSearchParams', () => {
@@ -145,27 +155,27 @@ describe('round-trip: buildSearchString -> parseSearchParams', () => {
     const run = 'swebench/litellm_proxy-claude/789'
     const qs = buildSearchString(date, run, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date, run, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(parsed).toEqual({ date, run, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips a run selection with today date', () => {
     const run = 'gaia/model/42'
     const qs = buildSearchString(today, run, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(parsed).toEqual({ date: today, run, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips list view with non-today date', () => {
     const date = '2025-06-15'
     const qs = buildSearchString(date, null, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(parsed).toEqual({ date, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips list view with today date', () => {
     const qs = buildSearchString(today, null, today)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips with numDays > 3', () => {
@@ -174,31 +184,31 @@ describe('round-trip: buildSearchString -> parseSearchParams', () => {
     const numDays = 5
     const qs = buildSearchString(date, run, today, numDays)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date, run, numDays, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(parsed).toEqual({ date, run, numDays, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips with numDays = 3 (default omitted)', () => {
     const qs = buildSearchString(today, null, today, 3)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips with numDays = 1', () => {
     const qs = buildSearchString(today, null, today, 1)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 1, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 1, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips with filters', () => {
     const qs = buildSearchString(today, null, today, 3, 'swebench', 'completed', 'gpt4')
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4', clusterHealth: false })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4', clusterHealth: false, evalTime: false })
   })
 
   it('round-trips with clusterHealth=true', () => {
     const qs = buildSearchString(today, null, today, 3, 'all', 'all', '', true)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: true })
+    expect(parsed).toEqual({ date: today, run: null, numDays: 3, filterBenchmark: 'all', filterStatus: 'all', filterText: '', clusterHealth: true, evalTime: false })
   })
 
   it('round-trips clusterHealth with other params', () => {
@@ -206,6 +216,6 @@ describe('round-trip: buildSearchString -> parseSearchParams', () => {
     const run = 'swebench/model/123'
     const qs = buildSearchString(date, run, today, 5, 'swebench', 'completed', 'gpt4', true)
     const parsed = parseSearchParams(qs, today)
-    expect(parsed).toEqual({ date, run, numDays: 5, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4', clusterHealth: true })
+    expect(parsed).toEqual({ date, run, numDays: 5, filterBenchmark: 'swebench', filterStatus: 'completed', filterText: 'gpt4', clusterHealth: true, evalTime: false })
   })
 })
