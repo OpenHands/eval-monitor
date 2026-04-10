@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeEvalTimeReport, EVAL_TIME_WARNING_MS, EVAL_TIME_CRITICAL_MS } from '../api'
-import type { RunMetadata, RunListItemStatus } from '../api'
+import type { RunMetadata } from '../api'
 
 // ---------------------------------------------------------------------------
 // Helpers
