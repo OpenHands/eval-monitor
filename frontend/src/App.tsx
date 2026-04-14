@@ -201,9 +201,9 @@ export default function App() {
 
   const runSummaries = runs.map(runItem => {
     const parsed = parseRunSlug(runItem.slug)
-    // Use model from JSONL if available, otherwise parse from path
+    // Use model/runtime from JSONL if available, otherwise parse from path
     const model = runItem.model || parsed.model
-    return { slug: runItem.slug, status: runItem.status, triggeredBy: runItem.triggeredBy, triggerReason: runItem.triggerReason, benchmark: parsed.benchmark, jobId: parsed.jobId, model }
+    return { slug: runItem.slug, status: runItem.status, triggeredBy: runItem.triggeredBy, triggerReason: runItem.triggerReason, benchmark: parsed.benchmark, jobId: parsed.jobId, model, runtime: runItem.runtime }
   })
 
   return (

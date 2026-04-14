@@ -11,6 +11,7 @@ interface RunInfo {
   status?: RunListItemStatus
   triggeredBy?: string
   triggerReason?: string
+  runtime?: string
 }
 
 interface RunListViewProps {
@@ -151,14 +152,15 @@ export default function RunListView({
   }, [hasNonFinished])
 
   // Compute statuses and runtimes
-  // Status comes from JSONL (pre-parsed), runtime needs metadata for active runs
+  // Status and runtime come from JSONL (pre-parsed), metadata only needed for additional details
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
       // Use pre-parsed status from JSONL, only derive from metadata if needed
       const status: StatusType = run.status || (metadata ? getStageStatus(metadata) : 'pending')
-      const runtime: string | null = metadata ? getRuntime(metadata, now) : null
-      const runFinished = metadata ? isFinished(metadata) : true
+      // Use pre-parsed runtime from JSONL if available, otherwise calculate from metadata
+      const runtime: string | null = run.runtime || (metadata ? getRuntime(metadata, now) : null)
+      const runFinished = metadata ? isFinished(metadata) : (run.status === 'completed' || run.status === 'error' || run.status === 'cancelled')
       // triggeredBy and triggerReason come directly from JSONL (via RunListItem)
       const triggeredBy = run.triggeredBy
       const triggerReason = run.triggerReason

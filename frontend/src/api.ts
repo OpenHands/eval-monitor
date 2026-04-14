@@ -9,6 +9,7 @@ export interface RunListItem {
   triggeredBy?: string
   triggerReason?: string
   model?: string
+  runtime?: string
 }
 
 const VALID_STATUSES = new Set([
@@ -43,6 +44,8 @@ interface JsonlRunItem {
   model_display_name?: string
   model_name?: string
   model_id?: string
+  init_timestamp?: string
+  end_timestamp?: string
 }
 
 export async function fetchRunList(date: string): Promise<RunListItem[]> {
@@ -74,12 +77,20 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
         } else if (item.model_id) {
           model = item.model_id
         }
+        // Calculate runtime from JSONL timestamps
+        let runtime: string | undefined
+        if (item.init_timestamp) {
+          const start = new Date(item.init_timestamp).getTime()
+          const end = item.end_timestamp ? new Date(item.end_timestamp).getTime() : Date.now()
+          runtime = formatDurationMs(end - start)
+        }
         items.push({
           slug,
           status: mapStatus(item.status),
           triggeredBy: item.triggered_by || undefined,
           triggerReason: item.trigger_reason || undefined,
           model,
+          runtime,
         })
       }
     } catch {
