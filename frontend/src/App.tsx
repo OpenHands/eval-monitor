@@ -14,8 +14,8 @@ export function parseSearchParams(search: string, defaultDate: string): { date: 
   const params = new URLSearchParams(search)
   const date = params.get('date') || defaultDate
   const run = params.get('run') || null
-  const numDaysParam = parseInt(params.get('days') || '3', 10)
-  const numDays = numDaysParam >= 1 && numDaysParam <= 90 ? numDaysParam : 3
+  const numDaysParam = parseInt(params.get('days') || '15', 10)
+  const numDays = numDaysParam >= 1 && numDaysParam <= 90 ? numDaysParam : 15
   const filterBenchmark = params.get('benchmark') || 'all'
   const filterStatus = params.get('status') || 'all'
   const filterText = params.get('text') || ''
