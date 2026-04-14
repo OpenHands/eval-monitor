@@ -30,6 +30,7 @@ function mapStatus(status: string | undefined): RunListItemStatus | undefined {
   if (status === 'cancel') return 'cancelled'
   if (status === 'inferring') return 'running-infer'
   if (status === 'evaluating') return 'running-eval'
+  if (status === 'init') return 'building'
   if (VALID_STATUSES.has(status)) return status as RunListItemStatus
   return undefined
 }
