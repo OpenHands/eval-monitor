@@ -120,7 +120,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
                 className="bg-oh-bg border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text focus:outline-none focus:border-oh-primary transition-colors ml-2"
                 title="Number of days to display"
               >
-                {[1, 2, 3, 4, 5, 6, 7].map(n => (
+                {[1, 2, 3, 4, 5, 6, 7, 15, 30].map(n => (
                   <option key={n} value={n}>
                     {n} {n === 1 ? 'day' : 'days'}
                   </option>
