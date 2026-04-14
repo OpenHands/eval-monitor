@@ -8,6 +8,21 @@ export interface RunListItem {
   status?: RunListItemStatus
 }
 
+/** Map status from JSONL format to RunListItemStatus.
+ *  JSONL uses "cancel" but we use "cancelled". */
+function mapStatus(status: string | undefined): RunListItemStatus | undefined {
+  if (!status) return undefined
+  if (status === 'cancel') return 'cancelled'
+  return status as RunListItemStatus
+}
+
+/** Parse a single line from the JSONL run list file.
+ *  The JSONL file has "path" field for slug and "status" for the status. */
+interface JsonlRunItem {
+  path: string
+  status?: string
+}
+
 export async function fetchRunList(date: string): Promise<RunListItem[]> {
   const cacheBust = Math.floor(Date.now() / 1000)
   const res = await fetch(`${BASE_URL}/metadata/${date}.jsonl?${cacheBust}`)
@@ -16,18 +31,23 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
     throw new Error(`Failed to fetch run list: ${res.status}`)
   }
   const text = await res.text()
-  return text
-    .split('\n')
-    .filter(line => line.trim())
-    .map(line => {
-      try {
-        return JSON.parse(line) as RunListItem
-      } catch {
-        return null
+  const items: RunListItem[] = []
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    try {
+      const item = JSON.parse(trimmed) as JsonlRunItem
+      if (item.path) {
+        items.push({
+          slug: item.path,
+          status: mapStatus(item.status),
+        })
       }
-    })
-    .filter((item): item is RunListItem => item !== null && item.slug.length > 0)
-    .reverse()
+    } catch {
+      // Skip invalid JSON lines
+    }
+  }
+  return items.reverse()
 }
 
 export function getDateNDaysAgo(baseDate: string, n: number): string {

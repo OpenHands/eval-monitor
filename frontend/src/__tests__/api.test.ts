@@ -747,9 +747,9 @@ describe('fetchRunList', () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`{"slug": "swebench/model1/123", "status": "pending"}
-{"slug": "swebench/model2/456", "status": "completed"}
-{"slug": "swebench/model3/789", "status": "error"}
+        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "init"}
+{"path": "swebench/model2/456", "status": "completed"}
+{"path": "swebench/model3/789", "status": "error"}
 `),
         headers: new Headers(),
       } as Response)
@@ -758,7 +758,23 @@ describe('fetchRunList', () => {
     expect(result).toEqual([
       { slug: 'swebench/model3/789', status: 'error' },
       { slug: 'swebench/model2/456', status: 'completed' },
-      { slug: 'swebench/model1/123', status: 'pending' },
+      { slug: 'swebench/model1/123', status: 'init' },
+    ])
+  })
+
+  it('maps "cancel" status to "cancelled"', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(`{"path": "swebench/model/123", "status": "cancel"}
+`),
+        headers: new Headers(),
+      } as Response)
+    )
+    const result = await fetchRunList('2024-01-01')
+    expect(result).toEqual([
+      { slug: 'swebench/model/123', status: 'cancelled' },
     ])
   })
 
@@ -767,9 +783,9 @@ describe('fetchRunList', () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`{"slug": "swebench/model1/123", "status": "completed"}
-{"slug": "swebench/model2/456"}
-{"slug": "swebench/model3/789", "status": "running-infer"}
+        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "completed"}
+{"path": "swebench/model2/456"}
+{"path": "swebench/model3/789", "status": "running-infer"}
 `),
         headers: new Headers(),
       } as Response)
@@ -787,9 +803,9 @@ describe('fetchRunList', () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`{"slug": "swebench/model1/123"}
+        text: () => Promise.resolve(`{"path": "swebench/model1/123"}
 
-{"slug": "swebench/model2/456", "status": "completed"}
+{"path": "swebench/model2/456", "status": "completed"}
 
 invalid json here
 
@@ -804,13 +820,13 @@ invalid json here
     ])
   })
 
-  it('filters out items with empty slug', async () => {
+  it('filters out items with empty path', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`{"slug": "", "status": "completed"}
-{"slug": "swebench/model2/456", "status": "error"}
+        text: () => Promise.resolve(`{"path": "", "status": "completed"}
+{"path": "swebench/model2/456", "status": "error"}
 `),
         headers: new Headers(),
       } as Response)
