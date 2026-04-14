@@ -8,39 +8,9 @@ export interface RunListItem {
   status?: RunListItemStatus
 }
 
-const VALID_STATUSES: readonly string[] = [
-  'pending',
-  'building',
-  'running-infer',
-  'running-eval',
-  'completed',
-  'error',
-  'cancelled',
-]
-
-/** Parse a line from the run list file.
- *  Format: "path/to/run" or "path/to/run status"
- *  Returns an object with slug and optional status if found.
- */
-export function parseRunListLine(line: string): RunListItem {
-  const trimmed = line.trim()
-  if (!trimmed) return { slug: '' }
-
-  // Split on whitespace to find optional status
-  const parts = trimmed.split(/\s+/)
-  const slug = parts[0]
-  const potentialStatus = parts[1]?.toLowerCase()
-
-  if (potentialStatus && VALID_STATUSES.includes(potentialStatus)) {
-    return { slug, status: potentialStatus as RunListItemStatus }
-  }
-
-  return { slug }
-}
-
 export async function fetchRunList(date: string): Promise<RunListItem[]> {
   const cacheBust = Math.floor(Date.now() / 1000)
-  const res = await fetch(`${BASE_URL}/metadata/${date}.txt?${cacheBust}`)
+  const res = await fetch(`${BASE_URL}/metadata/${date}.jsonl?${cacheBust}`)
   if (!res.ok) {
     if (res.status === 404) return []
     throw new Error(`Failed to fetch run list: ${res.status}`)
@@ -48,8 +18,15 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
   const text = await res.text()
   return text
     .split('\n')
-    .map(line => parseRunListLine(line))
-    .filter(item => item.slug.length > 0)
+    .filter(line => line.trim())
+    .map(line => {
+      try {
+        return JSON.parse(line) as RunListItem
+      } catch {
+        return null
+      }
+    })
+    .filter((item): item is RunListItem => item !== null && item.slug.length > 0)
     .reverse()
 }
 
