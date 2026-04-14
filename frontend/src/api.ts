@@ -66,13 +66,13 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
         slug = `${benchmark}/nocache/${item.github_run_id}`
       }
       if (slug) {
-        // Extract model from path for entries with path, otherwise use model_display_name from JSONL
+        // Extract model from path for entries with path, otherwise use model_id from JSONL
         let model: string | undefined
         if (item.path) {
           const parsed = parseRunSlug(item.path)
           model = parsed.model
-        } else if (item.model_display_name) {
-          model = item.model_display_name
+        } else if (item.model_id) {
+          model = item.model_id
         }
         items.push({
           slug,
