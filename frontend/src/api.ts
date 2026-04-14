@@ -67,10 +67,11 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
     try {
       const item = JSON.parse(trimmed) as JsonlRunItem
       let slug = item.path
-      // Some entries may not have path; construct from github_run_id if available
+      // Some entries may not have path; construct from model_name and github_run_id
       if (!slug && item.github_run_id) {
         const benchmark = item.benchmark || 'unknown'
-        slug = `${benchmark}/nocache/${item.github_run_id}`
+        const modelName = item.model_name ? item.model_name.replace(/\//g, '-') : 'unknown'
+        slug = `${benchmark}/${modelName}/${item.github_run_id}/`
       }
       if (slug) {
         // Extract model from path for entries with path, otherwise use model_id from JSONL
