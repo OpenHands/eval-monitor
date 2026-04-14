@@ -30,12 +30,15 @@ function mapStatus(status: string | undefined): RunListItemStatus | undefined {
 }
 
 /** Parse a single line from the JSONL run list file.
- *  The JSONL file has "path" field for slug and "status" for the status. */
+ *  The JSONL file has "path" field for slug and "status" for the status.
+ *  Some entries may not have "path" - those use "github_run_id" instead. */
 interface JsonlRunItem {
-  path: string
+  path?: string
   status?: string
   triggered_by?: string
   trigger_reason?: string
+  github_run_id?: string
+  benchmark?: string
 }
 
 export async function fetchRunList(date: string): Promise<RunListItem[]> {
@@ -52,9 +55,15 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
     if (!trimmed) continue
     try {
       const item = JSON.parse(trimmed) as JsonlRunItem
-      if (item.path) {
+      let slug = item.path
+      // Some entries may not have path; construct from github_run_id if available
+      if (!slug && item.github_run_id) {
+        const benchmark = item.benchmark || 'unknown'
+        slug = `${benchmark}/nocache/${item.github_run_id}`
+      }
+      if (slug) {
         items.push({
-          slug: item.path,
+          slug,
           status: mapStatus(item.status),
           triggeredBy: item.triggered_by || undefined,
           triggerReason: item.trigger_reason || undefined,
