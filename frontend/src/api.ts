@@ -6,6 +6,8 @@ export type RunListItemStatus = 'pending' | 'building' | 'running-infer' | 'runn
 export interface RunListItem {
   slug: string
   status?: RunListItemStatus
+  triggeredBy?: string
+  triggerReason?: string
 }
 
 const VALID_STATUSES = new Set([
@@ -32,6 +34,8 @@ function mapStatus(status: string | undefined): RunListItemStatus | undefined {
 interface JsonlRunItem {
   path: string
   status?: string
+  triggered_by?: string
+  trigger_reason?: string
 }
 
 export async function fetchRunList(date: string): Promise<RunListItem[]> {
@@ -52,6 +56,8 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
         items.push({
           slug: item.path,
           status: mapStatus(item.status),
+          triggeredBy: item.triggered_by || undefined,
+          triggerReason: item.trigger_reason || undefined,
         })
       }
     } catch {

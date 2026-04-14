@@ -747,8 +747,8 @@ describe('fetchRunList', () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "completed"}
-{"path": "swebench/model2/456", "status": "error"}
+        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "completed", "triggered_by": "user1", "trigger_reason": "PR #123"}
+{"path": "swebench/model2/456", "status": "error", "triggered_by": "user2", "trigger_reason": "scheduled"}
 {"path": "swebench/model3/789", "status": "running-infer"}
 `),
         headers: new Headers(),
@@ -757,8 +757,8 @@ describe('fetchRunList', () => {
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
       { slug: 'swebench/model3/789', status: 'running-infer' },
-      { slug: 'swebench/model2/456', status: 'error' },
-      { slug: 'swebench/model1/123', status: 'completed' },
+      { slug: 'swebench/model2/456', status: 'error', triggeredBy: 'user2', triggerReason: 'scheduled' },
+      { slug: 'swebench/model1/123', status: 'completed', triggeredBy: 'user1', triggerReason: 'PR #123' },
     ])
   })
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
+import type { RunMetadata, DayRunGroup, RunListItemStatus, RunListItem } from '../api'
 import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason, getActiveWorkersForInstance } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
@@ -149,7 +149,7 @@ export default function RunListView({
   }, [hasNonFinished])
 
   // Compute statuses, runtimes, and triggered-by
-  // Use pre-parsed status from list file if available, otherwise derive from metadata
+  // Use pre-parsed values from list file if available, otherwise derive from metadata
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
@@ -157,8 +157,9 @@ export default function RunListView({
       const status: StatusType = run.status || (metadata ? getStageStatus(metadata) : 'pending')
       const runtime: string | null = metadata ? getRuntime(metadata, now) : null
       const runFinished = metadata ? isFinished(metadata) : true
-      const triggeredBy = extractTriggeredBy(metadata)
-      const triggerReason = extractTriggerReason(metadata)
+      // triggeredBy and triggerReason come from run props (passed from App.tsx which gets them from fetchRunList)
+      const triggeredBy = (run as RunListItem).triggeredBy || (metadata ? extractTriggeredBy(metadata) : undefined)
+      const triggerReason = (run as RunListItem).triggerReason || (metadata ? extractTriggerReason(metadata) : undefined)
       return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
     })
   }, [runs, runMetadataMap, now])
