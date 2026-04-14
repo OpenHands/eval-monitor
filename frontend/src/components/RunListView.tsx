@@ -31,7 +31,7 @@ interface RunListViewProps {
   showDetail: boolean
 }
 
-type StatusType = 'pending' | 'building' | 'init' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
+type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
 
 const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?: string }> = {
   pending: {
@@ -39,12 +39,7 @@ const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?
     className: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
   },
   building: {
-    label: 'Building Images',
-    className: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
-    dot: 'bg-violet-400 animate-pulse',
-  },
-  init: {
-    label: 'Init',
+    label: 'Building',
     className: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
     dot: 'bg-violet-400 animate-pulse',
   },
@@ -183,7 +178,7 @@ export default function RunListView({
       if (filterStatus !== 'all') {
         if (filterStatus === 'active') {
           // Active status: show all non-terminal statuses
-          const activeStatuses: StatusType[] = ['pending', 'building', 'init', 'running-infer', 'running-eval']
+          const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
           if (!activeStatuses.includes(run.status)) return false
         } else if (run.status !== filterStatus) {
           return false
