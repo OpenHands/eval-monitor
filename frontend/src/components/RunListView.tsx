@@ -361,6 +361,14 @@ export default function RunListView({
           </svg>
           Export paths
         </button>
+        <a
+          href="https://eval-monitor-git-legacy-txt-list-openhands.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-oh-text-muted hover:text-oh-text transition-colors"
+        >
+          Run missing, try legacy Eval Monitor
+        </a>
       </div>
 
       {/* Export Paths Modal */}
