@@ -367,7 +367,7 @@ export default function RunListView({
           rel="noopener noreferrer"
           className="text-xs text-oh-text-muted hover:text-oh-text transition-colors"
         >
-          Run missing, try legacy Eval Monitor
+          Run missing? Fall back to legacy Eval Monitor
         </a>
       </div>
 
