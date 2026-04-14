@@ -44,17 +44,17 @@ const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?
     dot: 'bg-violet-400 animate-pulse',
   },
   init: {
-    label: 'Initializing',
+    label: 'Init',
     className: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
     dot: 'bg-violet-400 animate-pulse',
   },
   'running-infer': {
-    label: 'Running Inference',
+    label: 'Inference',
     className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     dot: 'bg-blue-400 animate-pulse',
   },
   'running-eval': {
-    label: 'Running Eval',
+    label: 'Eval',
     className: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     dot: 'bg-amber-400 animate-pulse',
   },
@@ -182,8 +182,8 @@ export default function RunListView({
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
       if (filterStatus !== 'all') {
         if (filterStatus === 'active') {
-          // Active status: show all non-terminal statuses (pending, building, running-infer, running-eval)
-          const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
+          // Active status: show all non-terminal statuses
+          const activeStatuses: StatusType[] = ['pending', 'building', 'init', 'running-infer', 'running-eval']
           if (!activeStatuses.includes(run.status)) return false
         } else if (run.status !== filterStatus) {
           return false
