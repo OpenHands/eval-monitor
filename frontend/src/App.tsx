@@ -15,7 +15,7 @@ export function parseSearchParams(search: string, defaultDate: string): { date: 
   const date = params.get('date') || defaultDate
   const run = params.get('run') || null
   const numDaysParam = parseInt(params.get('days') || '3', 10)
-  const numDays = numDaysParam >= 1 && numDaysParam <= 30 ? numDaysParam : 3
+  const numDays = numDaysParam >= 1 && numDaysParam <= 90 ? numDaysParam : 3
   const filterBenchmark = params.get('benchmark') || 'all'
   const filterStatus = params.get('status') || 'all'
   const filterText = params.get('text') || ''
