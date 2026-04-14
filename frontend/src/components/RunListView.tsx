@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import type { RunMetadata, DayRunGroup, RunListItemStatus, RunListItem } from '../api'
-import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason, getActiveWorkersForInstance } from '../api'
+import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
+import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -9,6 +9,8 @@ interface RunInfo {
   model: string
   jobId: string
   status?: RunListItemStatus
+  triggeredBy?: string
+  triggerReason?: string
 }
 
 interface RunListViewProps {
@@ -148,18 +150,18 @@ export default function RunListView({
     return () => clearInterval(interval)
   }, [hasNonFinished])
 
-  // Compute statuses, runtimes, and triggered-by
-  // Use pre-parsed values from list file if available, otherwise derive from metadata
+  // Compute statuses and runtimes
+  // Status comes from JSONL (pre-parsed), runtime needs metadata for active runs
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
-      // Use pre-parsed status if available, otherwise derive from metadata
+      // Use pre-parsed status from JSONL, only derive from metadata if needed
       const status: StatusType = run.status || (metadata ? getStageStatus(metadata) : 'pending')
       const runtime: string | null = metadata ? getRuntime(metadata, now) : null
       const runFinished = metadata ? isFinished(metadata) : true
-      // triggeredBy and triggerReason come from run props (passed from App.tsx which gets them from fetchRunList)
-      const triggeredBy = (run as RunListItem).triggeredBy || (metadata ? extractTriggeredBy(metadata) : undefined)
-      const triggerReason = (run as RunListItem).triggerReason || (metadata ? extractTriggerReason(metadata) : undefined)
+      // triggeredBy and triggerReason come directly from JSONL (via RunListItem)
+      const triggeredBy = run.triggeredBy
+      const triggerReason = run.triggerReason
       return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
     })
   }, [runs, runMetadataMap, now])

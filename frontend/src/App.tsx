@@ -135,45 +135,17 @@ export default function App() {
     }
   }, [date, numDays])
 
-  // Fetch metadata for runs that don't have pre-parsed status (for efficiency)
-  const loadAllMetadata = useCallback(async (runItems: RunListItem[]) => {
-    // Only fetch metadata for runs that don't already have a status
-    const runsNeedingMetadata = runItems.filter(r => !r.status)
-    if (runsNeedingMetadata.length === 0) return
-    
-    setLoadingMetadataList(true)
-    const batchSize = 10
-    for (let i = 0; i < runsNeedingMetadata.length; i += batchSize) {
-      const batch = runsNeedingMetadata.slice(i, i + batchSize)
-      const results = await Promise.all(
-        batch.map(async item => {
-          try {
-            const metadata = await fetchRunMetadata(item.slug)
-            return { slug: item.slug, metadata }
-          } catch {
-            return { slug: item.slug, metadata: null }
-          }
-        })
-      )
-      const batchMap: Record<string, RunMetadata> = {}
-      results.forEach(({ slug, metadata }) => {
-        if (metadata) batchMap[slug] = metadata
-      })
-      setRunMetadataMap(prev => ({ ...prev, ...batchMap }))
-    }
-    setLoadingMetadataList(false)
-  }, [])
-
   useEffect(() => {
     loadRuns()
   }, [loadRuns])
 
-  // When runs are loaded, fetch metadata for runs that need it
+  // When runs are loaded, no need to fetch metadata for list view anymore
+  // All data (status, triggeredBy, triggerReason) comes from JSONL
   useEffect(() => {
     if (runs.length > 0 && !selectedRun) {
-      loadAllMetadata(runs)
+      setLoadingMetadataList(false)
     }
-  }, [runs, selectedRun, loadAllMetadata])
+  }, [runs, selectedRun])
 
   // If we have a run from URL but haven't loaded its metadata yet, fetch it
   useEffect(() => {
@@ -229,7 +201,7 @@ export default function App() {
 
   const runSummaries = runs.map(runItem => {
     const parsed = parseRunSlug(runItem.slug)
-    return { slug: runItem.slug, status: runItem.status, ...parsed }
+    return { slug: runItem.slug, status: runItem.status, triggeredBy: runItem.triggeredBy, triggerReason: runItem.triggerReason, ...parsed }
   })
 
   return (
