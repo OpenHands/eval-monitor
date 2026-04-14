@@ -31,7 +31,7 @@ interface RunListViewProps {
   showDetail: boolean
 }
 
-type StatusType = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
+type StatusType = 'pending' | 'building' | 'init' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
 
 const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?: string }> = {
   pending: {
@@ -40,6 +40,11 @@ const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?
   },
   building: {
     label: 'Building Images',
+    className: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+    dot: 'bg-violet-400 animate-pulse',
+  },
+  init: {
+    label: 'Initializing',
     className: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
     dot: 'bg-violet-400 animate-pulse',
   },

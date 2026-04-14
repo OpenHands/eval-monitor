@@ -1,7 +1,7 @@
 const BASE_URL = '/api'
 const RESULTS_BASE_URL = 'https://results.eval.all-hands.dev'
 
-export type RunListItemStatus = 'pending' | 'building' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
+export type RunListItemStatus = 'pending' | 'building' | 'init' | 'running-infer' | 'running-eval' | 'completed' | 'error' | 'cancelled'
 
 export interface RunListItem {
   slug: string
@@ -15,6 +15,7 @@ export interface RunListItem {
 const VALID_STATUSES = new Set([
   'pending',
   'building',
+  'init',
   'running-infer',
   'running-eval',
   'completed',
