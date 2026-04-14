@@ -8,12 +8,23 @@ export interface RunListItem {
   status?: RunListItemStatus
 }
 
+const VALID_STATUSES = new Set([
+  'pending',
+  'building',
+  'running-infer',
+  'running-eval',
+  'completed',
+  'error',
+  'cancelled',
+])
+
 /** Map status from JSONL format to RunListItemStatus.
- *  JSONL uses "cancel" but we use "cancelled". */
+ *  Only returns a status if it's a known status value. */
 function mapStatus(status: string | undefined): RunListItemStatus | undefined {
   if (!status) return undefined
   if (status === 'cancel') return 'cancelled'
-  return status as RunListItemStatus
+  if (VALID_STATUSES.has(status)) return status as RunListItemStatus
+  return undefined
 }
 
 /** Parse a single line from the JSONL run list file.

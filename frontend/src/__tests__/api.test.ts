@@ -747,18 +747,34 @@ describe('fetchRunList', () => {
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "init"}
-{"path": "swebench/model2/456", "status": "completed"}
-{"path": "swebench/model3/789", "status": "error"}
+        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "completed"}
+{"path": "swebench/model2/456", "status": "error"}
+{"path": "swebench/model3/789", "status": "running-infer"}
 `),
         headers: new Headers(),
       } as Response)
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model3/789', status: 'error' },
-      { slug: 'swebench/model2/456', status: 'completed' },
-      { slug: 'swebench/model1/123', status: 'init' },
+      { slug: 'swebench/model3/789', status: 'running-infer' },
+      { slug: 'swebench/model2/456', status: 'error' },
+      { slug: 'swebench/model1/123', status: 'completed' },
+    ])
+  })
+
+  it('maps unknown status to undefined', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(`{"path": "swebench/model/123", "status": "init"}
+`),
+        headers: new Headers(),
+      } as Response)
+    )
+    const result = await fetchRunList('2024-01-01')
+    expect(result).toEqual([
+      { slug: 'swebench/model/123' },
     ])
   })
 
