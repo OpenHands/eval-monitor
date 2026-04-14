@@ -70,7 +70,8 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
       // Some entries may not have path; construct from model_name and github_run_id
       if (!slug && item.github_run_id) {
         const benchmark = item.benchmark || 'unknown'
-        const modelName = item.model_name ? item.model_name.replace(/\//g, '-') : 'unknown'
+        // Replace / and . with - in model_name to match folder structure
+        const modelName = item.model_name ? item.model_name.replace(/[\/\.]/g, '-') : 'unknown'
         slug = `${benchmark}/${modelName}/${item.github_run_id}/`
       }
       if (slug) {
