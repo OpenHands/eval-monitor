@@ -8,6 +8,7 @@ export interface RunListItem {
   status?: RunListItemStatus
   triggeredBy?: string
   triggerReason?: string
+  model?: string
 }
 
 const VALID_STATUSES = new Set([
@@ -39,6 +40,9 @@ interface JsonlRunItem {
   trigger_reason?: string
   github_run_id?: string
   benchmark?: string
+  model_display_name?: string
+  model_name?: string
+  model_id?: string
 }
 
 export async function fetchRunList(date: string): Promise<RunListItem[]> {
@@ -62,11 +66,20 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
         slug = `${benchmark}/nocache/${item.github_run_id}`
       }
       if (slug) {
+        // Extract model from path for entries with path, otherwise use model_display_name from JSONL
+        let model: string | undefined
+        if (item.path) {
+          const parsed = parseRunSlug(item.path)
+          model = parsed.model
+        } else if (item.model_display_name) {
+          model = item.model_display_name
+        }
         items.push({
           slug,
           status: mapStatus(item.status),
           triggeredBy: item.triggered_by || undefined,
           triggerReason: item.trigger_reason || undefined,
+          model,
         })
       }
     } catch {

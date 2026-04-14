@@ -756,9 +756,9 @@ describe('fetchRunList', () => {
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model3/789', status: 'running-infer' },
-      { slug: 'swebench/model2/456', status: 'error', triggeredBy: 'user2', triggerReason: 'scheduled' },
-      { slug: 'swebench/model1/123', status: 'completed', triggeredBy: 'user1', triggerReason: 'PR #123' },
+      { slug: 'swebench/model3/789', status: 'running-infer', model: 'model3' },
+      { slug: 'swebench/model2/456', status: 'error', triggeredBy: 'user2', triggerReason: 'scheduled', model: 'model2' },
+      { slug: 'swebench/model1/123', status: 'completed', triggeredBy: 'user1', triggerReason: 'PR #123', model: 'model1' },
     ])
   })
 
@@ -774,7 +774,7 @@ describe('fetchRunList', () => {
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model/123' },
+      { slug: 'swebench/model/123', model: 'model' },
     ])
   })
 
@@ -790,7 +790,7 @@ describe('fetchRunList', () => {
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model/123', status: 'cancelled' },
+      { slug: 'swebench/model/123', status: 'cancelled', model: 'model' },
     ])
   })
 
@@ -808,9 +808,9 @@ describe('fetchRunList', () => {
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model3/789', status: 'running-infer' },
-      { slug: 'swebench/model2/456' },
-      { slug: 'swebench/model1/123', status: 'completed' },
+      { slug: 'swebench/model3/789', status: 'running-infer', model: 'model3' },
+      { slug: 'swebench/model2/456', model: 'model2' },
+      { slug: 'swebench/model1/123', status: 'completed', model: 'model1' },
     ])
   })
 
@@ -831,8 +831,8 @@ invalid json here
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model2/456', status: 'completed' },
-      { slug: 'swebench/model1/123' },
+      { slug: 'swebench/model2/456', status: 'completed', model: 'model2' },
+      { slug: 'swebench/model1/123', model: 'model1' },
     ])
   })
 
@@ -849,7 +849,7 @@ invalid json here
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model2/456', status: 'error' },
+      { slug: 'swebench/model2/456', status: 'error', model: 'model2' },
     ])
   })
 })
