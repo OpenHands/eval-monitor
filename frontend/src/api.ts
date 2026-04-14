@@ -27,7 +27,10 @@ const VALID_STATUSES = new Set([
  *  Only returns a status if it's a known status value. */
 function mapStatus(status: string | undefined): RunListItemStatus | undefined {
   if (!status) return undefined
+  // Map JSONL status values to our canonical status
   if (status === 'cancel') return 'cancelled'
+  if (status === 'inferring') return 'running-infer'
+  if (status === 'evaluating') return 'running-eval'
   if (VALID_STATUSES.has(status)) return status as RunListItemStatus
   return undefined
 }
