@@ -53,6 +53,7 @@ describe('CopyCommandButton', () => {
       trigger_reason: 'test eval-job-id',
       evaluation_branch: 'refs/heads/main',
       benchmarks_branch: 'main',
+      extensions_branch: null,
       instance_ids: null,
       num_infer_workers: null,
       num_eval_workers: null,
@@ -76,6 +77,7 @@ describe('CopyCommandButton', () => {
     expect(call).toContain('-f reason="test eval-job-id"')
     expect(call).toContain('-f eval_branch="main"')
     expect(call).toContain('-f benchmarks_branch="main"')
+    expect(call).toContain('-f extensions_branch=""')
     expect(call).toContain('-f instance_ids=""')
     expect(call).toContain('-f enable_conversation_event_logging="true"')
     expect(call).toContain('-f max_retries="3"')
@@ -161,5 +163,59 @@ describe('CopyCommandButton', () => {
 
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
     expect(call).toContain('-f sdk_ref="abc123def456"')
+  })
+
+  it('extracts extensions_branch and strips refs/heads/', () => {
+    const data = {
+      benchmark: 'swebench',
+      model_id: 'claude-sonnet-4',
+      extensions_branch: 'refs/heads/my-extension-branch',
+    }
+
+    render(<CopyCommandButton data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f extensions_branch="my-extension-branch"')
+    expect(call).not.toContain('refs/heads/my-extension-branch')
+  })
+
+  it('uses data values for enable_conversation_event_logging, max_retries, tool_preset when provided', () => {
+    const data = {
+      benchmark: 'swebench',
+      model_id: 'claude-sonnet-4',
+      enable_conversation_event_logging: false,
+      max_retries: 5,
+      tool_preset: 'custom',
+    }
+
+    render(<CopyCommandButton data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f enable_conversation_event_logging="false"')
+    expect(call).toContain('-f max_retries="5"')
+    expect(call).toContain('-f tool_preset="custom"')
+  })
+
+  it('uses default values for enable_conversation_event_logging, max_retries, tool_preset when not provided', () => {
+    const data = {
+      benchmark: 'swebench',
+      model_id: 'claude-sonnet-4',
+    }
+
+    render(<CopyCommandButton data={data} />)
+
+    const copyButton = screen.getByTitle('Copy gh workflow run command')
+    fireEvent.click(copyButton)
+
+    const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
+    expect(call).toContain('-f enable_conversation_event_logging="true"')
+    expect(call).toContain('-f max_retries="3"')
+    expect(call).toContain('-f tool_preset="default"')
   })
 })
