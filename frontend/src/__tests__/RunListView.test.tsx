@@ -288,66 +288,40 @@ describe('RunListView', () => {
       expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument()
     })
 
-    it('resets filterStatus to "all" when selected status does not exist in data (after data loads)', () => {
-      // Scenario: URL has ?status=error but no runs have error status
-      // The reset should only happen AFTER runs have loaded (runs.length > 0)
-      const mockSetFilterStatus = vi.fn()
-      const propsWithNoErrorRuns = {
+    it('filters runs correctly when filterStatus is set from URL', () => {
+      // Scenario: URL has ?status=error and data has error runs
+      const propsWithErrorFilter = {
         runs: [
           { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
-          { slug: 'swebench/infer-run/2', benchmark: 'swebench', model: 'infer-run', jobId: '2', status: 'running-infer' as const }
+          { slug: 'swebench/error-run/2', benchmark: 'swebench', model: 'error-run', jobId: '2', status: 'error' as const },
+          { slug: 'swebench/infer-run/3', benchmark: 'swebench', model: 'infer-run', jobId: '3', status: 'running-infer' as const }
         ],
         loading: false,
         error: null,
         onSelectRun: mockOnSelectRun,
         runMetadataMap: {},
         loadingMetadataList: false,
-        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/infer-run/2' }] }],
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/error-run/2' }, { slug: 'swebench/infer-run/3' }] }],
         filterBenchmark: 'all',
         setFilterBenchmark: vi.fn(),
-        filterStatus: 'error', // This status doesn't exist in the runs
-        setFilterStatus: mockSetFilterStatus,
+        filterStatus: 'error', // Filter by error
+        setFilterStatus: vi.fn(),
         filterText: '',
         setFilterText: vi.fn(),
         showDetail: false
       }
 
-      render(<RunListView {...propsWithNoErrorRuns} />)
+      render(<RunListView {...propsWithErrorFilter} />)
 
-      // Should call setFilterStatus('all') because 'error' is not in available statuses
-      // and runs have loaded (runs.length > 0)
-      expect(mockSetFilterStatus).toHaveBeenCalledWith('all')
+      // Should only show the error run
+      expect(screen.getByText('error-run')).toBeInTheDocument()
+      expect(screen.queryByText('completed-run')).not.toBeInTheDocument()
+      expect(screen.queryByText('infer-run')).not.toBeInTheDocument()
     })
 
-    it('does not reset filterStatus when runs have not loaded yet', () => {
-      // Scenario: runs are still loading (empty array)
-      const mockSetFilterStatus = vi.fn()
-      const propsWithNoRuns = {
-        runs: [], // No runs loaded yet
-        loading: true,
-        error: null,
-        onSelectRun: mockOnSelectRun,
-        runMetadataMap: {},
-        loadingMetadataList: false,
-        dayGroups: [],
-        filterBenchmark: 'all',
-        setFilterBenchmark: vi.fn(),
-        filterStatus: 'error', // This status doesn't exist but we shouldn't reset while loading
-        setFilterStatus: mockSetFilterStatus,
-        filterText: '',
-        setFilterText: vi.fn(),
-        showDetail: false
-      }
-
-      render(<RunListView {...propsWithNoRuns} />)
-
-      // Should NOT call setFilterStatus because runs haven't loaded yet
-      expect(mockSetFilterStatus).not.toHaveBeenCalled()
-    })
-
-    it('does not reset filterStatus when selected status exists in data', () => {
-      const mockSetFilterStatus = vi.fn()
-      const propsWithErrorRuns = {
+    it('shows no runs message when filter matches no runs', () => {
+      // Scenario: URL has ?status=cancelled but no cancelled runs exist
+      const propsWithNoCancelledRuns = {
         runs: [
           { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
           { slug: 'swebench/error-run/2', benchmark: 'swebench', model: 'error-run', jobId: '2', status: 'error' as const }
@@ -360,44 +334,17 @@ describe('RunListView', () => {
         dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/error-run/2' }] }],
         filterBenchmark: 'all',
         setFilterBenchmark: vi.fn(),
-        filterStatus: 'error', // This status DOES exist in the runs
-        setFilterStatus: mockSetFilterStatus,
+        filterStatus: 'cancelled', // No cancelled runs exist
+        setFilterStatus: vi.fn(),
         filterText: '',
         setFilterText: vi.fn(),
         showDetail: false
       }
 
-      render(<RunListView {...propsWithErrorRuns} />)
+      render(<RunListView {...propsWithNoCancelledRuns} />)
 
-      // Should NOT call setFilterStatus because 'error' exists in available statuses
-      expect(mockSetFilterStatus).not.toHaveBeenCalled()
-    })
-
-    it('does not reset filterStatus when it is "active"', () => {
-      const mockSetFilterStatus = vi.fn()
-      const propsWithNoActiveRuns = {
-        runs: [
-          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const }
-        ],
-        loading: false,
-        error: null,
-        onSelectRun: mockOnSelectRun,
-        runMetadataMap: {},
-        loadingMetadataList: false,
-        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }] }],
-        filterBenchmark: 'all',
-        setFilterBenchmark: vi.fn(),
-        filterStatus: 'active', // Special status that should always be valid
-        setFilterStatus: mockSetFilterStatus,
-        filterText: '',
-        setFilterText: vi.fn(),
-        showDetail: false
-      }
-
-      render(<RunListView {...propsWithNoActiveRuns} />)
-
-      // Should NOT call setFilterStatus because 'active' is always a valid filter
-      expect(mockSetFilterStatus).not.toHaveBeenCalled()
+      // Should show the "no runs" message
+      expect(screen.getByText('No runs match the current filters.')).toBeInTheDocument()
     })
   })
 

@@ -171,15 +171,6 @@ export default function RunListView({
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
 
-  // Reset filterStatus to 'all' if it refers to a status that no longer exists in the data
-  // (e.g., URL has ?status=error but no error runs exist in current data)
-  // Only check this after data has loaded (runs.length > 0) to avoid resetting while loading
-  useEffect(() => {
-    if (runs.length > 0 && filterStatus !== 'all' && filterStatus !== 'active' && !statuses.includes(filterStatus as StatusType)) {
-      setFilterStatus('all')
-    }
-  }, [runs.length, statuses, filterStatus, setFilterStatus])
-
   // Apply filters
   const filteredRuns = useMemo(() => {
     return runsWithStatus.filter(run => {
