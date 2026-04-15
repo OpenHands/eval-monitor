@@ -56,6 +56,13 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
     params['benchmarks_branch'] = ''
   }
 
+  // extensions_branch (strip refs/heads/)
+  if (data.extensions_branch && typeof data.extensions_branch === 'string') {
+    params['extensions_branch'] = stripRefsPrefix(data.extensions_branch)
+  } else {
+    params['extensions_branch'] = ''
+  }
+
   // instance_ids
   params['instance_ids'] = valueToString(data.instance_ids)
 
@@ -65,14 +72,17 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // num_eval_workers
   params['num_eval_workers'] = valueToString(data.num_eval_workers)
 
-  // enable_conversation_event_logging (always true)
-  params['enable_conversation_event_logging'] = 'true'
+  // enable_conversation_event_logging (use data value or default to true)
+  const eventLoggingValue = valueToString(data.enable_conversation_event_logging)
+  params['enable_conversation_event_logging'] = eventLoggingValue || 'true'
 
-  // max_retries (always 3)
-  params['max_retries'] = '3'
+  // max_retries (use data value or default to 3)
+  const maxRetriesValue = valueToString(data.max_retries)
+  params['max_retries'] = maxRetriesValue || '3'
 
-  // tool_preset (always default)
-  params['tool_preset'] = 'default'
+  // tool_preset (use data value or default to 'default')
+  const toolPresetValue = valueToString(data.tool_preset)
+  params['tool_preset'] = toolPresetValue || 'default'
 
   // agent_type
   params['agent_type'] = valueToString(data.agent_type)
