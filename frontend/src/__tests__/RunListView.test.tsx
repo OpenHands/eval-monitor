@@ -288,8 +288,9 @@ describe('RunListView', () => {
       expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument()
     })
 
-    it('resets filterStatus to "all" when selected status does not exist in data', () => {
+    it('resets filterStatus to "all" when selected status does not exist in data (after data loads)', () => {
       // Scenario: URL has ?status=error but no runs have error status
+      // The reset should only happen AFTER runs have loaded (runs.length > 0)
       const mockSetFilterStatus = vi.fn()
       const propsWithNoErrorRuns = {
         runs: [
@@ -314,7 +315,34 @@ describe('RunListView', () => {
       render(<RunListView {...propsWithNoErrorRuns} />)
 
       // Should call setFilterStatus('all') because 'error' is not in available statuses
+      // and runs have loaded (runs.length > 0)
       expect(mockSetFilterStatus).toHaveBeenCalledWith('all')
+    })
+
+    it('does not reset filterStatus when runs have not loaded yet', () => {
+      // Scenario: runs are still loading (empty array)
+      const mockSetFilterStatus = vi.fn()
+      const propsWithNoRuns = {
+        runs: [], // No runs loaded yet
+        loading: true,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'error', // This status doesn't exist but we shouldn't reset while loading
+        setFilterStatus: mockSetFilterStatus,
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithNoRuns} />)
+
+      // Should NOT call setFilterStatus because runs haven't loaded yet
+      expect(mockSetFilterStatus).not.toHaveBeenCalled()
     })
 
     it('does not reset filterStatus when selected status exists in data', () => {

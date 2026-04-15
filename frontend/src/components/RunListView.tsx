@@ -173,11 +173,12 @@ export default function RunListView({
 
   // Reset filterStatus to 'all' if it refers to a status that no longer exists in the data
   // (e.g., URL has ?status=error but no error runs exist in current data)
+  // Only check this after data has loaded (runs.length > 0) to avoid resetting while loading
   useEffect(() => {
-    if (filterStatus !== 'all' && filterStatus !== 'active' && !statuses.includes(filterStatus as StatusType)) {
+    if (runs.length > 0 && filterStatus !== 'all' && filterStatus !== 'active' && !statuses.includes(filterStatus as StatusType)) {
       setFilterStatus('all')
     }
-  }, [statuses, filterStatus, setFilterStatus])
+  }, [runs.length, statuses, filterStatus, setFilterStatus])
 
   // Apply filters
   const filteredRuns = useMemo(() => {
