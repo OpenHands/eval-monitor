@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus } from './api'
 import type { RunMetadata, DayRunGroup, RunListItem } from './api'
 import RunListView from './components/RunListView'
@@ -199,12 +199,12 @@ export default function App() {
     }
   }
 
-  const runSummaries = runs.map(runItem => {
+  const runSummaries = useMemo(() => runs.map(runItem => {
     const parsed = parseRunSlug(runItem.slug)
     // Use model/runtime from JSONL if available, otherwise parse from path
     const model = runItem.model || parsed.model
     return { slug: runItem.slug, status: runItem.status, triggeredBy: runItem.triggeredBy, triggerReason: runItem.triggerReason, benchmark: parsed.benchmark, jobId: parsed.jobId, model, runtime: runItem.runtime }
-  })
+  }), [runs])
 
   return (
     <div className="min-h-screen bg-oh-bg">
