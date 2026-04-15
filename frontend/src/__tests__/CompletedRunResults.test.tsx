@@ -120,4 +120,30 @@ describe('CompletedRunResults', () => {
       await screen.findByText('Copy archive link and submit to index')
     })
   })
+
+  describe('Trajectory Visualizer button', () => {
+    it('renders the "See in Trajectory Visualizer" button', async () => {
+      mockFetchWithCost(1.2345)
+
+      render(<CompletedRunResults slug="swebench/model/123" />)
+
+      await screen.findByText('See in Trajectory Visualizer')
+    })
+
+    it('links to the trajectory visualizer with the correct URL', async () => {
+      mockFetchWithCost(1.2345)
+
+      render(<CompletedRunResults slug="swebench/litellm_proxy-minimax-MiniMax-M2-7/24458507797" />)
+
+      const link = await screen.findByText('See in Trajectory Visualizer')
+      const anchor = link.closest('a')
+      expect(anchor).not.toBeNull()
+      expect(anchor?.href).toBe(
+        'https://trajectory-visualizer.all-hands.dev/?inUrl=' +
+        encodeURIComponent('https://results.eval.all-hands.dev/swebench/litellm_proxy-minimax-MiniMax-M2-7/24458507797/results.tar.gz')
+      )
+      expect(anchor?.target).toBe('_blank')
+      expect(anchor?.rel).toContain('noopener')
+    })
+  })
 })
