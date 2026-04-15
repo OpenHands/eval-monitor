@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus } from './api'
 import type { RunMetadata, DayRunGroup, RunListItem } from './api'
 import RunListView from './components/RunListView'
@@ -70,6 +70,22 @@ export default function App() {
   const [filterBenchmark, setFilterBenchmark] = useState(initialState.filterBenchmark)
   const [filterStatus, setFilterStatus] = useState(initialState.filterStatus)
   const [filterText, setFilterText] = useState(initialState.filterText)
+  // Debounced filterText for key prop - prevents focus loss while still triggering re-render
+  const [debouncedFilterText, setDebouncedFilterText] = useState(initialState.filterText)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedFilterText(filterText)
+    }, 300)
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [filterText])
   const [clusterHealthOpen, setClusterHealthOpen] = useState(initialState.clusterHealth)
   const [evalTimeOpen, setEvalTimeOpen] = useState(initialState.evalTime)
 
@@ -236,7 +252,7 @@ export default function App() {
           />
         ) : (
           <RunListView
-            key={`${filterStatus}-${filterBenchmark}`}
+            key={`${filterStatus}-${filterBenchmark}-${debouncedFilterText}`}
             runs={runSummaries}
             loading={loading}
             error={error}
