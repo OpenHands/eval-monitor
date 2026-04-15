@@ -20,6 +20,7 @@ export default {
           'warning': '#F59E0B',
           'error': '#EF4444',
           'info': '#38BDF8',
+          'purple': '#A855F7',
         }
       }
     },
