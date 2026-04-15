@@ -389,7 +389,7 @@ export default function RunListView({
       {/* Table */}
       <div className="bg-oh-surface border border-oh-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table key={`table-${filterStatus}-${filterBenchmark}-${filterText}`} className="w-full">
             <thead>
               <tr className="border-b border-oh-border">
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Status</th>
