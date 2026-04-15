@@ -296,7 +296,11 @@ export default function RunListView({
             {Object.entries(statusCounts).map(([status, count]) => (
               <button
                 key={status}
-                onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
+                onClick={() => {
+                  const newStatus = filterStatus === status ? 'all' : status
+                  console.log(`[StatusBadge] Clicked status="${status}", current filterStatus="${filterStatus}", setting to="${newStatus}"`)
+                  setFilterStatus(newStatus)
+                }}
                 className={`text-xs px-2 py-1 rounded transition-colors ${filterStatus === status ? 'ring-1 ring-oh-primary' : 'opacity-70 hover:opacity-100'}`}
               >
                 <StatusBadge status={status as StatusType} />
