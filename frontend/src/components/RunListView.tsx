@@ -173,7 +173,8 @@ export default function RunListView({
 
   // Apply filters
   const filteredRuns = useMemo(() => {
-    return runsWithStatus.filter(run => {
+    console.log('[filteredRuns] Computing with filterStatus:', filterStatus, 'runsWithStatus count:', runsWithStatus.length)
+    const result = runsWithStatus.filter(run => {
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
       if (filterStatus !== 'all') {
         if (filterStatus === 'active') {
@@ -201,6 +202,8 @@ export default function RunListView({
       }
       return true
     })
+    console.log('[filteredRuns] Result count:', result.length, 'First few statuses:', result.slice(0, 5).map(r => r.status))
+    return result
   }, [runsWithStatus, filterBenchmark, filterStatus, filterText])
 
   // Status counts for summary
@@ -396,7 +399,7 @@ export default function RunListView({
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Triggered By</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-oh-border">
+            <tbody className="divide-y divide-oh-border" data-filter-status={filterStatus} data-filtered-count={filteredRuns.length}>
               {filteredRuns.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-oh-text-muted">
@@ -421,6 +424,8 @@ export default function RunListView({
                         </tr>
                       )}
                       <tr
+                        data-run-status={run.status}
+                        data-run-index={index}
                         onClick={(e) => {
                           if (e.altKey || e.ctrlKey || e.metaKey) {
                             const url = new URL(window.location.href)
