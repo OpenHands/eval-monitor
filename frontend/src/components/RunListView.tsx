@@ -171,37 +171,35 @@ export default function RunListView({
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
 
-  // Apply filters
-  const filteredRuns = useMemo(() => {
-    return runsWithStatus.filter(run => {
-      if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
-      if (filterStatus !== 'all') {
-        if (filterStatus === 'active') {
-          // Active status: show all non-terminal statuses
-          const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
-          if (!activeStatuses.includes(run.status)) return false
-        } else if (run.status !== filterStatus) {
-          return false
-        }
+  // Apply filters - compute on every render to ensure fresh filterText value
+  const filteredRuns = runsWithStatus.filter(run => {
+    if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
+    if (filterStatus !== 'all') {
+      if (filterStatus === 'active') {
+        // Active status: show all non-terminal statuses
+        const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
+        if (!activeStatuses.includes(run.status)) return false
+      } else if (run.status !== filterStatus) {
+        return false
       }
-      if (filterText) {
-        // Split by whitespace or + and filter out empty strings
-        const searchTerms = filterText.toLowerCase().split(/[\s+]+/).filter(term => term.length > 0)
-        // Combine all searchable fields into one string for matching
-        const searchableContent = [
-          run.model,
-          run.jobId,
-          run.benchmark,
-          run.triggeredBy,
-          run.triggerReason
-        ].join(' ').toLowerCase()
-        // ALL terms must match (AND logic)
-        const allTermsMatch = searchTerms.every(term => searchableContent.includes(term))
-        if (!allTermsMatch) return false
-      }
-      return true
-    })
-  }, [runsWithStatus, filterBenchmark, filterStatus, filterText])
+    }
+    if (filterText) {
+      // Split by whitespace or + and filter out empty strings
+      const searchTerms = filterText.toLowerCase().split(/[\s+]+/).filter(term => term.length > 0)
+      // Combine all searchable fields into one string for matching
+      const searchableContent = [
+        run.model,
+        run.jobId,
+        run.benchmark,
+        run.triggeredBy,
+        run.triggerReason
+      ].join(' ').toLowerCase()
+      // ALL terms must match (AND logic)
+      const allTermsMatch = searchTerms.every(term => searchableContent.includes(term))
+      if (!allTermsMatch) return false
+    }
+    return true
+  })
 
   // Status counts for summary
   const statusCounts = useMemo(() => {
