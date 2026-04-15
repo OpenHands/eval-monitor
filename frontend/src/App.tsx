@@ -236,7 +236,7 @@ export default function App() {
           />
         ) : (
           <RunListView
-            key={`${filterStatus}-${filterBenchmark}`}
+            key={`${filterStatus}-${filterBenchmark}-${filterText}`}
             runs={runSummaries}
             loading={loading}
             error={error}
