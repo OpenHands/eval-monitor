@@ -65,13 +65,11 @@ function buildUrl(date: string, run: string | null, numDays: number, filterBench
 
 export default function App() {
   const initialState = parseUrlState()
-  console.log(`[App] Initial state filterStatus: "${initialState.filterStatus}"`)
   const [date, setDate] = useState(initialState.date)
   const [numDays, setNumDays] = useState(initialState.numDays)
   const [filterBenchmark, setFilterBenchmark] = useState(initialState.filterBenchmark)
   const [filterStatus, setFilterStatus] = useState(initialState.filterStatus)
   const [filterText, setFilterText] = useState(initialState.filterText)
-  console.log(`[App] Current filterStatus state: "${filterStatus}"`)
   const [clusterHealthOpen, setClusterHealthOpen] = useState(initialState.clusterHealth)
   const [evalTimeOpen, setEvalTimeOpen] = useState(initialState.evalTime)
 

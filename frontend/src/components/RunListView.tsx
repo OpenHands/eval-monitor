@@ -121,7 +121,6 @@ export default function RunListView({
   setFilterText,
   showDetail
 }: RunListViewProps) {
-  console.log(`[RunListView] Render with filterStatus: "${filterStatus}", runs.length: ${runs.length}`)
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
@@ -174,9 +173,7 @@ export default function RunListView({
 
   // Apply filters
   const filteredRuns = useMemo(() => {
-    const computeId = Math.random().toString(36).substr(2, 9)
-    console.log(`[filteredRuns ${computeId}] Computing with filterStatus: "${filterStatus}", filterBenchmark: "${filterBenchmark}", runsWithStatus count: ${runsWithStatus.length}`)
-    const result = runsWithStatus.filter(run => {
+    return runsWithStatus.filter(run => {
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
       if (filterStatus !== 'all') {
         if (filterStatus === 'active') {
@@ -204,8 +201,6 @@ export default function RunListView({
       }
       return true
     })
-    console.log(`[filteredRuns ${computeId}] Result count: ${result.length}, First few statuses:`, result.slice(0, 5).map(r => r.status))
-    return result
   }, [runsWithStatus, filterBenchmark, filterStatus, filterText])
 
   // Status counts for summary
@@ -296,11 +291,7 @@ export default function RunListView({
             {Object.entries(statusCounts).map(([status, count]) => (
               <button
                 key={status}
-                onClick={() => {
-                  const newStatus = filterStatus === status ? 'all' : status
-                  console.log(`[StatusBadge] Clicked status="${status}", current filterStatus="${filterStatus}", setting to="${newStatus}"`)
-                  setFilterStatus(newStatus)
-                }}
+                onClick={() => setFilterStatus(filterStatus === status ? 'all' : status)}
                 className={`text-xs px-2 py-1 rounded transition-colors ${filterStatus === status ? 'ring-1 ring-oh-primary' : 'opacity-70 hover:opacity-100'}`}
               >
                 <StatusBadge status={status as StatusType} />
@@ -393,7 +384,7 @@ export default function RunListView({
       {/* Table */}
       <div className="bg-oh-surface border border-oh-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table key={`table-${filterStatus}-${filterBenchmark}-${filterText}`} className="w-full">
+          <table className="w-full">
             <thead>
               <tr className="border-b border-oh-border">
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Status</th>
@@ -405,7 +396,7 @@ export default function RunListView({
                 <th className="text-left text-xs font-medium text-oh-text-muted uppercase tracking-wider px-4 py-3">Triggered By</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-oh-border" data-filter-status={filterStatus} data-filtered-count={filteredRuns.length}>
+            <tbody className="divide-y divide-oh-border">
               {filteredRuns.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-oh-text-muted">
@@ -430,8 +421,6 @@ export default function RunListView({
                         </tr>
                       )}
                       <tr
-                        data-run-status={run.status}
-                        data-run-index={index}
                         onClick={(e) => {
                           if (e.altKey || e.ctrlKey || e.metaKey) {
                             const url = new URL(window.location.href)
