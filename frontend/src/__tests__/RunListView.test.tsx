@@ -11,19 +11,22 @@ describe('RunListView', () => {
         slug: 'swebench/qwen-2.5-coder/123',
         benchmark: 'swebench',
         model: 'qwen-2.5-coder',
-        jobId: '123'
+        jobId: '123',
+        triggeredBy: 'juanmichelini'
       },
       {
         slug: 'gaia/claude-sonnet/456',
         benchmark: 'gaia',
         model: 'claude-sonnet',
-        jobId: '456'
+        jobId: '456',
+        triggeredBy: 'admin'
       },
       {
         slug: 'swebench/gpt-4o/789',
         benchmark: 'swebench',
         model: 'gpt-4o',
-        jobId: '789'
+        jobId: '789',
+        triggeredBy: 'admin'
       }
     ],
     loading: false,
@@ -347,9 +350,9 @@ describe('RunListView', () => {
     it('shows per-author breakdown for active workers based on worker count', () => {
       const props = {
         runs: [
-          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1' },
-          { slug: 'swebench/run2/2', benchmark: 'swebench', model: 'run2', jobId: '2' },
-          { slug: 'swebench/run3/3', benchmark: 'swebench', model: 'run3', jobId: '3' }
+          { slug: 'swebench/run1/1', benchmark: 'swebench', model: 'run1', jobId: '1', triggeredBy: 'alice' },
+          { slug: 'swebench/run2/2', benchmark: 'swebench', model: 'run2', jobId: '2', triggeredBy: 'alice' },
+          { slug: 'swebench/run3/3', benchmark: 'swebench', model: 'run3', jobId: '3', triggeredBy: 'bob' }
         ],
         loading: false,
         error: null,

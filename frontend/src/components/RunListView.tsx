@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
-import { getStageStatus, getRuntime, isFinished, extractTriggeredBy, extractTriggerReason, getActiveWorkersForInstance } from '../api'
+import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -9,6 +9,9 @@ interface RunInfo {
   model: string
   jobId: string
   status?: RunListItemStatus
+  triggeredBy?: string
+  triggerReason?: string
+  runtime?: string
 }
 
 interface RunListViewProps {
@@ -36,17 +39,17 @@ const STATUS_CONFIG: Record<StatusType, { label: string; className: string; dot?
     className: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
   },
   building: {
-    label: 'Building Images',
+    label: 'Building',
     className: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
     dot: 'bg-violet-400 animate-pulse',
   },
   'running-infer': {
-    label: 'Running Inference',
+    label: 'Inference',
     className: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     dot: 'bg-blue-400 animate-pulse',
   },
   'running-eval': {
-    label: 'Running Eval',
+    label: 'Eval',
     className: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     dot: 'bg-amber-400 animate-pulse',
   },
@@ -148,17 +151,19 @@ export default function RunListView({
     return () => clearInterval(interval)
   }, [hasNonFinished])
 
-  // Compute statuses, runtimes, and triggered-by
-  // Use pre-parsed status from list file if available, otherwise derive from metadata
+  // Compute statuses and runtimes
+  // Status and runtime come from JSONL (pre-parsed), metadata only needed for additional details
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
-      // Use pre-parsed status if available, otherwise derive from metadata
+      // Use pre-parsed status from JSONL, only derive from metadata if needed
       const status: StatusType = run.status || (metadata ? getStageStatus(metadata) : 'pending')
-      const runtime: string | null = metadata ? getRuntime(metadata, now) : null
-      const runFinished = metadata ? isFinished(metadata) : true
-      const triggeredBy = extractTriggeredBy(metadata)
-      const triggerReason = extractTriggerReason(metadata)
+      // Use pre-parsed runtime from JSONL if available, otherwise calculate from metadata
+      const runtime: string | null = run.runtime || (metadata ? getRuntime(metadata, now) : null)
+      const runFinished = metadata ? isFinished(metadata) : (run.status === 'completed' || run.status === 'error' || run.status === 'cancelled')
+      // triggeredBy and triggerReason come directly from JSONL (via RunListItem)
+      const triggeredBy = run.triggeredBy
+      const triggerReason = run.triggerReason
       return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
     })
   }, [runs, runMetadataMap, now])
@@ -172,7 +177,7 @@ export default function RunListView({
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
       if (filterStatus !== 'all') {
         if (filterStatus === 'active') {
-          // Active status: show all non-terminal statuses (pending, building, running-infer, running-eval)
+          // Active status: show all non-terminal statuses
           const activeStatuses: StatusType[] = ['pending', 'building', 'running-infer', 'running-eval']
           if (!activeStatuses.includes(run.status)) return false
         } else if (run.status !== filterStatus) {
@@ -356,6 +361,14 @@ export default function RunListView({
           </svg>
           Export paths
         </button>
+        <a
+          href="https://eval-monitor-git-legacy-txt-list-openhands.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-oh-text-muted hover:text-oh-text transition-colors"
+        >
+          Run missing? Fall back to legacy Eval Monitor
+        </a>
       </div>
 
       {/* Export Paths Modal */}

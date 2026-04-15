@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, parseRunListLine, fetchRunList, getClusterHealthState } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, fetchRunList, getClusterHealthState } from '../api'
 import type { RunMetadata, ClusterHealthReport } from '../api'
 
 function makeReport(overrides: Partial<ClusterHealthReport> = {}): ClusterHealthReport {
@@ -709,96 +709,6 @@ describe('buildOriginalRunUrl', () => {
   })
 })
 
-describe('parseRunListLine', () => {
-  it('parses a simple slug without status', () => {
-    const result = parseRunListLine('swebench/litellm_proxy-claude-sonnet/123')
-    expect(result).toEqual({ slug: 'swebench/litellm_proxy-claude-sonnet/123' })
-  })
-
-  it('parses slug with completed status', () => {
-    const result = parseRunListLine('swebench/litellm_proxy-claude-sonnet-4-5/24051073329/ completed')
-    expect(result).toEqual({ slug: 'swebench/litellm_proxy-claude-sonnet-4-5/24051073329/', status: 'completed' })
-  })
-
-  it('parses slug with error status', () => {
-    const result = parseRunListLine('swebench/model/123 error')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'error' })
-  })
-
-  it('parses slug with pending status', () => {
-    const result = parseRunListLine('swebench/model/123 pending')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'pending' })
-  })
-
-  it('parses slug with building status', () => {
-    const result = parseRunListLine('swebench/model/123 building')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'building' })
-  })
-
-  it('parses slug with running-infer status', () => {
-    const result = parseRunListLine('swebench/model/123 running-infer')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'running-infer' })
-  })
-
-  it('parses slug with running-eval status', () => {
-    const result = parseRunListLine('swebench/model/123 running-eval')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'running-eval' })
-  })
-
-  it('parses slug with cancelled status', () => {
-    const result = parseRunListLine('swebench/model/123 cancelled')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'cancelled' })
-  })
-
-  it('ignores non-valid status values', () => {
-    const result = parseRunListLine('swebench/model/123 some_random_text')
-    expect(result).toEqual({ slug: 'swebench/model/123' })
-  })
-
-  it('ignores invalid status that looks like a benchmark name', () => {
-    const result = parseRunListLine('swebench/model/123 swebench')
-    expect(result).toEqual({ slug: 'swebench/model/123' })
-  })
-
-  it('handles empty line', () => {
-    const result = parseRunListLine('')
-    expect(result).toEqual({ slug: '' })
-  })
-
-  it('handles whitespace-only line', () => {
-    const result = parseRunListLine('   ')
-    expect(result).toEqual({ slug: '' })
-  })
-
-  it('handles slug with trailing whitespace', () => {
-    const result = parseRunListLine('swebench/model/123   ')
-    expect(result).toEqual({ slug: 'swebench/model/123' })
-  })
-
-  it('handles case-insensitive status', () => {
-    const result = parseRunListLine('swebench/model/123 COMPLETED')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'completed' })
-  })
-
-  it('handles mixed case status', () => {
-    const result = parseRunListLine('swebench/model/123 Running-Infer')
-    expect(result).toEqual({ slug: 'swebench/model/123', status: 'running-infer' })
-  })
-
-  it('handles slug with spaces in model name - returns slug only without status', () => {
-    // When there are more than 2 tokens, we can't determine where slug ends
-    // so we return slug only (status is not parsed)
-    const result = parseRunListLine('swebench/litellm proxy model/123 completed')
-    expect(result).toEqual({ slug: 'swebench/litellm' })
-  })
-
-  it('only considers second token as status if valid', () => {
-    // The model name contains "error" which shouldn't be treated as status
-    const result = parseRunListLine('swebench/error-handler-model/123')
-    expect(result).toEqual({ slug: 'swebench/error-handler-model/123' })
-  })
-})
-
 describe('fetchRunList', () => {
   beforeEach(() => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
@@ -832,57 +742,88 @@ describe('fetchRunList', () => {
     await expect(fetchRunList('2024-01-01')).rejects.toThrow('Failed to fetch run list: 500')
   })
 
-  it('parses lines correctly from response', async () => {
+  it('parses JSONL lines correctly', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`
-swebench/model1/123 pending
-swebench/model2/456 completed
-swebench/model3/789 error
+        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "completed", "triggered_by": "user1", "trigger_reason": "PR #123"}
+{"path": "swebench/model2/456", "status": "error", "triggered_by": "user2", "trigger_reason": "scheduled"}
+{"path": "swebench/model3/789", "status": "running-infer"}
 `),
         headers: new Headers(),
       } as Response)
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model3/789', status: 'error' },
-      { slug: 'swebench/model2/456', status: 'completed' },
-      { slug: 'swebench/model1/123', status: 'pending' },
+      { slug: 'swebench/model3/789', status: 'running-infer', model: 'model3' },
+      { slug: 'swebench/model2/456', status: 'error', triggeredBy: 'user2', triggerReason: 'scheduled', model: 'model2' },
+      { slug: 'swebench/model1/123', status: 'completed', triggeredBy: 'user1', triggerReason: 'PR #123', model: 'model1' },
     ])
   })
 
-  it('handles mixed lines with and without status', async () => {
+  it('maps unknown status to undefined', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`
-swebench/model1/123 completed
-swebench/model2/456
-swebench/model3/789 running-infer
+        text: () => Promise.resolve(`{"path": "swebench/model/123", "status": "init"}
 `),
         headers: new Headers(),
       } as Response)
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model3/789', status: 'running-infer' },
-      { slug: 'swebench/model2/456' },
-      { slug: 'swebench/model1/123', status: 'completed' },
+      { slug: 'swebench/model/123', model: 'model' },
     ])
   })
 
-  it('filters out empty lines', async () => {
+  it('maps "cancel" status to "cancelled"', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(`
-swebench/model1/123
+        text: () => Promise.resolve(`{"path": "swebench/model/123", "status": "cancel"}
+`),
+        headers: new Headers(),
+      } as Response)
+    )
+    const result = await fetchRunList('2024-01-01')
+    expect(result).toEqual([
+      { slug: 'swebench/model/123', status: 'cancelled', model: 'model' },
+    ])
+  })
 
-swebench/model2/456 completed
+  it('handles items with and without status', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(`{"path": "swebench/model1/123", "status": "completed"}
+{"path": "swebench/model2/456"}
+{"path": "swebench/model3/789", "status": "running-infer"}
+`),
+        headers: new Headers(),
+      } as Response)
+    )
+    const result = await fetchRunList('2024-01-01')
+    expect(result).toEqual([
+      { slug: 'swebench/model3/789', status: 'running-infer', model: 'model3' },
+      { slug: 'swebench/model2/456', model: 'model2' },
+      { slug: 'swebench/model1/123', status: 'completed', model: 'model1' },
+    ])
+  })
+
+  it('filters out empty lines and invalid JSON', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(`{"path": "swebench/model1/123"}
+
+{"path": "swebench/model2/456", "status": "completed"}
+
+invalid json here
 
 `),
         headers: new Headers(),
@@ -890,8 +831,25 @@ swebench/model2/456 completed
     )
     const result = await fetchRunList('2024-01-01')
     expect(result).toEqual([
-      { slug: 'swebench/model2/456', status: 'completed' },
-      { slug: 'swebench/model1/123' },
+      { slug: 'swebench/model2/456', status: 'completed', model: 'model2' },
+      { slug: 'swebench/model1/123', model: 'model1' },
+    ])
+  })
+
+  it('filters out items with empty path', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(`{"path": "", "status": "completed"}
+{"path": "swebench/model2/456", "status": "error"}
+`),
+        headers: new Headers(),
+      } as Response)
+    )
+    const result = await fetchRunList('2024-01-01')
+    expect(result).toEqual([
+      { slug: 'swebench/model2/456', status: 'error', model: 'model2' },
     ])
   })
 })

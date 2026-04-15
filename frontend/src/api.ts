@@ -6,9 +6,13 @@ export type RunListItemStatus = 'pending' | 'building' | 'running-infer' | 'runn
 export interface RunListItem {
   slug: string
   status?: RunListItemStatus
+  triggeredBy?: string
+  triggerReason?: string
+  model?: string
+  runtime?: string
 }
 
-const VALID_STATUSES: readonly string[] = [
+const VALID_STATUSES = new Set([
   'pending',
   'building',
   'running-infer',
@@ -16,41 +20,90 @@ const VALID_STATUSES: readonly string[] = [
   'completed',
   'error',
   'cancelled',
-]
+])
 
-/** Parse a line from the run list file.
- *  Format: "path/to/run" or "path/to/run status"
- *  Returns an object with slug and optional status if found.
- */
-export function parseRunListLine(line: string): RunListItem {
-  const trimmed = line.trim()
-  if (!trimmed) return { slug: '' }
+/** Map status from JSONL format to RunListItemStatus.
+ *  Only returns a status if it's a known status value. */
+function mapStatus(status: string | undefined): RunListItemStatus | undefined {
+  if (!status) return undefined
+  // Map JSONL status values to our canonical status
+  if (status === 'cancel') return 'cancelled'
+  if (status === 'inferring') return 'running-infer'
+  if (status === 'evaluating') return 'running-eval'
+  if (status === 'init') return 'building'
+  if (VALID_STATUSES.has(status)) return status as RunListItemStatus
+  return undefined
+}
 
-  // Split on whitespace to find optional status
-  const parts = trimmed.split(/\s+/)
-  const slug = parts[0]
-  const potentialStatus = parts[1]?.toLowerCase()
-
-  if (potentialStatus && VALID_STATUSES.includes(potentialStatus)) {
-    return { slug, status: potentialStatus as RunListItemStatus }
-  }
-
-  return { slug }
+/** Parse a single line from the JSONL run list file.
+ *  The JSONL file has "path" field for slug and "status" for the status.
+ *  Some entries may not have "path" - those use "github_run_id" instead. */
+interface JsonlRunItem {
+  path?: string
+  status?: string
+  triggered_by?: string
+  trigger_reason?: string
+  github_run_id?: string
+  benchmark?: string
+  model_display_name?: string
+  model_name?: string
+  model_id?: string
+  init_timestamp?: string
+  end_timestamp?: string
 }
 
 export async function fetchRunList(date: string): Promise<RunListItem[]> {
   const cacheBust = Math.floor(Date.now() / 1000)
-  const res = await fetch(`${BASE_URL}/metadata/${date}.txt?${cacheBust}`)
+  const res = await fetch(`${BASE_URL}/metadata/${date}.jsonl?${cacheBust}`)
   if (!res.ok) {
     if (res.status === 404) return []
     throw new Error(`Failed to fetch run list: ${res.status}`)
   }
   const text = await res.text()
-  return text
-    .split('\n')
-    .map(line => parseRunListLine(line))
-    .filter(item => item.slug.length > 0)
-    .reverse()
+  const items: RunListItem[] = []
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    try {
+      const item = JSON.parse(trimmed) as JsonlRunItem
+      let slug = item.path
+      // Some entries may not have path; construct from model_name and github_run_id
+      if (!slug && item.github_run_id) {
+        const benchmark = item.benchmark || 'unknown'
+        // Replace / and . with - in model_name to match folder structure
+        const modelName = item.model_name ? item.model_name.replace(/[\/\.]/g, '-') : 'unknown'
+        slug = `${benchmark}/${modelName}/${item.github_run_id}/`
+      }
+      if (slug) {
+        // Extract model from path for entries with path, otherwise use model_id from JSONL
+        let model: string | undefined
+        if (item.path) {
+          const parsed = parseRunSlug(item.path)
+          model = parsed.model
+        } else if (item.model_id) {
+          model = item.model_id
+        }
+        // Calculate runtime from JSONL timestamps
+        let runtime: string | undefined
+        if (item.init_timestamp) {
+          const start = new Date(item.init_timestamp).getTime()
+          const end = item.end_timestamp ? new Date(item.end_timestamp).getTime() : Date.now()
+          runtime = formatDurationMs(end - start)
+        }
+        items.push({
+          slug,
+          status: mapStatus(item.status),
+          triggeredBy: item.triggered_by || undefined,
+          triggerReason: item.trigger_reason || undefined,
+          model,
+          runtime,
+        })
+      }
+    } catch {
+      // Skip invalid JSON lines
+    }
+  }
+  return items.reverse()
 }
 
 export function getDateNDaysAgo(baseDate: string, n: number): string {
