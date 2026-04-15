@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
 import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance } from '../api'
 import ExportPathsModal from './ExportPathsModal'
@@ -123,6 +123,32 @@ export default function RunListView({
 }: RunListViewProps) {
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  
+  // Local state for search input to prevent focus loss on remount
+  const [localFilterText, setLocalFilterText] = useState(filterText)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const wasTypingRef = useRef(false)
+  
+  // Sync local state with prop when prop changes (e.g., from URL)
+  useEffect(() => {
+    if (!wasTypingRef.current) {
+      setLocalFilterText(filterText)
+    }
+  }, [filterText])
+  
+  // Debounce sync from local to parent
+  useEffect(() => {
+    if (localFilterText === filterText) {
+      wasTypingRef.current = false
+      return
+    }
+    wasTypingRef.current = true
+    const timer = setTimeout(() => {
+      setFilterText(localFilterText)
+      wasTypingRef.current = false
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [localFilterText, filterText, setFilterText])
 
   // Build a slug-to-date mapping for date grouping
   const slugToDate = useMemo(() => {
@@ -317,10 +343,11 @@ export default function RunListView({
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <input
+          ref={inputRef}
           type="text"
           placeholder="Search model, job ID, trigger reason…"
-          value={filterText}
-          onChange={e => setFilterText(e.target.value)}
+          value={localFilterText}
+          onChange={e => setLocalFilterText(e.target.value)}
           className="bg-oh-surface border border-oh-border rounded-lg px-3 py-1.5 text-sm text-oh-text placeholder-oh-text-muted focus:outline-none focus:ring-1 focus:ring-oh-primary w-64"
         />
         <select
