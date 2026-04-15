@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
 import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance } from '../api'
 import ExportPathsModal from './ExportPathsModal'
@@ -123,6 +123,16 @@ export default function RunListView({
 }: RunListViewProps) {
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  
+  // Auto-focus search input if there's filter text (user was typing)
+  useEffect(() => {
+    if (filterText && searchInputRef.current) {
+      searchInputRef.current.focus()
+      // Move cursor to end
+      searchInputRef.current.setSelectionRange(filterText.length, filterText.length)
+    }
+  }, []) // Only on mount
 
   // Build a slug-to-date mapping for date grouping
   const slugToDate = useMemo(() => {
@@ -315,6 +325,7 @@ export default function RunListView({
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <input
+          ref={searchInputRef}
           type="text"
           placeholder="Search model, job ID, trigger reason…"
           value={filterText}
