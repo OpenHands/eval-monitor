@@ -121,6 +121,7 @@ export default function RunListView({
   setFilterText,
   showDetail
 }: RunListViewProps) {
+  console.log(`[RunListView] Render with filterStatus: "${filterStatus}", runs.length: ${runs.length}`)
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
@@ -173,7 +174,8 @@ export default function RunListView({
 
   // Apply filters
   const filteredRuns = useMemo(() => {
-    console.log('[filteredRuns] Computing with filterStatus:', filterStatus, 'runsWithStatus count:', runsWithStatus.length)
+    const computeId = Math.random().toString(36).substr(2, 9)
+    console.log(`[filteredRuns ${computeId}] Computing with filterStatus: "${filterStatus}", filterBenchmark: "${filterBenchmark}", runsWithStatus count: ${runsWithStatus.length}`)
     const result = runsWithStatus.filter(run => {
       if (filterBenchmark !== 'all' && run.benchmark !== filterBenchmark) return false
       if (filterStatus !== 'all') {
@@ -202,7 +204,7 @@ export default function RunListView({
       }
       return true
     })
-    console.log('[filteredRuns] Result count:', result.length, 'First few statuses:', result.slice(0, 5).map(r => r.status))
+    console.log(`[filteredRuns ${computeId}] Result count: ${result.length}, First few statuses:`, result.slice(0, 5).map(r => r.status))
     return result
   }, [runsWithStatus, filterBenchmark, filterStatus, filterText])
 
