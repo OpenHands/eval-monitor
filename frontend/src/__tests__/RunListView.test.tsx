@@ -287,6 +287,130 @@ describe('RunListView', () => {
       expect(selects[1]).toBeInTheDocument()
       expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument()
     })
+
+    it('filters runs correctly when filterStatus is set from URL', () => {
+      // Scenario: URL has ?status=error and data has error runs
+      const propsWithErrorFilter = {
+        runs: [
+          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
+          { slug: 'swebench/error-run/2', benchmark: 'swebench', model: 'error-run', jobId: '2', status: 'error' as const },
+          { slug: 'swebench/infer-run/3', benchmark: 'swebench', model: 'infer-run', jobId: '3', status: 'running-infer' as const }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/error-run/2' }, { slug: 'swebench/infer-run/3' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'error', // Filter by error
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithErrorFilter} />)
+
+      // Should only show the error run
+      expect(screen.getByText('error-run')).toBeInTheDocument()
+      expect(screen.queryByText('completed-run')).not.toBeInTheDocument()
+      expect(screen.queryByText('infer-run')).not.toBeInTheDocument()
+    })
+
+    it('shows no runs message when filter matches no runs', () => {
+      // Scenario: URL has ?status=cancelled but no cancelled runs exist
+      const propsWithNoCancelledRuns = {
+        runs: [
+          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
+          { slug: 'swebench/error-run/2', benchmark: 'swebench', model: 'error-run', jobId: '2', status: 'error' as const }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/error-run/2' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'cancelled', // No cancelled runs exist
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithNoCancelledRuns} />)
+
+      // Should show the "no runs" message
+      expect(screen.getByText('No runs match the current filters.')).toBeInTheDocument()
+    })
+
+    it('clicking status badge calls setFilterStatus with correct value', () => {
+      const setFilterStatus = vi.fn()
+      const propsWithMixedStatuses = {
+        runs: [
+          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
+          { slug: 'swebench/error-run/2', benchmark: 'swebench', model: 'error-run', jobId: '2', status: 'error' as const },
+          { slug: 'swebench/infer-run/3', benchmark: 'swebench', model: 'infer-run', jobId: '3', status: 'running-infer' as const }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/error-run/2' }, { slug: 'swebench/infer-run/3' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus,
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithMixedStatuses} />)
+
+      // Find and click the Error badge button (contains "Error" text and a count)
+      const errorBadge = screen.getByRole('button', { name: /Error.*1/i })
+      fireEvent.click(errorBadge)
+
+      // Should call setFilterStatus with 'error'
+      expect(setFilterStatus).toHaveBeenCalledWith('error')
+    })
+
+    it('clicking same status badge toggles filter back to all', () => {
+      const setFilterStatus = vi.fn()
+      const propsWithErrorFilter = {
+        runs: [
+          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
+          { slug: 'swebench/error-run/2', benchmark: 'swebench', model: 'error-run', jobId: '2', status: 'error' as const }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/error-run/2' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'error', // Already filtering by error
+        setFilterStatus,
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithErrorFilter} />)
+
+      // Find and click the Error badge button (should toggle off since we're already filtering by error)
+      const errorBadge = screen.getByRole('button', { name: /Error.*1/i })
+      fireEvent.click(errorBadge)
+
+      // Should call setFilterStatus with 'all' to clear the filter
+      expect(setFilterStatus).toHaveBeenCalledWith('all')
+    })
   })
 
   describe('active workers summary', () => {
