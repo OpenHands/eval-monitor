@@ -287,6 +287,90 @@ describe('RunListView', () => {
       expect(selects[1]).toBeInTheDocument()
       expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument()
     })
+
+    it('resets filterStatus to "all" when selected status does not exist in data', () => {
+      // Scenario: URL has ?status=error but no runs have error status
+      const mockSetFilterStatus = vi.fn()
+      const propsWithNoErrorRuns = {
+        runs: [
+          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
+          { slug: 'swebench/infer-run/2', benchmark: 'swebench', model: 'infer-run', jobId: '2', status: 'running-infer' as const }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/infer-run/2' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'error', // This status doesn't exist in the runs
+        setFilterStatus: mockSetFilterStatus,
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithNoErrorRuns} />)
+
+      // Should call setFilterStatus('all') because 'error' is not in available statuses
+      expect(mockSetFilterStatus).toHaveBeenCalledWith('all')
+    })
+
+    it('does not reset filterStatus when selected status exists in data', () => {
+      const mockSetFilterStatus = vi.fn()
+      const propsWithErrorRuns = {
+        runs: [
+          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const },
+          { slug: 'swebench/error-run/2', benchmark: 'swebench', model: 'error-run', jobId: '2', status: 'error' as const }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }, { slug: 'swebench/error-run/2' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'error', // This status DOES exist in the runs
+        setFilterStatus: mockSetFilterStatus,
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithErrorRuns} />)
+
+      // Should NOT call setFilterStatus because 'error' exists in available statuses
+      expect(mockSetFilterStatus).not.toHaveBeenCalled()
+    })
+
+    it('does not reset filterStatus when it is "active"', () => {
+      const mockSetFilterStatus = vi.fn()
+      const propsWithNoActiveRuns = {
+        runs: [
+          { slug: 'swebench/completed-run/1', benchmark: 'swebench', model: 'completed-run', jobId: '1', status: 'completed' as const }
+        ],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/completed-run/1' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'active', // Special status that should always be valid
+        setFilterStatus: mockSetFilterStatus,
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false
+      }
+
+      render(<RunListView {...propsWithNoActiveRuns} />)
+
+      // Should NOT call setFilterStatus because 'active' is always a valid filter
+      expect(mockSetFilterStatus).not.toHaveBeenCalled()
+    })
   })
 
   describe('active workers summary', () => {
