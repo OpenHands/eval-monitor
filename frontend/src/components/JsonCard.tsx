@@ -17,6 +17,7 @@ const SDK_WORKFLOW_RUN_BASE_URL = 'https://github.com/OpenHands/software-agent-s
 const EVAL_BRANCH_BASE_URL = 'https://github.com/OpenHands/evaluation/tree/'
 const BENCHMARKS_BRANCH_BASE_URL = 'https://github.com/OpenHands/benchmarks/tree/'
 const BENCHMARKS_ACTIONS_BASE_URL = 'https://github.com/OpenHands/benchmarks/actions'
+const EVAL_ACTIONS_RUN_BASE_URL = 'https://github.com/OpenHands/evaluation/actions/runs/'
 
 const SHA_RE = /^[0-9a-f]{7,40}$/i
 const GIT_REFS_HEADS_PREFIX = 'refs/heads/'
@@ -143,8 +144,13 @@ function getLinkForKeyValue(key: string, value: unknown): { href: string; text: 
     return { href: `${BENCHMARKS_BRANCH_BASE_URL}${branch}`, text: branch }
   }
 
-  if (keyLower.includes('build_action') && value.startsWith('dispatch-')) {
-    return { href: `${BENCHMARKS_ACTIONS_BASE_URL}?query=${encodeURIComponent('branch:' + value)}`, text: value }
+  if (keyLower.includes('github_run_id') && /^\d+$/.test(value)) {
+    return { href: `${EVAL_ACTIONS_RUN_BASE_URL}${value}`, text: value }
+  }
+
+  if (keyLower.includes('unique_eval_name')) {
+    // unique_eval_name is typically a string that identifies the eval run
+    return { href: `${EVAL_ACTIONS_RUN_BASE_URL}${value}`, text: value }
   }
 
   return null
