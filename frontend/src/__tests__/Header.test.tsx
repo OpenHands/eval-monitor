@@ -15,6 +15,8 @@ const defaultProps = {
   onClusterHealthToggle: vi.fn(),
   evalTimeOpen: false,
   onEvalTimeToggle: vi.fn(),
+  activeWorkersOpen: false,
+  onActiveWorkersToggle: vi.fn(),
   runMetadataMap: {},
   runs: [],
 }

@@ -1,6 +1,7 @@
 import type { RunMetadata, RunListItem } from '../api'
 import ClusterHealthBadge from './ClusterHealthBadge'
 import EvalTimeBadge from './EvalTimeBadge'
+import ActiveWorkersBadge from './ActiveWorkersBadge'
 
 interface HeaderProps {
   date: string
@@ -15,12 +16,14 @@ interface HeaderProps {
   onClusterHealthToggle: (open: boolean) => void
   evalTimeOpen: boolean
   onEvalTimeToggle: (open: boolean) => void
+  activeWorkersOpen: boolean
+  onActiveWorkersToggle: (open: boolean) => void
   runMetadataMap: Record<string, RunMetadata>
   runs: RunListItem[]
   onSelectRun?: (slug: string) => void
 }
 
-export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack, numDays, onNumDaysChange, refreshNonce, clusterHealthOpen, onClusterHealthToggle, evalTimeOpen, onEvalTimeToggle, runMetadataMap, runs, onSelectRun }: HeaderProps) {
+export default function Header({ date, onDateChange, onRefresh, selectedRun, onBack, numDays, onNumDaysChange, refreshNonce, clusterHealthOpen, onClusterHealthToggle, evalTimeOpen, onEvalTimeToggle, activeWorkersOpen, onActiveWorkersToggle, runMetadataMap, runs, onSelectRun }: HeaderProps) {
   const handlePrevDay = () => {
     const d = new Date(date + 'T00:00:00Z')
     d.setUTCDate(d.getUTCDate() - 1)
@@ -133,6 +136,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
           <div className="flex items-center gap-2">
             {!selectedRun && <ClusterHealthBadge refreshNonce={refreshNonce} isOpen={clusterHealthOpen} onToggle={onClusterHealthToggle} />}
             {!selectedRun && <EvalTimeBadge runMetadataMap={runMetadataMap} runs={runs} isOpen={evalTimeOpen} onToggle={onEvalTimeToggle} onSelectRun={onSelectRun} />}
+            {!selectedRun && <ActiveWorkersBadge runMetadataMap={runMetadataMap} runs={runs} isOpen={activeWorkersOpen} onToggle={onActiveWorkersToggle} />}
           <button
             onClick={onRefresh}
             className="p-2 rounded-lg text-oh-text-muted hover:text-oh-text hover:bg-oh-surface-hover transition-colors"
