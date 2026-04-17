@@ -68,29 +68,42 @@ describe('JsonCard repo links', () => {
     expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/benchmarks/tree/my-bench-branch')
   })
 
-  it('links build_action to the benchmarks actions page with a query filter', () => {
+  it('links github_run_id to the evaluation actions run page', () => {
     render(
       <JsonCard
         title="Parameters"
         icon="⚙️"
-        data={{ build_action: 'dispatch-23910750652-claude-4-6' }}
+        data={{ github_run_id: '23910750652' }}
       />
     )
 
-    const link = screen.getByRole('link', { name: 'dispatch-23910750652-claude-4-6' })
-    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/benchmarks/actions?query=branch%3Adispatch-23910750652-claude-4-6')
+    const link = screen.getByRole('link', { name: '23910750652' })
+    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/evaluation/actions/runs/23910750652')
   })
 
-  it('does not link build_action values that do not start with dispatch-', () => {
+  it('does not link github_run_id if value is not numeric', () => {
     render(
       <JsonCard
         title="Parameters"
         icon="⚙️"
-        data={{ build_action: 'other-value' }}
+        data={{ github_run_id: 'not-a-number' }}
       />
     )
 
     expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('links unique_eval_name to the evaluation actions run page', () => {
+    render(
+      <JsonCard
+        title="Parameters"
+        icon="⚙️"
+        data={{ unique_eval_name: 'eval-2025-01-15-claude-4' }}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: 'eval-2025-01-15-claude-4' })
+    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/evaluation/actions/runs/eval-2025-01-15-claude-4')
   })
 })
 

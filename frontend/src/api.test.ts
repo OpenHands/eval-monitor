@@ -354,56 +354,10 @@ describe('augmentParams', () => {
     expect(augmentParams(null)).toBeNull()
   })
 
-  it('synthesizes build_action from github_run_id and model_id and inserts it after sdk_commit', () => {
+  it('returns params unchanged (build_action is no longer synthesized)', () => {
     const params = { sdk_commit: 'abc123', github_run_id: '23459137418', model_id: 'claude-4-6', eval_limit: 5 }
-    const result = augmentParams(params)!
-    const keys = Object.keys(result)
-    expect(result.build_action).toBe('dispatch-23459137418-claude-4-6')
-    expect(keys.indexOf('build_action')).toBe(keys.indexOf('sdk_commit') + 1)
-  })
-
-  it('synthesizes build_action from github_run_id only when model_id is missing', () => {
-    const params = { sdk_commit: 'abc123', github_run_id: '23459137418', eval_limit: 5 }
-    const result = augmentParams(params)!
-    const keys = Object.keys(result)
-    expect(result.build_action).toBe('dispatch-23459137418')
-    expect(keys.indexOf('build_action')).toBe(keys.indexOf('sdk_commit') + 1)
-  })
-
-  it('uses first 10 chars of model_id (without dots) in build_action', () => {
-    const params = { github_run_id: '99999', model_id: 'gemini-3-flash-pro' }
-    const result = augmentParams(params)!
-    expect(result.build_action).toBe('dispatch-99999-gemini-3-f')
-  })
-
-  it('replaces dots with hyphens in model_id before taking first 10 chars', () => {
-    const params = { github_run_id: '12345', model_id: 'claude-sonnet-4.5' }
-    const result = augmentParams(params)!
-    // "claude-sonnet-4.5" -> "claude-sonnet-4-5" -> "claude-son" (first 10)
-    expect(result.build_action).toBe('dispatch-12345-claude-son')
-  })
-
-  it('appends build_action at the end when sdk_commit is absent', () => {
-    const params = { eval_limit: 5, github_run_id: '99999', model_id: 'claude-4' }
-    const result = augmentParams(params)!
-    const keys = Object.keys(result)
-    expect(result.build_action).toBe('dispatch-99999-claude-4')
-    expect(keys[keys.length - 1]).toBe('build_action')
-  })
-
-  it('does not override an existing build_action', () => {
-    const params = { sdk_commit: 'abc', build_action: 'dispatch-existing', github_run_id: '111' }
-    const result = augmentParams(params)!
-    expect(result.build_action).toBe('dispatch-existing')
-  })
-
-  it('returns params unchanged when github_run_id is missing', () => {
-    const params = { sdk_commit: 'abc', eval_limit: 5 }
-    expect(augmentParams(params)).toBe(params)
-  })
-
-  it('returns params unchanged when github_run_id is not a string', () => {
-    const params = { sdk_commit: 'abc', github_run_id: 12345 }
+    // The function now just returns params as-is since build_action is no longer needed
+    // (the eval action now contains both build and eval jobs)
     expect(augmentParams(params)).toBe(params)
   })
 })

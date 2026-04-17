@@ -174,26 +174,11 @@ async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
   }
 }
 
-/** Synthesize a `build_action` field from `github_run_id` and `model_id` if not already present.
- *  Format: dispatch-{github_run_id}-{first 10 chars of model_id with dots replaced by hyphens}
- *  inserting it immediately after `sdk_commit` so it appears under it in the UI. */
+/** Augment params with additional derived fields if needed.
+ *  Currently just returns params as-is since build_action is no longer synthesized
+ *  (the eval action now contains both build and eval jobs). */
 export function augmentParams(params: Record<string, unknown> | null): Record<string, unknown> | null {
-  if (!params) return params
-  if (params.build_action || !params.github_run_id || typeof params.github_run_id !== 'string') return params
-
-  const modelId = typeof params.model_id === 'string' ? params.model_id.replace(/\./g, '-').slice(0, 10) : ''
-  const buildAction = modelId ? `dispatch-${params.github_run_id}-${modelId}` : `dispatch-${params.github_run_id}`
-  const augmented: Record<string, unknown> = {}
-  let inserted = false
-  for (const [key, value] of Object.entries(params)) {
-    augmented[key] = value
-    if (key === 'sdk_commit' && !inserted) {
-      augmented['build_action'] = buildAction
-      inserted = true
-    }
-  }
-  if (!inserted) augmented['build_action'] = buildAction
-  return augmented
+  return params
 }
 
 export async function fetchRunMetadata(runSlug: string): Promise<RunMetadata> {
