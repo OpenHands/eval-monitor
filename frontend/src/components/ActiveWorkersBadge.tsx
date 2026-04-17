@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import type { RunListItem, RunMetadata } from '../api'
+import type { RunListItem, RunMetadata, RunListItemStatus } from '../api'
 import { getActiveWorkersForInstance } from '../api'
-import { BadgePill, STATE_STYLES } from './ClusterHealth/primitives'
+import { BadgePill } from './ClusterHealth/primitives'
 import ActiveWorkersModal from './ActiveWorkers/ActiveWorkersModal'
 
 interface Props {
@@ -16,10 +16,10 @@ export default function ActiveWorkersBadge({ runMetadataMap, runs, isOpen, onTog
     let totalActiveWorkers = 0
     const activeWorkersByAuthor: Record<string, number> = {}
     // Only count runs in running-infer stage
-    const inferStatuses: string[] = ['running-infer']
+    const inferStatuses: RunListItemStatus[] = ['running-infer']
     
     runs.forEach(r => {
-      if (inferStatuses.includes(r.status)) {
+      if (r.status && inferStatuses.includes(r.status)) {
         const metadata = runMetadataMap[r.slug]
         const workers = metadata ? getActiveWorkersForInstance(metadata) : 20
         totalActiveWorkers += workers
