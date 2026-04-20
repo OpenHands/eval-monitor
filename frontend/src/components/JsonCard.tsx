@@ -147,10 +147,5 @@ function getLinkForKeyValue(key: string, value: unknown): { href: string; text: 
     return { href: `${EVAL_ACTIONS_RUN_BASE_URL}${value}`, text: value }
   }
 
-  if (keyLower.includes('unique_eval_name')) {
-    // unique_eval_name is typically a string that identifies the eval run
-    return { href: `${EVAL_ACTIONS_RUN_BASE_URL}${value}`, text: value }
-  }
-
   return null
 }

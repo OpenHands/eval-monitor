@@ -92,19 +92,6 @@ describe('JsonCard repo links', () => {
 
     expect(screen.queryByRole('link')).toBeNull()
   })
-
-  it('links unique_eval_name to the evaluation actions run page', () => {
-    render(
-      <JsonCard
-        title="Parameters"
-        icon="⚙️"
-        data={{ unique_eval_name: 'eval-2025-01-15-claude-4' }}
-      />
-    )
-
-    const link = screen.getByRole('link', { name: 'eval-2025-01-15-claude-4' })
-    expect(link.getAttribute('href')).toBe('https://github.com/OpenHands/evaluation/actions/runs/eval-2025-01-15-claude-4')
-  })
 })
 
 describe('JsonCard URL detection', () => {
