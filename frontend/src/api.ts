@@ -9,7 +9,11 @@ export interface RunListItem {
   triggeredBy?: string
   triggerReason?: string
   model?: string
-  runtime?: string
+  /** ISO timestamps from JSONL, preserved raw so callers can format live-ticking durations. */
+  initTimestamp?: string
+  inferStartTimestamp?: string
+  evalStartTimestamp?: string
+  endTimestamp?: string
 }
 
 const VALID_STATUSES = new Set([
@@ -49,6 +53,8 @@ interface JsonlRunItem {
   model_name?: string
   model_id?: string
   init_timestamp?: string
+  infer_start_timestamp?: string
+  eval_start_timestamp?: string
   end_timestamp?: string
 }
 
@@ -83,20 +89,16 @@ export async function fetchRunList(date: string): Promise<RunListItem[]> {
         } else if (item.model_id) {
           model = item.model_id
         }
-        // Calculate runtime from JSONL timestamps
-        let runtime: string | undefined
-        if (item.init_timestamp) {
-          const start = new Date(item.init_timestamp).getTime()
-          const end = item.end_timestamp ? new Date(item.end_timestamp).getTime() : Date.now()
-          runtime = formatDurationMs(end - start)
-        }
         items.push({
           slug,
           status: mapStatus(item.status),
           triggeredBy: item.triggered_by || undefined,
           triggerReason: item.trigger_reason || undefined,
           model,
-          runtime,
+          initTimestamp: item.init_timestamp || undefined,
+          inferStartTimestamp: item.infer_start_timestamp || undefined,
+          evalStartTimestamp: item.eval_start_timestamp || undefined,
+          endTimestamp: item.end_timestamp || undefined,
         })
       }
     } catch {
@@ -679,38 +681,50 @@ function stageLabelFor(status: RunListItemStatus): string {
   }
 }
 
+function parseIsoMs(ts: string | undefined): number | null {
+  if (!ts) return null
+  const ms = new Date(ts).getTime()
+  return isNaN(ms) ? null : ms
+}
+
 /** Return the timestamp (ms) at which the current stage started, or null. */
-function stageStartMs(metadata: RunMetadata, status: RunListItemStatus): number | null {
+function stageStartMsFromRun(run: RunListItem, status: RunListItemStatus): number | null {
   switch (status) {
-    case 'building': return getTimestampMs(metadata.params)
-    case 'pending': return getTimestampMs(metadata.init) ?? getTimestampMs(metadata.params)
-    case 'running-infer': return getTimestampMs(metadata.runInferStart)
-    case 'running-eval': return getTimestampMs(metadata.evalInferStart) ?? getTimestampMs(metadata.runInferEnd)
+    case 'building': return parseIsoMs(run.initTimestamp)
+    case 'pending': return parseIsoMs(run.initTimestamp)
+    case 'running-infer': return parseIsoMs(run.inferStartTimestamp)
+    case 'running-eval': return parseIsoMs(run.evalStartTimestamp) ?? parseIsoMs(run.inferStartTimestamp)
     default: return null
   }
 }
 
-/** Build an EvalTimeReport from all known run metadata.
+/** Build an EvalTimeReport from the JSONL-backed run list.
  *  Only non-finished runs are inspected; only entries exceeding the warning
  *  threshold appear in `entries`. */
 export function computeEvalTimeReport(
-  metadataMap: Record<string, RunMetadata>,
-  preStatuses: Record<string, RunListItemStatus>,
+  runs: RunListItem[],
   now: number = Date.now(),
 ): EvalTimeReport {
   const entries: EvalTimeEntry[] = []
   let totalActive = 0
 
-  for (const [slug, metadata] of Object.entries(metadataMap)) {
-    const status = preStatuses[slug] ?? getStageStatus(metadata)
+  for (const run of runs) {
+    const status = run.status
+    if (!status) continue
     if (status === 'completed' || status === 'error' || status === 'cancelled') continue
     totalActive++
 
-    const start = stageStartMs(metadata, status)
+    const start = stageStartMsFromRun(run, status)
     if (start === null) continue
     const elapsed = now - start
     if (elapsed >= EVAL_TIME_WARNING_MS) {
-      entries.push({ slug, status, elapsedMs: elapsed, stageLabel: stageLabelFor(status), triggeredBy: extractTriggeredBy(metadata) })
+      entries.push({
+        slug: run.slug,
+        status,
+        elapsedMs: elapsed,
+        stageLabel: stageLabelFor(status),
+        triggeredBy: run.triggeredBy || '—',
+      })
     }
   }
 

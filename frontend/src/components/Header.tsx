@@ -135,7 +135,7 @@ export default function Header({ date, onDateChange, onRefresh, selectedRun, onB
           {/* Right: Cluster health + Refresh */}
           <div className="flex items-center gap-2">
             {!selectedRun && <ClusterHealthBadge refreshNonce={refreshNonce} isOpen={clusterHealthOpen} onToggle={onClusterHealthToggle} />}
-            {!selectedRun && <EvalTimeBadge runMetadataMap={runMetadataMap} runs={runs} isOpen={evalTimeOpen} onToggle={onEvalTimeToggle} onSelectRun={onSelectRun} />}
+            {!selectedRun && <EvalTimeBadge runs={runs} isOpen={evalTimeOpen} onToggle={onEvalTimeToggle} onSelectRun={onSelectRun} />}
             {!selectedRun && <ActiveWorkersBadge runMetadataMap={runMetadataMap} runs={runs} isOpen={activeWorkersOpen} onToggle={onActiveWorkersToggle} />}
           <button
             onClick={onRefresh}
