@@ -7,7 +7,6 @@ import {
   formatDurationMs,
   getStageStatus,
   extractCancelledBy,
-  augmentParams,
 } from './api'
 import type { RunMetadata } from './api'
 
@@ -349,15 +348,4 @@ describe('extractCancelledBy', () => {
   })
 })
 
-describe('augmentParams', () => {
-  it('returns null when params is null', () => {
-    expect(augmentParams(null)).toBeNull()
-  })
 
-  it('returns params unchanged (build_action is no longer synthesized)', () => {
-    const params = { sdk_commit: 'abc123', github_run_id: '23459137418', model_id: 'claude-4-6', eval_limit: 5 }
-    // The function now just returns params as-is since build_action is no longer needed
-    // (the eval action now contains both build and eval jobs)
-    expect(augmentParams(params)).toBe(params)
-  })
-})

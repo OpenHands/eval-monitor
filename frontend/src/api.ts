@@ -174,12 +174,7 @@ async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
   }
 }
 
-/** Augment params with additional derived fields if needed.
- *  Currently just returns params as-is since build_action is no longer synthesized
- *  (the eval action now contains both build and eval jobs). */
-export function augmentParams(params: Record<string, unknown> | null): Record<string, unknown> | null {
-  return params
-}
+
 
 export async function fetchRunMetadata(runSlug: string): Promise<RunMetadata> {
   const slug = runSlug.replace(/\/$/, '')
@@ -192,7 +187,6 @@ export async function fetchRunMetadata(runSlug: string): Promise<RunMetadata> {
   METADATA_FILES.forEach(([key], i) => {
     metadata[key] = results[i]
   })
-  metadata['params'] = augmentParams(metadata['params'])
   return metadata as unknown as RunMetadata
 }
 
