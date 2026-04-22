@@ -223,7 +223,7 @@ function renderWithUrl(text: string) {
   )
 }
 
-const KILL_WORKFLOW_URL = 'https://github.com/OpenHands/evaluation/actions/workflows/kill-eval-job.yml'
+const KILL_WORKFLOW_URL = 'https://github.com/OpenHands/software-agent-sdk/actions/workflows/cancel-eval.yml'
 
 function CancelEvaluationSection({ jobId }: { jobId: string }) {
   const handleClick = async () => {
