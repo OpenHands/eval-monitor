@@ -161,20 +161,15 @@ export default function RunListView({
     return () => clearInterval(interval)
   }, [hasNonFinished])
 
-  // Compute statuses and runtimes
-  // Status and runtime come from JSONL (pre-parsed), metadata only needed for additional details
+  // Terminal JSONL wins; non-terminal defers to metadata since the JSONL line can be stale.
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
-      // Use pre-parsed status from JSONL, only derive from metadata if needed
-      const status: StatusType = run.status || (metadata ? getStageStatus(metadata) : 'pending')
-      // Use pre-parsed runtime from JSONL if available, otherwise calculate from metadata
+      const isTerminal = run.status === 'completed' || run.status === 'error' || run.status === 'cancelled'
+      const status: StatusType = isTerminal ? run.status! : (metadata ? getStageStatus(metadata) : (run.status ?? 'pending'))
       const runtime: string | null = run.runtime || (metadata ? getRuntime(metadata, now) : null)
-      const runFinished = metadata ? isFinished(metadata) : (run.status === 'completed' || run.status === 'error' || run.status === 'cancelled')
-      // triggeredBy and triggerReason come directly from JSONL (via RunListItem)
-      const triggeredBy = run.triggeredBy
-      const triggerReason = run.triggerReason
-      return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
+      const runFinished = isTerminal || (metadata ? isFinished(metadata) : false)
+      return { ...run, status, runtime, runFinished, triggeredBy: run.triggeredBy, triggerReason: run.triggerReason }
     })
   }, [runs, runMetadataMap, now])
 
