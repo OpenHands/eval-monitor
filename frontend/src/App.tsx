@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus } from './api'
+import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus, isTerminalStatus } from './api'
 import type { RunMetadata, DayRunGroup, RunListItem } from './api'
 import RunListView from './components/RunListView'
 import RunDetailView from './components/RunDetailView'
@@ -133,13 +133,12 @@ export default function App() {
       const allRuns = groups.flatMap(g => g.runs)
       setRuns(allRuns)
       // JSONL lines for in-progress runs can go stale; re-derive from metadata.
-      const stale = allRuns.filter(r =>
-        !r.status || r.status === 'pending' || r.status === 'building'
-        || r.status === 'running-infer' || r.status === 'running-eval')
+      const stale = allRuns.filter(r => !isTerminalStatus(r.status))
       if (stale.length) {
         setLoadingMetadataList(true)
         Promise.all(stale.map(async r => [r.slug, await fetchRunMetadata(r.slug)] as const))
-          .then(entries => setRunMetadataMap(Object.fromEntries(entries)))
+          .then(entries => setRunMetadataMap(prev => ({ ...prev, ...Object.fromEntries(entries) })))
+          .catch(err => setError(err instanceof Error ? err.message : 'Failed to fetch run metadata'))
           .finally(() => setLoadingMetadataList(false))
       }
     } catch (err) {

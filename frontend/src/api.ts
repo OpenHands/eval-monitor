@@ -22,6 +22,10 @@ const VALID_STATUSES = new Set([
   'cancelled',
 ])
 
+export function isTerminalStatus(status: RunListItemStatus | undefined): boolean {
+  return status === 'completed' || status === 'error' || status === 'cancelled'
+}
+
 /** Map status from JSONL format to RunListItemStatus.
  *  Only returns a status if it's a known status value. */
 function mapStatus(status: string | undefined): RunListItemStatus | undefined {

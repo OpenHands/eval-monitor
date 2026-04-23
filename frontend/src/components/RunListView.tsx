@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
-import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance } from '../api'
+import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance, isTerminalStatus } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -165,10 +165,17 @@ export default function RunListView({
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
-      const isTerminal = run.status === 'completed' || run.status === 'error' || run.status === 'cancelled'
-      const status: StatusType = isTerminal ? run.status! : (metadata ? getStageStatus(metadata) : (run.status ?? 'pending'))
+      const terminal = isTerminalStatus(run.status)
+      let status: StatusType
+      if (terminal) {
+        status = run.status!
+      } else if (metadata) {
+        status = getStageStatus(metadata)
+      } else {
+        status = run.status ?? 'pending'
+      }
       const runtime: string | null = run.runtime || (metadata ? getRuntime(metadata, now) : null)
-      const runFinished = isTerminal || (metadata ? isFinished(metadata) : false)
+      const runFinished = terminal || (metadata ? isFinished(metadata) : false)
       return { ...run, status, runtime, runFinished, triggeredBy: run.triggeredBy, triggerReason: run.triggerReason }
     })
   }, [runs, runMetadataMap, now])
