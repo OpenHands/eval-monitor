@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import RunListView from '../components/RunListView'
 
 describe('RunListView', () => {
@@ -410,6 +410,88 @@ describe('RunListView', () => {
 
       // Should call setFilterStatus with 'all' to clear the filter
       expect(setFilterStatus).toHaveBeenCalledWith('all')
+    })
+  })
+
+  // Regression: issue #172. The JSONL line is written once at run start and
+  // never updated. A run whose JSONL status is still 'building' may actually
+  // be completed/cancelled/errored; metadata is the source of truth in that
+  // case and must override the stale JSONL status.
+  describe('metadata overrides stale non-terminal JSONL status', () => {
+    const terminalFromMetadata = (kind: 'completed' | 'error' | 'cancelled') => {
+      const base = {
+        init: null, params: null, error: null,
+        runInferStart: null, runInferEnd: null,
+        evalInferStart: null, evalInferEnd: null,
+        cancelEval: null,
+      }
+      if (kind === 'completed') return { ...base, evalInferEnd: { timestamp: '2025-01-01T00:00:00Z' } }
+      if (kind === 'error') return { ...base, error: { timestamp: '2025-01-01T00:00:00Z' } }
+      return { ...base, cancelEval: { timestamp: '2025-01-01T00:00:00Z' } }
+    }
+
+    // "Completed"/"Error"/etc. also appear in the status filter <option> list
+    // and in the per-status filter buttons in the summary bar. Scope the
+    // assertion to the row for the run under test.
+    const rowFor = (modelName: string) => screen.getByText(modelName).closest('tr')!
+
+    const makeProps = (runStatus: 'building' | 'running-infer' | 'running-eval' | 'pending', metadataKind: 'completed' | 'error' | 'cancelled') => ({
+      runs: [{ slug: 'swebench/model/1', benchmark: 'swebench', model: 'model', jobId: '1', status: runStatus }],
+      loading: false,
+      error: null,
+      onSelectRun: mockOnSelectRun,
+      runMetadataMap: { 'swebench/model/1': terminalFromMetadata(metadataKind) },
+      loadingMetadataList: false,
+      dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/model/1' }] }],
+      filterBenchmark: 'all',
+      setFilterBenchmark: vi.fn(),
+      filterStatus: 'all',
+      setFilterStatus: vi.fn(),
+      filterText: '',
+      setFilterText: vi.fn(),
+      showDetail: false,
+    })
+
+    it('renders Completed when JSONL says building but metadata shows the run finished', () => {
+      render(<RunListView {...makeProps('building', 'completed')} />)
+      const row = within(rowFor('model'))
+      expect(row.getByText('Completed')).toBeInTheDocument()
+      expect(row.queryByText('Building')).not.toBeInTheDocument()
+    })
+
+    it('renders Cancelled when JSONL says running-eval but metadata shows cancelEval', () => {
+      render(<RunListView {...makeProps('running-eval', 'cancelled')} />)
+      const row = within(rowFor('model'))
+      expect(row.getByText('Cancelled')).toBeInTheDocument()
+      expect(row.queryByText('Eval')).not.toBeInTheDocument()
+    })
+
+    it('renders Error when JSONL says running-infer but metadata shows an error', () => {
+      render(<RunListView {...makeProps('running-infer', 'error')} />)
+      const row = within(rowFor('model'))
+      expect(row.getByText('Error')).toBeInTheDocument()
+      expect(row.queryByText('Inference')).not.toBeInTheDocument()
+    })
+
+    it('keeps the terminal JSONL status when metadata is missing (fast path)', () => {
+      const props = {
+        runs: [{ slug: 'swebench/model/1', benchmark: 'swebench', model: 'model', jobId: '1', status: 'completed' as const }],
+        loading: false,
+        error: null,
+        onSelectRun: mockOnSelectRun,
+        runMetadataMap: {},
+        loadingMetadataList: false,
+        dayGroups: [{ date: '2025-01-01', runs: [{ slug: 'swebench/model/1' }] }],
+        filterBenchmark: 'all',
+        setFilterBenchmark: vi.fn(),
+        filterStatus: 'all',
+        setFilterStatus: vi.fn(),
+        filterText: '',
+        setFilterText: vi.fn(),
+        showDetail: false,
+      }
+      render(<RunListView {...props} />)
+      expect(within(rowFor('model')).getByText('Completed')).toBeInTheDocument()
     })
   })
 })

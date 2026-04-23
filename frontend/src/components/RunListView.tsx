@@ -176,7 +176,7 @@ export default function RunListView({
       }
       const runtime: string | null = run.runtime || (metadata ? getRuntime(metadata, now) : null)
       const runFinished = terminal || (metadata ? isFinished(metadata) : false)
-      return { ...run, status, runtime, runFinished, triggeredBy: run.triggeredBy, triggerReason: run.triggerReason }
+      return { ...run, status, runtime, runFinished }
     })
   }, [runs, runMetadataMap, now])
 

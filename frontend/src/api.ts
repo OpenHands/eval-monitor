@@ -194,6 +194,25 @@ export async function fetchRunMetadata(runSlug: string): Promise<RunMetadata> {
   return metadata as unknown as RunMetadata
 }
 
+// Fetches metadata for each slug in parallel. Uses allSettled so one failed
+// fetch doesn't drop the results for the others.
+export async function fetchMetadataForSlugs(
+  slugs: string[],
+  fetchOne: (slug: string) => Promise<RunMetadata> = fetchRunMetadata,
+): Promise<Record<string, RunMetadata>> {
+  if (!slugs.length) return {}
+  const settled = await Promise.allSettled(
+    slugs.map(async slug => [slug, await fetchOne(slug)] as const),
+  )
+  const entries = settled
+    .filter((r): r is PromiseFulfilledResult<readonly [string, RunMetadata]> => r.status === 'fulfilled')
+    .map(r => r.value)
+  if (entries.length < slugs.length) {
+    console.warn(`${slugs.length - entries.length} metadata fetches failed`)
+  }
+  return Object.fromEntries(entries)
+}
+
 export function parseRunSlug(slug: string) {
   const parts = slug.replace(/\/$/, '').split('/')
   if (parts.length >= 3) {

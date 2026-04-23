@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus, isTerminalStatus } from './api'
+import { fetchMultiDayRunList, fetchRunMetadata, fetchMetadataForSlugs, parseRunSlug, getStageStatus, isTerminalStatus } from './api'
 import type { RunMetadata, DayRunGroup, RunListItem } from './api'
 import RunListView from './components/RunListView'
 import RunDetailView from './components/RunDetailView'
@@ -133,20 +133,11 @@ export default function App() {
       const allRuns = groups.flatMap(g => g.runs)
       setRuns(allRuns)
       // JSONL lines for in-progress runs can go stale; re-derive from metadata.
-      // Use allSettled so a single fetch failure doesn't discard the other results.
       const stale = allRuns.filter(r => !isTerminalStatus(r.status))
       if (stale.length) {
         setLoadingMetadataList(true)
-        Promise.allSettled(stale.map(async r => [r.slug, await fetchRunMetadata(r.slug)] as const))
-          .then(results => {
-            const entries = results
-              .filter((r): r is PromiseFulfilledResult<readonly [string, RunMetadata]> => r.status === 'fulfilled')
-              .map(r => r.value)
-            if (entries.length < stale.length) {
-              console.warn(`${stale.length - entries.length} metadata fetches failed`)
-            }
-            setRunMetadataMap(prev => ({ ...prev, ...Object.fromEntries(entries) }))
-          })
+        fetchMetadataForSlugs(stale.map(r => r.slug))
+          .then(entries => setRunMetadataMap(prev => ({ ...prev, ...entries })))
           .finally(() => setLoadingMetadataList(false))
       }
     } catch (err) {
