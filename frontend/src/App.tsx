@@ -133,12 +133,20 @@ export default function App() {
       const allRuns = groups.flatMap(g => g.runs)
       setRuns(allRuns)
       // JSONL lines for in-progress runs can go stale; re-derive from metadata.
+      // Use allSettled so a single fetch failure doesn't discard the other results.
       const stale = allRuns.filter(r => !isTerminalStatus(r.status))
       if (stale.length) {
         setLoadingMetadataList(true)
-        Promise.all(stale.map(async r => [r.slug, await fetchRunMetadata(r.slug)] as const))
-          .then(entries => setRunMetadataMap(prev => ({ ...prev, ...Object.fromEntries(entries) })))
-          .catch(err => setError(err instanceof Error ? err.message : 'Failed to fetch run metadata'))
+        Promise.allSettled(stale.map(async r => [r.slug, await fetchRunMetadata(r.slug)] as const))
+          .then(results => {
+            const entries = results
+              .filter((r): r is PromiseFulfilledResult<readonly [string, RunMetadata]> => r.status === 'fulfilled')
+              .map(r => r.value)
+            if (entries.length < stale.length) {
+              console.warn(`${stale.length - entries.length} metadata fetches failed`)
+            }
+            setRunMetadataMap(prev => ({ ...prev, ...Object.fromEntries(entries) }))
+          })
           .finally(() => setLoadingMetadataList(false))
       }
     } catch (err) {
