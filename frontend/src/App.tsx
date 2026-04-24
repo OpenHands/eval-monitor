@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { fetchMultiDayRunList, fetchRunMetadata, parseRunSlug, getStageStatus } from './api'
+import { fetchMultiDayRunList, fetchRunMetadata, fetchMetadataForSlugs, parseRunSlug, getStageStatus, isTerminalStatus } from './api'
 import type { RunMetadata, DayRunGroup, RunListItem } from './api'
 import RunListView from './components/RunListView'
 import RunDetailView from './components/RunDetailView'
@@ -132,6 +132,14 @@ export default function App() {
       setDayGroups(groups)
       const allRuns = groups.flatMap(g => g.runs)
       setRuns(allRuns)
+      // JSONL lines for in-progress runs can go stale; re-derive from metadata.
+      const stale = allRuns.filter(r => !isTerminalStatus(r.status))
+      if (stale.length) {
+        setLoadingMetadataList(true)
+        fetchMetadataForSlugs(stale.map(r => r.slug))
+          .then(entries => setRunMetadataMap(prev => ({ ...prev, ...entries })))
+          .finally(() => setLoadingMetadataList(false))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load runs')
       setRuns([])
@@ -144,14 +152,6 @@ export default function App() {
   useEffect(() => {
     loadRuns()
   }, [loadRuns])
-
-  // When runs are loaded, no need to fetch metadata for list view anymore
-  // All data (status, triggeredBy, triggerReason) comes from JSONL
-  useEffect(() => {
-    if (runs.length > 0 && !selectedRun) {
-      setLoadingMetadataList(false)
-    }
-  }, [runs, selectedRun])
 
   // If we have a run from URL but haven't loaded its metadata yet, fetch it
   useEffect(() => {

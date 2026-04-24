@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
-import { formatDurationMs } from '../api'
+import { getStageStatus, isFinished, isTerminalStatus, formatDurationMs } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -111,7 +111,7 @@ export default function RunListView({
   loading,
   error,
   onSelectRun,
-  runMetadataMap: _runMetadataMap,
+  runMetadataMap,
   loadingMetadataList,
   dayGroups,
   filterBenchmark,
@@ -162,12 +162,22 @@ export default function RunListView({
     return () => clearInterval(interval)
   }, [hasNonFinished])
 
-  // Compute statuses and runtimes from JSONL-backed timestamps so the value
-  // ticks every second for active runs (metadata is no longer loaded for the list view).
+  // Terminal JSONL wins; non-terminal defers to metadata since the JSONL line can be stale.
+  // Runtime is calculated from JSONL timestamps to tick every second for active runs.
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
-      const status: StatusType = run.status || 'pending'
-      const runFinished = status === 'completed' || status === 'error' || status === 'cancelled'
+      const metadata = runMetadataMap[run.slug]
+      const terminal = isTerminalStatus(run.status)
+      let status: StatusType
+      if (terminal) {
+        status = run.status!
+      } else if (metadata) {
+        status = getStageStatus(metadata)
+      } else {
+        status = run.status ?? 'pending'
+      }
+      const runFinished = terminal || (metadata ? isFinished(metadata) : false)
+      // Calculate runtime from JSONL timestamps (ticks every second for active runs)
       let runtime: string | null = null
       if (run.initTimestamp) {
         const start = new Date(run.initTimestamp).getTime()
@@ -181,7 +191,7 @@ export default function RunListView({
       const triggerReason = run.triggerReason
       return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
     })
-  }, [runs, now])
+  }, [runs, runMetadataMap, now])
 
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
