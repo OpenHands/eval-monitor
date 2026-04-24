@@ -119,7 +119,7 @@ export default function RunListView({
   setFilterStatus,
   filterText,
   setFilterText,
-  showDetail
+  showDetail: _showDetail
 }: RunListViewProps) {
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
