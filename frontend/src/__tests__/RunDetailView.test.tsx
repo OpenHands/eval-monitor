@@ -416,7 +416,7 @@ describe('RunDetailView', () => {
 
       expect(writeText).toHaveBeenCalledWith('123')
       expect(openSpy).toHaveBeenCalledWith(
-        'https://github.com/OpenHands/evaluation/actions/workflows/kill-eval-job.yml',
+        'https://github.com/OpenHands/software-agent-sdk/actions/workflows/cancel-eval.yml',
         '_blank'
       )
 
