@@ -236,13 +236,13 @@ describe('RunListView', () => {
 
     const activeStatusProps = {
       runs: [
-        { slug: 'swebench/pending-run/1', benchmark: 'swebench', model: 'pending-run', jobId: '1' },
-        { slug: 'swebench/building-run/2', benchmark: 'swebench', model: 'building-run', jobId: '2' },
-        { slug: 'swebench/infer-run/3', benchmark: 'swebench', model: 'infer-run', jobId: '3' },
-        { slug: 'swebench/eval-run/4', benchmark: 'swebench', model: 'eval-run', jobId: '4' },
-        { slug: 'swebench/completed-run/5', benchmark: 'swebench', model: 'completed-run', jobId: '5' },
-        { slug: 'swebench/error-run/6', benchmark: 'swebench', model: 'error-run', jobId: '6' },
-        { slug: 'swebench/cancelled-run/7', benchmark: 'swebench', model: 'cancelled-run', jobId: '7' }
+        { slug: 'swebench/pending-run/1', benchmark: 'swebench', model: 'pending-run', jobId: '1', status: 'pending' as const },
+        { slug: 'swebench/building-run/2', benchmark: 'swebench', model: 'building-run', jobId: '2', status: 'building' as const },
+        { slug: 'swebench/infer-run/3', benchmark: 'swebench', model: 'infer-run', jobId: '3', status: 'running-infer' as const },
+        { slug: 'swebench/eval-run/4', benchmark: 'swebench', model: 'eval-run', jobId: '4', status: 'running-eval' as const },
+        { slug: 'swebench/completed-run/5', benchmark: 'swebench', model: 'completed-run', jobId: '5', status: 'completed' as const },
+        { slug: 'swebench/error-run/6', benchmark: 'swebench', model: 'error-run', jobId: '6', status: 'error' as const },
+        { slug: 'swebench/cancelled-run/7', benchmark: 'swebench', model: 'cancelled-run', jobId: '7', status: 'cancelled' as const }
       ],
       loading: false,
       error: null,

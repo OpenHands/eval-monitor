@@ -48,7 +48,7 @@ describe('ActiveWorkersBadge', () => {
         createRun('swebench/qwen/123', 'juanmichelini', 'completed'),
         createRun('gaia/claude/456', 'admin', 'error'),
       ]
-      const { container } = render(
+      render(
         <ActiveWorkersBadge runMetadataMap={{}} runs={completedRuns} />
       )
       expect(screen.getByText('Active workers: 0')).toBeTruthy()

@@ -1,35 +1,22 @@
 import { useMemo } from 'react'
 import { computeEvalTimeReport } from '../api'
-import type { RunMetadata, RunListItem, RunListItemStatus, EvalTimeReport } from '../api'
+import type { RunListItem, EvalTimeReport } from '../api'
 import { BadgePill, STATE_STYLES } from './ClusterHealth/primitives'
 import EvalTimeModal from './EvalTime/EvalTimeModal'
 
 interface Props {
-  runMetadataMap: Record<string, RunMetadata>
   runs: RunListItem[]
   isOpen?: boolean
   onToggle?: (open: boolean) => void
   onSelectRun?: (slug: string) => void
 }
 
-export default function EvalTimeBadge({ runMetadataMap, runs, isOpen, onToggle, onSelectRun }: Props) {
-  const report: EvalTimeReport = useMemo(() => {
-    // Build a preStatuses map from runs that already carry a status
-    const preStatuses: Record<string, RunListItemStatus> = {}
-    for (const run of runs) {
-      if (run.status) {
-        preStatuses[run.slug] = run.status
-      }
-    }
-    return computeEvalTimeReport(runMetadataMap, preStatuses)
-  }, [runMetadataMap, runs])
+export default function EvalTimeBadge({ runs, isOpen, onToggle, onSelectRun }: Props) {
+  const report: EvalTimeReport = useMemo(() => computeEvalTimeReport(runs), [runs])
 
   const open = isOpen ?? false
 
-  // Show pulsing placeholder only while the initial run list hasn't loaded yet.
-  // Once runs are available (even if runMetadataMap is empty because all runs
-  // had pre-parsed statuses), show the computed state.
-  if (runs.length === 0 && Object.keys(runMetadataMap).length === 0) {
+  if (runs.length === 0) {
     return <BadgePill dotClass="bg-oh-text-muted" dotPulse label="Eval Time" />
   }
 

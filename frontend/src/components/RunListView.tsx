@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
-import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance, isTerminalStatus } from '../api'
+import { getStageStatus, isFinished, isTerminalStatus, formatDurationMs } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -11,7 +11,8 @@ interface RunInfo {
   status?: RunListItemStatus
   triggeredBy?: string
   triggerReason?: string
-  runtime?: string
+  initTimestamp?: string
+  endTimestamp?: string
 }
 
 interface RunListViewProps {
@@ -119,7 +120,7 @@ export default function RunListView({
   setFilterStatus,
   filterText,
   setFilterText,
-  showDetail
+  showDetail: _showDetail
 }: RunListViewProps) {
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -149,10 +150,10 @@ export default function RunListView({
   // Check if any run is non-finished to decide whether to tick the timer
   const hasNonFinished = useMemo(() => {
     return runs.some(run => {
-      const metadata = runMetadataMap[run.slug]
-      return metadata && !isFinished(metadata)
+      const s = run.status
+      return s !== 'completed' && s !== 'error' && s !== 'cancelled'
     })
-  }, [runs, runMetadataMap])
+  }, [runs])
 
   // Tick every 1s so elapsed time updates for non-finished runs
   useEffect(() => {
@@ -162,6 +163,7 @@ export default function RunListView({
   }, [hasNonFinished])
 
   // Terminal JSONL wins; non-terminal defers to metadata since the JSONL line can be stale.
+  // Runtime is calculated from JSONL timestamps to tick every second for active runs.
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
       const metadata = runMetadataMap[run.slug]
@@ -174,9 +176,20 @@ export default function RunListView({
       } else {
         status = run.status ?? 'pending'
       }
-      const runtime: string | null = run.runtime || (metadata ? getRuntime(metadata, now) : null)
       const runFinished = terminal || (metadata ? isFinished(metadata) : false)
-      return { ...run, status, runtime, runFinished }
+      // Calculate runtime from JSONL timestamps (ticks every second for active runs)
+      let runtime: string | null = null
+      if (run.initTimestamp) {
+        const start = new Date(run.initTimestamp).getTime()
+        if (!isNaN(start)) {
+          const endStr = run.endTimestamp
+          const end = runFinished && endStr ? new Date(endStr).getTime() : now
+          if (!isNaN(end)) runtime = formatDurationMs(end - start)
+        }
+      }
+      const triggeredBy = run.triggeredBy
+      const triggerReason = run.triggerReason
+      return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
     })
   }, [runs, runMetadataMap, now])
 
@@ -221,27 +234,6 @@ export default function RunListView({
     })
     return counts
   }, [runsWithStatus])
-
-  // Active workers count and per-author breakdown (from all runs, independent of filters)
-  // Only count runs in inference stage (running-infer)
-  const { totalActiveWorkers, activeWorkersByAuthor } = useMemo(() => {
-    let totalActiveWorkers = 0
-    const activeWorkersByAuthor: Record<string, number> = {}
-    // Only count runs in running-infer stage
-    const inferStatuses: StatusType[] = ['running-infer']
-    runsWithStatus.forEach(r => {
-      if (inferStatuses.includes(r.status)) {
-        const metadata = runMetadataMap[r.slug]
-        const workers = metadata ? getActiveWorkersForInstance(metadata) : 20
-        totalActiveWorkers += workers
-        const author = r.triggeredBy
-        if (author && author !== '—') {
-          activeWorkersByAuthor[author] = (activeWorkersByAuthor[author] || 0) + workers
-        }
-      }
-    })
-    return { totalActiveWorkers, activeWorkersByAuthor }
-  }, [runsWithStatus, runMetadataMap])
 
   if (loading) {
     return (
@@ -309,18 +301,6 @@ export default function RunListView({
               </button>
             ))}
           </div>
-          {!loadingMetadataList && !showDetail && totalActiveWorkers > 0 && (
-            <div className="flex items-center gap-3 flex-wrap text-xs">
-              <span className="text-oh-text-muted">
-                Active Workers: <span data-testid="total-active-workers" className={`font-bold ${totalActiveWorkers > 256 ? 'text-oh-error' : totalActiveWorkers >= 240 ? 'text-orange-400' : 'text-oh-primary'}`}>{totalActiveWorkers}</span>
-              </span>
-              {Object.entries(activeWorkersByAuthor).sort((a, b) => b[1] - a[1]).map(([author, count]) => (
-                <span key={author} data-testid={`active-workers-author-${author}`} className="text-oh-text-muted">
-                  <span className="font-medium text-oh-text">{author}</span>: {count}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
