@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
-import { getStageStatus, getRuntime, isFinished } from '../api'
+import { formatDurationMs } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -11,7 +11,8 @@ interface RunInfo {
   status?: RunListItemStatus
   triggeredBy?: string
   triggerReason?: string
-  runtime?: string
+  initTimestamp?: string
+  endTimestamp?: string
 }
 
 interface RunListViewProps {
@@ -110,7 +111,7 @@ export default function RunListView({
   loading,
   error,
   onSelectRun,
-  runMetadataMap,
+  runMetadataMap: _runMetadataMap,
   loadingMetadataList,
   dayGroups,
   filterBenchmark,
@@ -149,10 +150,10 @@ export default function RunListView({
   // Check if any run is non-finished to decide whether to tick the timer
   const hasNonFinished = useMemo(() => {
     return runs.some(run => {
-      const metadata = runMetadataMap[run.slug]
-      return metadata && !isFinished(metadata)
+      const s = run.status
+      return s !== 'completed' && s !== 'error' && s !== 'cancelled'
     })
-  }, [runs, runMetadataMap])
+  }, [runs])
 
   // Tick every 1s so elapsed time updates for non-finished runs
   useEffect(() => {
@@ -161,22 +162,26 @@ export default function RunListView({
     return () => clearInterval(interval)
   }, [hasNonFinished])
 
-  // Compute statuses and runtimes
-  // Status and runtime come from JSONL (pre-parsed), metadata only needed for additional details
+  // Compute statuses and runtimes from JSONL-backed timestamps so the value
+  // ticks every second for active runs (metadata is no longer loaded for the list view).
   const runsWithStatus = useMemo(() => {
     return runs.map(run => {
-      const metadata = runMetadataMap[run.slug]
-      // Use pre-parsed status from JSONL, only derive from metadata if needed
-      const status: StatusType = run.status || (metadata ? getStageStatus(metadata) : 'pending')
-      // Use pre-parsed runtime from JSONL if available, otherwise calculate from metadata
-      const runtime: string | null = run.runtime || (metadata ? getRuntime(metadata, now) : null)
-      const runFinished = metadata ? isFinished(metadata) : (run.status === 'completed' || run.status === 'error' || run.status === 'cancelled')
-      // triggeredBy and triggerReason come directly from JSONL (via RunListItem)
+      const status: StatusType = run.status || 'pending'
+      const runFinished = status === 'completed' || status === 'error' || status === 'cancelled'
+      let runtime: string | null = null
+      if (run.initTimestamp) {
+        const start = new Date(run.initTimestamp).getTime()
+        if (!isNaN(start)) {
+          const endStr = run.endTimestamp
+          const end = runFinished && endStr ? new Date(endStr).getTime() : now
+          if (!isNaN(end)) runtime = formatDurationMs(end - start)
+        }
+      }
       const triggeredBy = run.triggeredBy
       const triggerReason = run.triggerReason
       return { ...run, status, runtime, runFinished, triggeredBy, triggerReason }
     })
-  }, [runs, runMetadataMap, now])
+  }, [runs, now])
 
   const benchmarks = useMemo(() => [...new Set(runs.map(r => r.benchmark))].sort(), [runs])
   const statuses = useMemo(() => [...new Set(runsWithStatus.map(r => r.status))].sort(), [runsWithStatus])
