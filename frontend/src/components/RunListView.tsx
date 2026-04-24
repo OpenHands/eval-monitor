@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import type { RunMetadata, DayRunGroup, RunListItemStatus } from '../api'
-import { getStageStatus, getRuntime, isFinished, getActiveWorkersForInstance } from '../api'
+import { getStageStatus, getRuntime, isFinished } from '../api'
 import ExportPathsModal from './ExportPathsModal'
 
 interface RunInfo {
@@ -119,7 +119,7 @@ export default function RunListView({
   setFilterStatus,
   filterText,
   setFilterText,
-  showDetail
+  showDetail: _showDetail
 }: RunListViewProps) {
   const showMultipleDays = dayGroups.length > 1
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -220,27 +220,6 @@ export default function RunListView({
     return counts
   }, [runsWithStatus])
 
-  // Active workers count and per-author breakdown (from all runs, independent of filters)
-  // Only count runs in inference stage (running-infer)
-  const { totalActiveWorkers, activeWorkersByAuthor } = useMemo(() => {
-    let totalActiveWorkers = 0
-    const activeWorkersByAuthor: Record<string, number> = {}
-    // Only count runs in running-infer stage
-    const inferStatuses: StatusType[] = ['running-infer']
-    runsWithStatus.forEach(r => {
-      if (inferStatuses.includes(r.status)) {
-        const metadata = runMetadataMap[r.slug]
-        const workers = metadata ? getActiveWorkersForInstance(metadata) : 20
-        totalActiveWorkers += workers
-        const author = r.triggeredBy
-        if (author && author !== '—') {
-          activeWorkersByAuthor[author] = (activeWorkersByAuthor[author] || 0) + workers
-        }
-      }
-    })
-    return { totalActiveWorkers, activeWorkersByAuthor }
-  }, [runsWithStatus, runMetadataMap])
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -307,18 +286,6 @@ export default function RunListView({
               </button>
             ))}
           </div>
-          {!loadingMetadataList && !showDetail && totalActiveWorkers > 0 && (
-            <div className="flex items-center gap-3 flex-wrap text-xs">
-              <span className="text-oh-text-muted">
-                Active Workers: <span data-testid="total-active-workers" className={`font-bold ${totalActiveWorkers > 256 ? 'text-oh-error' : totalActiveWorkers >= 240 ? 'text-orange-400' : 'text-oh-primary'}`}>{totalActiveWorkers}</span>
-              </span>
-              {Object.entries(activeWorkersByAuthor).sort((a, b) => b[1] - a[1]).map(([author, count]) => (
-                <span key={author} data-testid={`active-workers-author-${author}`} className="text-oh-text-muted">
-                  <span className="font-medium text-oh-text">{author}</span>: {count}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
