@@ -249,8 +249,16 @@ export interface CostReportSummary {
   sum_critic_files: number
 }
 
+export interface ProxyCostSummary {
+  total_proxy_cost: number
+  zero_proxy_cost_instances: number
+  only_main_output_proxy_cost: number
+  sum_critic_files_proxy_cost: number
+}
+
 export interface CostReport {
   summary: CostReportSummary | null
+  proxySummary: ProxyCostSummary | null
   fullUrl: string
 }
 
@@ -260,13 +268,15 @@ export async function fetchCostReport(slug: string): Promise<CostReport | null> 
   const v2Data = await fetchJson(`${BASE_URL}/${cleanSlug}/cost_report_v2.json`)
   if (v2Data) {
     const summary = (v2Data.summary as CostReportSummary) || null
-    return { summary, fullUrl: getResultsUrl(cleanSlug, 'cost_report_v2.json') }
+    const proxySummary = (v2Data.proxy_cost_summary as ProxyCostSummary) || null
+    return { summary, proxySummary, fullUrl: getResultsUrl(cleanSlug, 'cost_report_v2.json') }
   }
 
   const data = await fetchJson(`${BASE_URL}/${cleanSlug}/cost_report.jsonl`)
   if (!data) return null
   const summary = (data.summary as CostReportSummary) || null
-  return { summary, fullUrl: getResultsUrl(cleanSlug, 'cost_report.jsonl') }
+  const proxySummary = (data.proxy_cost_summary as ProxyCostSummary) || null
+  return { summary, proxySummary, fullUrl: getResultsUrl(cleanSlug, 'cost_report.jsonl') }
 }
 
 export function filterScalarFields(data: Record<string, unknown>): { scalarFields: Record<string, unknown>; hasListFields: boolean } {
