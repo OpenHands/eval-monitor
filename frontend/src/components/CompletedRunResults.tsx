@@ -60,6 +60,11 @@ function OutputReportCard({ report }: { report: OutputReport }) {
   )
 }
 
+function formatProxyCostValue(key: string, value: unknown): string {
+  if (typeof value !== 'number') return String(value ?? '—')
+  return key.includes('cost') ? `$${value.toFixed(4)}` : String(value)
+}
+
 function CostReportCard({ report }: { report: CostReport }) {
   const totalCost = report.summary?.total_cost
   const proxyCost = report.proxySummary?.total_proxy_cost
@@ -95,13 +100,11 @@ function CostReportCard({ report }: { report: CostReport }) {
         </div>
       )}
 
-      {hasProxyCost && report.proxySummary && (
+      {hasProxyCost && clientCostIsZero && report.proxySummary && (
         <div className="mb-3">
-          {clientCostIsZero && (
-            <p className="text-xs text-oh-text-muted mb-2 italic">
-              Client cost unavailable (acp-codex telemetry not wired) — showing proxy-reported cost.
-            </p>
-          )}
+          <p className="text-xs text-oh-text-muted mb-2 italic">
+            Client cost unavailable (acp-codex telemetry not wired) — showing proxy-reported cost.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
@@ -111,11 +114,7 @@ function CostReportCard({ report }: { report: CostReport }) {
                       {key}
                     </td>
                     <td className="py-1.5 text-oh-text font-mono text-xs break-all">
-                      {typeof value === 'number'
-                        ? key.includes('cost')
-                          ? `$${value.toFixed(4)}`
-                          : String(value)
-                        : String(value ?? '—')}
+                      {formatProxyCostValue(key, value)}
                     </td>
                   </tr>
                 ))}
