@@ -49,6 +49,12 @@ cd frontend && npm run lint   # run eslint
 - `frontend/src/components/ExportPathsModal.tsx` can export both results-bucket file URLs and an `eval_monitor_url` detail-page link for each run.
 - `eval_monitor_url` is built from the current monitor URL, preserves existing query params like date/days/filters, and clears any hash before adding `run=<slug>`.
 
+## Laminar Traces Button
+- `frontend/src/components/StatusTimeline.tsx` renders a "🔍 Laminar traces" button under the **Run Inference** stage of the Pipeline Progress section.
+- The button is shown only after inference has started (`runInferStart` metadata file exists) and when `params.unique_eval_name` is available.
+- The URL points to `https://laminar.sh/project/<VITE_LAMINAR_PROJECT_ID>/traces?search=<unique_eval_name>&startDate=<infer_start_timestamp>`, so the trace view is filtered to this run and anchored at the beginning of inference.
+- Set the `VITE_LAMINAR_PROJECT_ID` build-time env var (e.g. in Vercel) to the Laminar project that ingests benchmark traces. If unset, the button is hidden.
+
 ## Coding Style
 - TypeScript strict mode, React functional components with hooks
 - Tailwind CSS for styling with custom `oh-*` color theme (defined in `tailwind.config.js`)

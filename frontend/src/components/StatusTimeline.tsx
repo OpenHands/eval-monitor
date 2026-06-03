@@ -20,9 +20,45 @@ const STAGES: Stage[] = [
   { label: 'Run Evaluation', startKey: 'evalInferStart', endKey: 'evalInferEnd' },
 ]
 
+// Laminar project ID used to build trace URLs.
+// Configurable at build time via the VITE_LAMINAR_PROJECT_ID env var so that
+// the deployment (e.g. Vercel) can point at the correct Laminar project
+// without hard-coding it in the repo. Read lazily so that tests can stub it.
+function getLaminarProjectId(): string {
+  return (import.meta.env?.VITE_LAMINAR_PROJECT_ID as string | undefined) || ''
+}
+
 function getTimestamp(data: Record<string, unknown> | null): string | null {
   if (!data) return null
   return (data.timestamp as string) || null
+}
+
+/**
+ * Build a Laminar traces URL filtered by the run's unique_eval_name and
+ * starting at the beginning of inference. Returns null if we don't have
+ * enough information (no project ID configured or no eval name available).
+ *
+ * Mirrors the laminar link added by the push-to-index workflow
+ * (https://github.com/OpenHands/evaluation/actions/workflows/push-to-index.yml)
+ * but uses the project traces view so that traces are visible while the run
+ * is still in progress (the shared evals URL needs an eval_id that only
+ * becomes available after inference completes).
+ */
+export function buildLaminarTracesUrl(
+  uniqueEvalName: string | null | undefined,
+  inferStartTimestamp: string | null | undefined,
+  projectId?: string,
+): string | null {
+  const pid = projectId !== undefined ? projectId : getLaminarProjectId()
+  if (!pid || !uniqueEvalName) return null
+  const params = new URLSearchParams()
+  params.set('search', uniqueEvalName)
+  if (inferStartTimestamp) {
+    // Laminar's traces view accepts a startDate query param (ISO 8601) to
+    // anchor the time window at the beginning of inference.
+    params.set('startDate', inferStartTimestamp)
+  }
+  return `https://laminar.sh/project/${pid}/traces?${params.toString()}`
 }
 
 export function formatStageDuration(startStr: string | null, endStr: string | null, isActive: boolean, now: number): string {
@@ -46,6 +82,12 @@ export function formatStageDuration(startStr: string | null, endStr: string | nu
 export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelineProps) {
   const hasError = !!metadata.error
   const [currentTime, setCurrentTime] = useState(nowProp ?? Date.now())
+
+  const uniqueEvalName = (metadata.params?.unique_eval_name as string | undefined) ?? null
+  const inferStartTs = getTimestamp(metadata.runInferStart)
+  const laminarUrl = metadata.runInferStart
+    ? buildLaminarTracesUrl(uniqueEvalName, inferStartTs)
+    : null
 
   useEffect(() => {
     if (nowProp !== undefined) {
@@ -100,6 +142,9 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
 
           const durationColor = isCompleted ? 'text-oh-success' : isActive ? 'text-oh-primary' : 'text-oh-text-muted'
 
+          const showLaminarButton =
+            stage.label === 'Run Inference' && !!laminarUrl
+
           return (
             <div key={stage.label} className="flex items-center flex-1">
               <div className="flex flex-col items-center">
@@ -107,6 +152,18 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
                 <p className="text-xs font-medium text-oh-text mt-2 whitespace-nowrap">{stage.label}</p>
                 {durationText && (
                   <p className={`text-[10px] ${durationColor} mt-0.5`}>{durationText}</p>
+                )}
+                {showLaminarButton && (
+                  <a
+                    href={laminarUrl!}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid="laminar-traces-button"
+                    title="View Laminar traces from the beginning of inference"
+                    className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-oh-primary/10 text-oh-primary border border-oh-primary/30 hover:bg-oh-primary/20 transition-colors whitespace-nowrap"
+                  >
+                    🔍 Laminar traces
+                  </a>
                 )}
               </div>
               {i < STAGES.length - 1 && (
