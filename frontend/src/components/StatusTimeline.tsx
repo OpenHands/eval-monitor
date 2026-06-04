@@ -43,6 +43,17 @@ function getTimestamp(data: Record<string, unknown> | null): string | null {
  * but uses the project traces view so that traces are visible while the run
  * is still in progress (the shared evals URL needs an eval_id that only
  * becomes available after inference completes).
+ *
+ * @param uniqueEvalName  The run's unique_eval_name (used as the Laminar
+ *   trace search filter). If null/undefined/empty, returns null.
+ * @param inferStartTimestamp  ISO 8601 timestamp of the start of inference.
+ *   If provided, it's passed as the `startDate` query param to anchor the
+ *   trace view. If omitted, the URL is still returned without it.
+ * @param projectId  Optional explicit Laminar project ID. Two semantics:
+ *   - `undefined` (default): read `VITE_LAMINAR_PROJECT_ID` at call time.
+ *   - explicit string (including `''`): use this value verbatim. An empty
+ *     string is treated as "no project configured" and returns null. Tests
+ *     use this to exercise the no-project-id path without mutating env.
  */
 export function buildLaminarTracesUrl(
   uniqueEvalName: string | null | undefined,
@@ -83,7 +94,7 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
   const hasError = !!metadata.error
   const [currentTime, setCurrentTime] = useState(nowProp ?? Date.now())
 
-  const uniqueEvalName = (metadata.params?.unique_eval_name as string | undefined) ?? null
+  const uniqueEvalName = metadata.params?.unique_eval_name ?? null
   const inferStartTs = getTimestamp(metadata.runInferStart)
   const laminarUrl = metadata.runInferStart
     ? buildLaminarTracesUrl(uniqueEvalName, inferStartTs)
@@ -154,6 +165,9 @@ export default function StatusTimeline({ metadata, now: nowProp }: StatusTimelin
                   <p className={`text-[10px] ${durationColor} mt-0.5`}>{durationText}</p>
                 )}
                 {showLaminarButton && (
+                  // laminarUrl is guaranteed non-null here: showLaminarButton
+                  // is true only when !!laminarUrl. The non-null assertion is
+                  // needed because TS can't narrow through the boolean.
                   <a
                     href={laminarUrl!}
                     target="_blank"
