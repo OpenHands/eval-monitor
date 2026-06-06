@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, fetchRunList, getClusterHealthState } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, extractTimestampFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, fetchRunList, getClusterHealthState } from '../api'
 import type { RunMetadata, ClusterHealthReport } from '../api'
 
 function makeReport(overrides: Partial<ClusterHealthReport> = {}): ClusterHealthReport {
@@ -649,11 +649,24 @@ describe('getOriginalRunSlug', () => {
     expect(getOriginalRunSlug(metadata, 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569')).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309')
   })
 
-  it('uses github_run_id when it looks like a timestamp', () => {
+  it('extracts original timestamp from partial_archive_url when only that is available', () => {
+    // This matches the real-world case from issue #183 where the resumed run
+    // only has partial_archive_url set (no original_run_id / original_timestamp).
+    // The current run's github_run_id must NOT be used as the original timestamp.
     const metadata = makeMetadata({
       params: {
-        github_run_id: '23324404309',
-        partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+        github_run_id: '27052081405',
+        partial_archive_url: 'https://results.eval.all-hands.dev/swebenchmultimodal/litellm_proxy-gemini-3-5-flash/26986568857/infer-output.tar.gz',
+      },
+    })
+    expect(getOriginalRunSlug(metadata, 'swebenchmultimodal/litellm_proxy-gemini-3-5-flash/27052081405')).toBe('swebenchmultimodal/litellm_proxy-gemini-3-5-flash/26986568857')
+  })
+
+  it('prefers the partial_archive_url timestamp over the current run github_run_id', () => {
+    const metadata = makeMetadata({
+      params: {
+        github_run_id: '99999999999',
+        partial_archive_url: 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309/results.tar.gz',
       },
     })
     expect(getOriginalRunSlug(metadata, 'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569')).toBe('swtbench/litellm_proxy-minimax-MiniMax-M2-7/23324404309')
@@ -706,6 +719,51 @@ describe('buildOriginalRunUrl', () => {
   it('sets text filter to timestamp', () => {
     const result = buildOriginalRunUrl('https://example.com/', 'swtbench/model/789')
     expect(result).toContain('text=789')
+  })
+
+  it('preserves existing query params from the current URL (e.g. days, date)', () => {
+    const result = buildOriginalRunUrl(
+      'https://example.com/?days=15&date=2025-01-02&run=current/run/27052081405',
+      'swebenchmultimodal/litellm_proxy-gemini-3-5-flash/26986568857',
+    )
+    expect(result).toContain('days=15')
+    expect(result).toContain('date=2025-01-02')
+    expect(result).toContain('run=swebenchmultimodal%2Flitellm_proxy-gemini-3-5-flash%2F26986568857')
+    expect(result).toContain('text=26986568857')
+  })
+
+  it('falls back gracefully when the current URL is unparseable', () => {
+    const result = buildOriginalRunUrl('not a url', 'swtbench/model/789')
+    expect(result).toContain('run=swtbench%2Fmodel%2F789')
+    expect(result).toContain('text=789')
+  })
+})
+
+describe('extractTimestampFromPartialArchiveUrl', () => {
+  it('returns null for null/undefined/empty', () => {
+    expect(extractTimestampFromPartialArchiveUrl(null)).toBeNull()
+    expect(extractTimestampFromPartialArchiveUrl(undefined)).toBeNull()
+    expect(extractTimestampFromPartialArchiveUrl('')).toBeNull()
+  })
+
+  it('extracts the timestamp segment after benchmark/model', () => {
+    expect(
+      extractTimestampFromPartialArchiveUrl(
+        'swebenchmultimodal/litellm_proxy-gemini-3-5-flash/26986568857/infer-output.tar.gz',
+      ),
+    ).toBe('26986568857')
+  })
+
+  it('extracts the timestamp from a results.tar.gz path', () => {
+    expect(
+      extractTimestampFromPartialArchiveUrl(
+        'swtbench/litellm_proxy-minimax-MiniMax-M2-7/24039895569/results.tar.gz',
+      ),
+    ).toBe('24039895569')
+  })
+
+  it('returns null when there is no timestamp segment', () => {
+    expect(extractTimestampFromPartialArchiveUrl('invalid-url')).toBeNull()
   })
 })
 
