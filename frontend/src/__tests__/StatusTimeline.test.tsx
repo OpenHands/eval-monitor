@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { render } from '@testing-library/react'
-import StatusTimeline, { formatStageDuration } from '../components/StatusTimeline'
+import StatusTimeline, { formatStageDuration, buildLaminarTracesUrl } from '../components/StatusTimeline'
 import type { RunMetadata } from '../api'
 
 function makeMetadata(overrides: Partial<RunMetadata> = {}): RunMetadata {
@@ -53,6 +53,16 @@ describe('formatStageDuration', () => {
 })
 
 describe('StatusTimeline', () => {
+  // Stub a project id so that the Laminar-button-related tests can rely on
+  // a deterministic URL. Tests that explicitly need a missing project id
+  // use the `buildLaminarTracesUrl` helper directly.
+  beforeAll(() => {
+    vi.stubEnv('VITE_LAMINAR_PROJECT_ID', 'test-project')
+  })
+  afterAll(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('shows duration instead of timestamp for completed stages', () => {
     const metadata = makeMetadata({
       params: { timestamp: '2025-03-15T10:00:00Z' },
@@ -127,5 +137,82 @@ describe('StatusTimeline', () => {
     const text = container.textContent!
     expect(text).not.toContain('UTC')
     expect(text).not.toMatch(/\d{2}:\d{2}:\d{2}/)
+  })
+
+  it('renders a Laminar traces button under Run Inference once inference has started', () => {
+    const metadata = makeMetadata({
+      params: {
+        timestamp: '2025-03-15T10:00:00Z',
+        unique_eval_name: '26779733963-gemini-3-5',
+      },
+      init: { timestamp: '2025-03-15T10:05:00Z' },
+      runInferStart: { timestamp: '2025-03-15T10:06:00Z' },
+    })
+    const { queryByTestId } = render(
+      <StatusTimeline metadata={metadata} now={Date.now()} />,
+    )
+    const button = queryByTestId('laminar-traces-button') as HTMLAnchorElement | null
+    expect(button).not.toBeNull()
+    expect(button!.href).toContain('https://laminar.sh/project/test-project/traces')
+    expect(button!.href).toContain('search=26779733963-gemini-3-5')
+    // Time-anchored from the beginning of inference
+    expect(button!.href).toContain('startDate=')
+    expect(decodeURIComponent(button!.href)).toContain('2025-03-15T10:06:00Z')
+  })
+
+  it('does not render Laminar button before inference starts', () => {
+    const metadata = makeMetadata({
+      params: {
+        timestamp: '2025-03-15T10:00:00Z',
+        unique_eval_name: '26779733963-gemini-3-5',
+      },
+      init: { timestamp: '2025-03-15T10:05:00Z' },
+    })
+    const { queryByTestId } = render(
+      <StatusTimeline metadata={metadata} now={Date.now()} />,
+    )
+    expect(queryByTestId('laminar-traces-button')).toBeNull()
+  })
+
+  it('does not render Laminar button when unique_eval_name is missing', () => {
+    const metadata = makeMetadata({
+      params: { timestamp: '2025-03-15T10:00:00Z' },
+      init: { timestamp: '2025-03-15T10:05:00Z' },
+      runInferStart: { timestamp: '2025-03-15T10:06:00Z' },
+    })
+    const { queryByTestId } = render(
+      <StatusTimeline metadata={metadata} now={Date.now()} />,
+    )
+    expect(queryByTestId('laminar-traces-button')).toBeNull()
+  })
+})
+
+describe('buildLaminarTracesUrl', () => {
+  it('returns null when no project ID is configured', () => {
+    expect(buildLaminarTracesUrl('some-name', '2025-03-15T10:00:00Z', '')).toBeNull()
+  })
+
+  it('returns null when no unique_eval_name is provided', () => {
+    expect(buildLaminarTracesUrl(null, '2025-03-15T10:00:00Z', 'proj-1')).toBeNull()
+    expect(buildLaminarTracesUrl(undefined, '2025-03-15T10:00:00Z', 'proj-1')).toBeNull()
+  })
+
+  it('builds a URL filtered by unique_eval_name and infer start time', () => {
+    const url = buildLaminarTracesUrl(
+      '26779733963-gemini-3-5',
+      '2025-03-15T10:06:00Z',
+      'proj-1',
+    )
+    expect(url).not.toBeNull()
+    expect(url).toContain('https://laminar.sh/project/proj-1/traces')
+    expect(url).toContain('search=26779733963-gemini-3-5')
+    expect(decodeURIComponent(url!)).toContain('startDate=2025-03-15T10:06:00Z')
+  })
+
+  it('omits startDate when no inferStartTimestamp is provided', () => {
+    const url = buildLaminarTracesUrl('eval-1', null, 'proj-1')
+    expect(url).not.toBeNull()
+    expect(url).toContain('search=eval-1')
+    expect(url).not.toContain('startDate')
   })
 })

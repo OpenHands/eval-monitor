@@ -142,9 +142,13 @@ export async function fetchMultiDayRunList(baseDate: string, numDays: number): P
   return results
 }
 
+export interface RunParams extends Record<string, unknown> {
+  unique_eval_name?: string
+}
+
 export interface RunMetadata {
   init: Record<string, unknown> | null
-  params: Record<string, unknown> | null
+  params: RunParams | null
   error: Record<string, unknown> | null
   runInferStart: Record<string, unknown> | null
   runInferEnd: Record<string, unknown> | null
