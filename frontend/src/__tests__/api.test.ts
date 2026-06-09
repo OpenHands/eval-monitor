@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, fetchRunList, getClusterHealthState } from '../api'
+import { getResultsUrl, filterScalarFields, extractTriggeredBy, extractTriggerReason, getDateNDaysAgo, getDatesForRange, fetchSubmissionData, fetchCostReport, getActiveWorkersForInstance, getPartialArchiveUrl, extractBenchmarkModelFromPartialArchiveUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, fetchRunList, getClusterHealthState, fetchMetadataForSlugs } from '../api'
 import type { RunMetadata, ClusterHealthReport } from '../api'
 
 function makeReport(overrides: Partial<ClusterHealthReport> = {}): ClusterHealthReport {
@@ -958,6 +958,49 @@ describe('getClusterHealthState', () => {
       summary: { healthy: false, issues: ['something we did not classify'], errors: [] },
     })
     expect(getClusterHealthState(report, FRESH_NOW)).toBe('warning')
+  })
+})
+
+describe('fetchMetadataForSlugs', () => {
+  const emptyMetadata = (): RunMetadata => ({
+    init: null, params: null, error: null,
+    runInferStart: null, runInferEnd: null,
+    evalInferStart: null, evalInferEnd: null,
+    cancelEval: null,
+  } as unknown as RunMetadata)
+
+  it('returns an empty object when given no slugs without calling fetchOne', async () => {
+    const fetchOne = vi.fn<(slug: string) => Promise<RunMetadata>>()
+    const result = await fetchMetadataForSlugs([], fetchOne)
+    expect(result).toEqual({})
+    expect(fetchOne).not.toHaveBeenCalled()
+  })
+
+  it('returns a slug->metadata map when all fetches succeed', async () => {
+    const a = emptyMetadata()
+    const b = emptyMetadata()
+    const fetchOne = vi.fn(async (slug: string) => (slug === 'a/x/1' ? a : b))
+    const result = await fetchMetadataForSlugs(['a/x/1', 'b/y/2'], fetchOne)
+    expect(result).toEqual({ 'a/x/1': a, 'b/y/2': b })
+  })
+
+  it('keeps successful results and warns when some fetches fail', async () => {
+    const ok = emptyMetadata()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchOne = vi.fn(async (slug: string) => {
+      if (slug === 'bad/y/2') throw new Error('boom')
+      return ok
+    })
+    const result = await fetchMetadataForSlugs(['good/x/1', 'bad/y/2', 'good/z/3'], fetchOne)
+    expect(result).toEqual({ 'good/x/1': ok, 'good/z/3': ok })
+    expect(warn).toHaveBeenCalledWith('1 metadata fetches failed')
+  })
+
+  it('does not reject when every fetch fails', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchOne = vi.fn(async () => { throw new Error('down') })
+    const result = await fetchMetadataForSlugs(['a/x/1', 'b/y/2'], fetchOne)
+    expect(result).toEqual({})
   })
 })
 
