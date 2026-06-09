@@ -470,6 +470,21 @@ export function extractBenchmarkModelFromPartialArchiveUrl(partialArchiveUrl: st
   return match[1]
 }
 
+/** Extract the original run's timestamp (run id) from a partial_archive_url.
+ *  For example:
+ *  Input: "swebenchmultimodal/litellm_proxy-gemini-3-5-flash/26986568857/infer-output.tar.gz"
+ *  Output: "26986568857"
+ */
+export function extractTimestampFromPartialArchiveUrl(partialArchiveUrl: string | null | undefined): string | null {
+  if (!partialArchiveUrl || typeof partialArchiveUrl !== 'string') return null
+
+  // Pattern to match: benchmark/model/timestamp/anything
+  const match = partialArchiveUrl.match(/^.+?\/(\d+)\//)
+  if (!match) return null
+
+  return match[1]
+}
+
 /** Check if a run is a resumed run by looking for partial_archive_url in params.
  *  A resumed run has a partial_archive_url that points to another run's results.
  */
@@ -508,13 +523,15 @@ export function getOriginalRunSlug(metadata: RunMetadata | null, _currentSlug: s
   if (typeof originalTimestamp === 'string' && originalTimestamp) {
     return `${benchmarkModel}/${originalTimestamp}`
   }
-  
-  // Try to get timestamp from params.github_run_id if it's actually a timestamp
-  const githubRunId = metadata.params.github_run_id
-  if (typeof githubRunId === 'string' && githubRunId && /^\d+$/.test(githubRunId)) {
-    return `${benchmarkModel}/${githubRunId}`
+
+  // Otherwise, extract the timestamp directly from the partial_archive_url itself.
+  // The URL has the form benchmark/model/<original-timestamp>/<file>, so the path
+  // segment after benchmark/model is the original run's id.
+  const archiveTimestamp = extractTimestampFromPartialArchiveUrl(partialArchiveUrl)
+  if (archiveTimestamp) {
+    return `${benchmarkModel}/${archiveTimestamp}`
   }
-  
+
   return null
 }
 
@@ -742,15 +759,24 @@ export function computeEvalTimeReport(
   return { entries, totalActive, state }
 }
 
-export function buildOriginalRunUrl(_currentUrl: string, originalRunSlug: string): string {
+export function buildOriginalRunUrl(currentUrl: string, originalRunSlug: string): string {
   // Extract the original timestamp from the slug (last part after the last /)
   const parts = originalRunSlug.split('/')
   const originalTimestamp = parts[parts.length - 1]
-  
+
   // Build the monitor URL directly using the current host
   // This avoids issues when window.location.href points to a different domain (e.g., results bucket)
   const baseUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}`
-  const params = new URLSearchParams()
+
+  // Preserve existing query params from the current URL (e.g. days, date, filters)
+  // so the original run page opens with the same filter context.
+  let params: URLSearchParams
+  try {
+    params = new URL(currentUrl).searchParams
+  } catch {
+    params = new URLSearchParams()
+  }
+
   params.set('run', originalRunSlug)
   if (originalTimestamp) {
     params.set('text', originalTimestamp)
