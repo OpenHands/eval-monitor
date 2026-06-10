@@ -60,9 +60,18 @@ function OutputReportCard({ report }: { report: OutputReport }) {
   )
 }
 
+function formatProxyCostValue(key: string, value: unknown): string {
+  if (typeof value !== 'number') return String(value ?? '—')
+  return key.includes('cost') ? `$${value.toFixed(4)}` : String(value)
+}
+
 function CostReportCard({ report }: { report: CostReport }) {
   const totalCost = report.summary?.total_cost
-  const showZeroCostWarning = typeof totalCost === 'number' && totalCost === 0
+  const proxyCost = report.proxySummary?.total_proxy_cost
+  const clientCostIsZero = typeof totalCost === 'number' && totalCost === 0
+  const hasProxyCost = typeof proxyCost === 'number' && proxyCost > 0
+  // Only warn if client cost is zero AND there's no proxy cost to fall back on
+  const showZeroCostWarning = clientCostIsZero && !hasProxyCost
 
   return (
     <div className="bg-oh-surface border border-oh-border rounded-lg p-4">
@@ -91,7 +100,31 @@ function CostReportCard({ report }: { report: CostReport }) {
         </div>
       )}
 
-      {report.summary ? (
+      {hasProxyCost && clientCostIsZero && report.proxySummary && (
+        <div className="mb-3">
+          <p className="text-xs text-oh-text-muted mb-2 italic">
+            Client cost unavailable (acp-codex telemetry not wired) — showing proxy-reported cost.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody>
+                {Object.entries(report.proxySummary).map(([key, value]) => (
+                  <tr key={key} className="border-b border-oh-border/50 last:border-0">
+                    <td className="py-1.5 pr-4 text-oh-text-muted font-mono text-xs whitespace-nowrap align-top">
+                      {key}
+                    </td>
+                    <td className="py-1.5 text-oh-text font-mono text-xs break-all">
+                      {formatProxyCostValue(key, value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {report.summary && !clientCostIsZero ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <tbody>
@@ -114,9 +147,9 @@ function CostReportCard({ report }: { report: CostReport }) {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : !hasProxyCost ? (
         <p className="text-xs text-oh-text-muted italic">No summary available</p>
-      )}
+      ) : null}
     </div>
   )
 }
