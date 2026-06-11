@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData, getResultsUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl } from '../api'
+import { parseRunSlug, extractTriggeredBy, extractTriggerReason, extractCancelledBy, getRuntime, isFinished, fetchSubmissionData, getResultsUrl, isResumedRun, getOriginalRunSlug, buildOriginalRunUrl, getEndTimestamp } from '../api'
 import type { RunMetadata, SubmissionData } from '../api'
 import StatusTimeline from './StatusTimeline'
 import JsonCard from './JsonCard'
@@ -177,7 +177,12 @@ export default function RunDetailView({ slug, metadata, loading, status }: RunDe
       )}
 
       {/* Completed Run Results */}
-      {status === 'completed' && <CompletedRunResults slug={slug} />}
+      {status === 'completed' && (
+        <CompletedRunResults
+          slug={slug}
+          runCompletedAtMs={metadata ? getEndTimestamp(metadata) : null}
+        />
+      )}
 
       {/* Status Timeline */}
       {metadata && <StatusTimeline metadata={metadata} />}

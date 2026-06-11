@@ -251,6 +251,10 @@ export interface CostReportSummary {
   total_duration: number
   only_main_output_cost: number
   sum_critic_files: number
+  /** Fraction of accumulated input tokens served from cache (0–1).
+   *  `null` when the run had no input tokens to measure; `undefined`
+   *  when the producer has not been upgraded yet (pre-2026-06-11 runs). */
+  cache_hit_rate?: number | null
 }
 
 export interface CostReport {
