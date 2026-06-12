@@ -4,7 +4,13 @@ import CompletedRunResults from '../components/CompletedRunResults'
 
 const originalFetch = globalThis.fetch
 
-function mockFetchWithCost(totalCost: number) {
+// Anchors used by the cache-hit-rate "missing" warning logic
+// (Date.UTC month is 0-indexed: 5 = June).
+const CACHE_HIT_RATE_CUTOFF_MS = Date.UTC(2026, 5, 11)
+const BEFORE_CUTOFF_MS = CACHE_HIT_RATE_CUTOFF_MS - 24 * 60 * 60 * 1000
+const AFTER_CUTOFF_MS = CACHE_HIT_RATE_CUTOFF_MS + 24 * 60 * 60 * 1000
+
+function mockFetchWithSummary(summary: Record<string, unknown>) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
 
@@ -18,25 +24,18 @@ function mockFetchWithCost(totalCost: number) {
 
     if (url.includes('cost_report_v2.json')) {
       return {
-        ok: false,
-        status: 404,
-        headers: { get: () => null },
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ summary }),
       } as unknown as Response
     }
 
     if (url.includes('cost_report.jsonl')) {
       return {
-        ok: true,
-        status: 200,
-        headers: { get: () => 'application/json' },
-        json: async () => ({
-          summary: {
-            total_cost: totalCost,
-            total_duration: 12.3,
-            only_main_output_cost: totalCost,
-            sum_critic_files: 0,
-          },
-        }),
+        ok: false,
+        status: 404,
+        headers: { get: () => null },
       } as unknown as Response
     }
 
@@ -45,6 +44,15 @@ function mockFetchWithCost(totalCost: number) {
 
   globalThis.fetch = fetchMock as unknown as typeof fetch
   return fetchMock
+}
+
+function mockFetchWithCost(totalCost: number) {
+  return mockFetchWithSummary({
+    total_cost: totalCost,
+    total_duration: 12.3,
+    only_main_output_cost: totalCost,
+    sum_critic_files: 0,
+  })
 }
 
 afterEach(() => {
@@ -144,6 +152,71 @@ describe('CompletedRunResults', () => {
       )
       expect(anchor?.target).toBe('_blank')
       expect(anchor?.rel).toContain('noopener')
+    })
+  })
+
+  describe('cache_hit_rate', () => {
+    function summaryWith(rate: number | null | undefined) {
+      const base: Record<string, unknown> = {
+        total_cost: 1.5,
+        total_duration: 12.3,
+        only_main_output_cost: 1.5,
+        sum_critic_files: 0,
+      }
+      // `undefined` means "key absent", i.e. legacy producer.
+      if (rate !== undefined) base.cache_hit_rate = rate
+      return base
+    }
+
+    it('renders cache_hit_rate as a percentage', async () => {
+      mockFetchWithSummary(summaryWith(0.7842))
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      await screen.findByText('cache_hit_rate')
+      expect(screen.getByText('78.42%')).toBeTruthy()
+    })
+
+    it('shows a warning when cache_hit_rate is exactly 0', async () => {
+      mockFetchWithSummary(summaryWith(0))
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      const warning = await screen.findByTestId('zero-cache-hit-warning')
+      expect(warning.textContent).toContain('Cache hit rate is 0%')
+    })
+
+    it('does not warn about zero when cache_hit_rate is non-zero', async () => {
+      mockFetchWithSummary(summaryWith(0.42))
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      await screen.findByText('Cost Report')
+      expect(screen.queryByTestId('zero-cache-hit-warning')).toBeNull()
+    })
+
+    it('does not warn about zero when cache_hit_rate is null (no input to measure)', async () => {
+      mockFetchWithSummary(summaryWith(null))
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      await screen.findByText('Cost Report')
+      expect(screen.queryByTestId('zero-cache-hit-warning')).toBeNull()
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
+    })
+
+    it('shows a missing warning when the key is absent and the run is post-cutoff', async () => {
+      mockFetchWithSummary(summaryWith(undefined))
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      const warning = await screen.findByTestId('missing-cache-hit-warning')
+      expect(warning.textContent).toContain('Cache hit rate not reported')
+    })
+
+    it('does not show a missing warning for pre-cutoff (legacy) runs', async () => {
+      mockFetchWithSummary(summaryWith(undefined))
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={BEFORE_CUTOFF_MS} />)
+      await screen.findByText('Cost Report')
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
+    })
+
+    it('does not show a missing warning when the run completion time is unknown', async () => {
+      // Old callers that don't pass runCompletedAtMs should keep working.
+      mockFetchWithSummary(summaryWith(undefined))
+      render(<CompletedRunResults slug="swebench/model/123" />)
+      await screen.findByText('Cost Report')
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
     })
   })
 })

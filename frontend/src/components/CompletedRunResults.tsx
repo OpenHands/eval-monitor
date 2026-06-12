@@ -6,6 +6,24 @@ import SectionMenu from './SectionMenu'
 
 interface CompletedRunResultsProps {
   slug: string
+  /** Run completion time, ms since epoch. Used to decide whether a
+   *  missing `cache_hit_rate` is expected (pre-2026-06-11 runs) or
+   *  worth flagging. Optional so legacy callers keep working. */
+  runCompletedAtMs?: number | null
+}
+
+/** Cutoff: cost_report_v2.jsonl gained `summary.cache_hit_rate` on
+ *  2026-06-11. Runs that completed before this date are not expected
+ *  to carry the field, so we suppress the "missing" warning for them. */
+const CACHE_HIT_RATE_EXPECTED_SINCE_MS = Date.UTC(2026, 5, 11)
+
+function formatSummaryValue(key: string, value: unknown): string {
+  if (value === null) return '—'
+  if (typeof value !== 'number') return String(value ?? '—')
+  if (key === 'cache_hit_rate') return `${(value * 100).toFixed(2)}%`
+  if (key.includes('cost') || key.includes('critic')) return `$${value.toFixed(4)}`
+  if (key.includes('duration')) return `${value.toFixed(1)}s`
+  return String(value)
 }
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -60,9 +78,43 @@ function OutputReportCard({ report }: { report: OutputReport }) {
   )
 }
 
-function CostReportCard({ report }: { report: CostReport }) {
-  const totalCost = report.summary?.total_cost
+function WarningBanner({ testId, title, body }: { testId: string; title: string; body: string }) {
+  return (
+    <div
+      data-testid={testId}
+      className="mb-3 flex items-start gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 p-3 text-orange-300"
+    >
+      <span className="text-sm" aria-hidden>⚠️</span>
+      <div className="text-xs">
+        <div className="font-semibold">{title}</div>
+        <div className="text-orange-200/80">{body}</div>
+      </div>
+    </div>
+  )
+}
+
+function CostReportCard({
+  report,
+  runCompletedAtMs,
+}: {
+  report: CostReport
+  runCompletedAtMs?: number | null
+}) {
+  const summary = report.summary
+  const totalCost = summary?.total_cost
   const showZeroCostWarning = typeof totalCost === 'number' && totalCost === 0
+
+  // `cache_hit_rate` may be: a number (including 0), null (run had no
+  // measurable input), or undefined (key absent — producer not upgraded).
+  const cacheHitRate = summary?.cache_hit_rate
+  const cacheHitKeyPresent = !!summary && 'cache_hit_rate' in summary
+
+  const showZeroCacheHitWarning = cacheHitRate === 0
+  const showMissingCacheHitWarning =
+    !!summary &&
+    !cacheHitKeyPresent &&
+    runCompletedAtMs != null &&
+    runCompletedAtMs >= CACHE_HIT_RATE_EXPECTED_SINCE_MS
 
   return (
     <div className="bg-oh-surface border border-oh-border rounded-lg p-4">
@@ -75,39 +127,40 @@ function CostReportCard({ report }: { report: CostReport }) {
       </div>
 
       {showZeroCostWarning && (
-        <div
-          data-testid="zero-cost-warning"
-          className="mb-3 flex items-start gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 p-3 text-orange-300"
-        >
-          <span className="text-sm" aria-hidden>
-            ⚠️
-          </span>
-          <div className="text-xs">
-            <div className="font-semibold">Cost is $0.0000</div>
-            <div className="text-orange-200/80">
-              Check if cost was added to infra. Token usage was tracked, you can recalculate costs.
-            </div>
-          </div>
-        </div>
+        <WarningBanner
+          testId="zero-cost-warning"
+          title="Cost is $0.0000"
+          body="Check if cost was added to infra. Token usage was tracked, you can recalculate costs."
+        />
       )}
 
-      {report.summary ? (
+      {showZeroCacheHitWarning && (
+        <WarningBanner
+          testId="zero-cache-hit-warning"
+          title="Cache hit rate is 0%"
+          body="Prompt caching may be disabled or misconfigured — every input token is being billed at the cache-miss rate."
+        />
+      )}
+
+      {showMissingCacheHitWarning && (
+        <WarningBanner
+          testId="missing-cache-hit-warning"
+          title="Cache hit rate not reported"
+          body="cost_report_v2 is missing `cache_hit_rate`. Re-run the recalculate-costs job (or the eval-job) against a recent SDK to surface it."
+        />
+      )}
+
+      {summary ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <tbody>
-              {Object.entries(report.summary).map(([key, value]) => (
+              {Object.entries(summary).map(([key, value]) => (
                 <tr key={key} className="border-b border-oh-border/50 last:border-0">
                   <td className="py-1.5 pr-4 text-oh-text-muted font-mono text-xs whitespace-nowrap align-top">
                     {key}
                   </td>
                   <td className="py-1.5 text-oh-text font-mono text-xs break-all">
-                    {typeof value === 'number'
-                      ? key.includes('cost') || key.includes('critic')
-                        ? `$${value.toFixed(4)}`
-                        : key.includes('duration')
-                          ? `${value.toFixed(1)}s`
-                          : String(value)
-                      : String(value ?? '—')}
+                    {formatSummaryValue(key, value)}
                   </td>
                 </tr>
               ))}
@@ -175,7 +228,7 @@ function ArchiveLink({ slug }: { slug: string }) {
   )
 }
 
-export default function CompletedRunResults({ slug }: CompletedRunResultsProps) {
+export default function CompletedRunResults({ slug, runCompletedAtMs }: CompletedRunResultsProps) {
   const [outputReport, setOutputReport] = useState<OutputReport | null>(null)
   const [costReport, setCostReport] = useState<CostReport | null>(null)
   const [loading, setLoading] = useState(true)
@@ -220,7 +273,7 @@ export default function CompletedRunResults({ slug }: CompletedRunResultsProps) 
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {outputReport && <OutputReportCard report={outputReport} />}
-        {costReport && <CostReportCard report={costReport} />}
+        {costReport && <CostReportCard report={costReport} runCompletedAtMs={runCompletedAtMs} />}
       </div>
       <ArchiveLink slug={slug} />
     </div>
