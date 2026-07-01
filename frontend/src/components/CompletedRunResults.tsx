@@ -198,7 +198,7 @@ function CostReportCard({
           title={`Cache hit rate is ${(efficiencyCacheHitRate! * 100).toFixed(2)}%`}
           body={
             <>
-              Not in `cost_report_v2` yet — sourced from{' '}
+              Sourced from{' '}
               <a
                 href={efficiencySummary!.fullUrl}
                 target="_blank"

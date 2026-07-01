@@ -330,6 +330,7 @@ describe('CompletedRunResults', () => {
 
       const banner = await screen.findByTestId('cache-hit-rate-from-efficiency')
       expect(banner.textContent).toContain('Cache hit rate is 75.07%')
+      expect(banner.textContent).toContain('Sourced from')
       expect(banner.textContent).toContain('efficiency_summary.json')
       expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
     })
