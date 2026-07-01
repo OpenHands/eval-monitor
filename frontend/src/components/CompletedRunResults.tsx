@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
-import { fetchOutputReport, fetchCostReport, getResultsUrl } from '../api'
-import type { OutputReport, CostReport } from '../api'
+import {
+  fetchOutputReport,
+  fetchCostReport,
+  fetchEfficiencySummary,
+  getResultsUrl,
+} from '../api'
+import type { OutputReport, CostReport, EfficiencySummary } from '../api'
 
 import SectionMenu from './SectionMenu'
 
@@ -93,12 +98,35 @@ function WarningBanner({ testId, title, body }: { testId: string; title: string;
   )
 }
 
+function InfoBanner({ testId, title, body }: { testId: string; title: string; body: string }) {
+  return (
+    <div
+      data-testid={testId}
+      className="mb-3 flex items-start gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-emerald-300"
+    >
+      <span className="text-sm" aria-hidden>ℹ️</span>
+      <div className="text-xs">
+        <div className="font-semibold">{title}</div>
+        <div className="text-emerald-200/80">{body}</div>
+      </div>
+    </div>
+  )
+}
+
 function CostReportCard({
   report,
   runCompletedAtMs,
+  efficiencySummary,
 }: {
   report: CostReport
   runCompletedAtMs?: number | null
+  /** Fallback source for `cache_hit_rate`. The eval-job's
+   *  `summarize_efficiency.py` writes `cost.tokens.cache_hit_rate` into
+   *  `efficiency_summary.json` (schema_version ≥ 6) for every run, even
+   *  when the legacy `cost_report.jsonl` producer has not been upgraded.
+   *  Used to silence the missing warning and surface the value when v2
+   *  is unavailable. */
+  efficiencySummary?: EfficiencySummary | null
 }) {
   const summary = report.summary
   const totalCost = summary?.total_cost
@@ -109,10 +137,31 @@ function CostReportCard({
   const cacheHitRate = summary?.cache_hit_rate
   const cacheHitKeyPresent = !!summary && 'cache_hit_rate' in summary
 
+  // Fallback: efficiency_summary.json ships the same field under
+  // cost.tokens.cache_hit_rate for schema_version ≥ 6. We use it as a
+  // supplementary source so the user isn't told the rate is missing
+  // when it actually lives one file over. The summary table itself is
+  // untouched — this is purely a UX nudge + warning suppression.
+  const efficiencyCacheHitRate = efficiencySummary?.cache_hit_rate
+  const hasEfficiencyCacheHitNumber =
+    efficiencySummary != null && typeof efficiencyCacheHitRate === 'number'
+  const hasEfficiencyCacheHitNull =
+    efficiencySummary != null && efficiencyCacheHitRate === null
+  // Any "we measured, here's what we found" signal — including "we
+  // measured but there was no input" — suppresses the missing warning.
+  // Only a literal `number` triggers the info banner.
+  const hasEfficiencyCacheHit =
+    hasEfficiencyCacheHitNumber || hasEfficiencyCacheHitNull
+
   const showZeroCacheHitWarning = cacheHitRate === 0
+  // The "missing" warning fires only when we have no source for the rate
+  // *anywhere*: the summary key is absent AND efficiency_summary.json
+  // didn't ship one either. A literal `null` from either side means
+  // "run had no input to measure" — that case is intentionally quiet.
   const showMissingCacheHitWarning =
     !!summary &&
     !cacheHitKeyPresent &&
+    !hasEfficiencyCacheHit &&
     runCompletedAtMs != null &&
     runCompletedAtMs >= CACHE_HIT_RATE_EXPECTED_SINCE_MS
 
@@ -142,11 +191,36 @@ function CostReportCard({
         />
       )}
 
+      {hasEfficiencyCacheHitNumber && !cacheHitKeyPresent && (
+        <InfoBanner
+          testId="cache-hit-rate-from-efficiency"
+          title={`Cache hit rate is ${(efficiencyCacheHitRate! * 100).toFixed(2)}%`}
+          body={
+            <>
+              Not in `cost_report_v2` yet — sourced from{' '}
+              <a
+                href={efficiencySummary!.fullUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-emerald-200"
+              >
+                efficiency_summary.json
+              </a>
+              .
+            </>
+          }
+        />
+      )}
+
       {showMissingCacheHitWarning && (
         <WarningBanner
           testId="missing-cache-hit-warning"
           title="Cache hit rate not reported"
-          body="cost_report_v2 is missing `cache_hit_rate`. Re-run the recalculate-costs job (or the eval-job) against a recent SDK to surface it."
+          body={
+            efficiencySummary
+              ? "Neither `cost_report_v2` nor `efficiency_summary.json` reports `cache_hit_rate` for this run. Re-run the eval-job against a recent SDK (schema_version ≥ 6) to surface it."
+              : "cost_report_v2 is missing `cache_hit_rate`. Re-run the recalculate-costs job (or the eval-job) against a recent SDK to surface it."
+          }
         />
       )}
 
@@ -231,16 +305,22 @@ function ArchiveLink({ slug }: { slug: string }) {
 export default function CompletedRunResults({ slug, runCompletedAtMs }: CompletedRunResultsProps) {
   const [outputReport, setOutputReport] = useState<OutputReport | null>(null)
   const [costReport, setCostReport] = useState<CostReport | null>(null)
+  const [efficiencySummary, setEfficiencySummary] = useState<EfficiencySummary | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([fetchOutputReport(slug), fetchCostReport(slug)]).then(
-      ([output, cost]) => {
+    Promise.all([
+      fetchOutputReport(slug),
+      fetchCostReport(slug),
+      fetchEfficiencySummary(slug),
+    ]).then(
+      ([output, cost, eff]) => {
         if (cancelled) return
         setOutputReport(output)
         setCostReport(cost)
+        setEfficiencySummary(eff)
         setLoading(false)
       }
     )
@@ -273,7 +353,13 @@ export default function CompletedRunResults({ slug, runCompletedAtMs }: Complete
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {outputReport && <OutputReportCard report={outputReport} />}
-        {costReport && <CostReportCard report={costReport} runCompletedAtMs={runCompletedAtMs} />}
+        {costReport && (
+          <CostReportCard
+            report={costReport}
+            runCompletedAtMs={runCompletedAtMs}
+            efficiencySummary={efficiencySummary}
+          />
+        )}
       </div>
       <ArchiveLink slug={slug} />
     </div>

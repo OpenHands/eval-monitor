@@ -277,6 +277,36 @@ export async function fetchCostReport(slug: string): Promise<CostReport | null> 
   return { summary, fullUrl: getResultsUrl(cleanSlug, 'cost_report.jsonl') }
 }
 
+/** Subset of `efficiency_summary.json` we care about.
+ *  Produced by `OpenHands/evaluation#582` (eval-job's `summarize_efficiency.py`,
+ *  schema_version ≥ 6 — landed on 2026-06-11). The full file has many more
+ *  fields (concurrency, durations, retries, …); we only persist the ones the
+ *  UI consumes today so we can grow the type without churning callers. */
+export interface EfficiencySummary {
+  schema_version?: number
+  /** `cost.tokens.cache_hit_rate` — same semantics as
+   *  `CostReportSummary.cache_hit_rate`: 0–1 fraction, `null` when there was
+   *  no input to measure, key absent for pre-schema-6 producers. */
+  cache_hit_rate?: number | null
+  fullUrl: string
+}
+
+export async function fetchEfficiencySummary(slug: string): Promise<EfficiencySummary | null> {
+  const cleanSlug = slug.replace(/\/$/, '')
+  const data = await fetchJson(`${BASE_URL}/${cleanSlug}/efficiency_summary.json`)
+  if (!data) return null
+  const cost = (data.cost as Record<string, unknown> | undefined) ?? undefined
+  const tokens = (cost?.tokens as Record<string, unknown> | undefined) ?? undefined
+  const rawRate = tokens?.cache_hit_rate
+  const cache_hit_rate =
+    typeof rawRate === 'number' || rawRate === null ? rawRate : undefined
+  return {
+    schema_version: typeof data.schema_version === 'number' ? data.schema_version : undefined,
+    cache_hit_rate,
+    fullUrl: getResultsUrl(cleanSlug, 'efficiency_summary.json'),
+  }
+}
+
 export function filterScalarFields(data: Record<string, unknown>): { scalarFields: Record<string, unknown>; hasListFields: boolean } {
   const scalarFields: Record<string, unknown> = {}
   let hasListFields = false
