@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import type { ReactNode } from 'react'
 import {
   fetchOutputReport,
   fetchCostReport,
@@ -98,7 +99,7 @@ function WarningBanner({ testId, title, body }: { testId: string; title: string;
   )
 }
 
-function InfoBanner({ testId, title, body }: { testId: string; title: string; body: string }) {
+function InfoBanner({ testId, title, body }: { testId: string; title: string; body: ReactNode }) {
   return (
     <div
       data-testid={testId}
