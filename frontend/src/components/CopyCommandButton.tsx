@@ -27,11 +27,8 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // benchmark
   params['benchmark'] = valueToString(data.benchmark)
 
-  // sdk_ref (value from sdk_commit field)
-  params['sdk_ref'] = valueToString(data.sdk_commit)
-
-  // allow_unreleased_branches (always true)
-  params['allow_unreleased_branches'] = 'true'
+  // sdk_commit (renamed from sdk_ref in the evaluation repo workflow)
+  params['sdk_commit'] = valueToString(data.sdk_commit)
 
   // eval_limit
   params['eval_limit'] = valueToString(data.eval_limit)
@@ -39,15 +36,8 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
   // model_ids (must exist in params, don't extract from model_name)
   params['model_ids'] = valueToString(data.model_id)
 
-  // reason (from trigger_reason)
-  params['reason'] = valueToString(data.trigger_reason)
-
-  // eval_branch (from evaluation_branch, strip refs/heads/)
-  if (data.evaluation_branch && typeof data.evaluation_branch === 'string') {
-    params['eval_branch'] = stripRefsPrefix(data.evaluation_branch)
-  } else {
-    params['eval_branch'] = ''
-  }
+  // trigger_reason (renamed from reason in the evaluation repo workflow)
+  params['trigger_reason'] = valueToString(data.trigger_reason)
 
   // benchmarks_branch
   if (data.benchmarks_branch && typeof data.benchmarks_branch === 'string') {
@@ -95,8 +85,8 @@ function extractWorkflowInputs(data: Record<string, unknown>): Record<string, st
 
 function generateGhCommand(params: Record<string, string>): string {
   const parts = [
-    'gh workflow run run-eval.yml',
-    '--repo OpenHands/software-agent-sdk',
+    'gh workflow run eval-job.yml',
+    '--repo OpenHands/evaluation',
   ]
 
   for (const [key, value] of Object.entries(params)) {

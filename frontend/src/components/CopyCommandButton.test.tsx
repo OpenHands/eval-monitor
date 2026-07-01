@@ -67,15 +67,16 @@ describe('CopyCommandButton', () => {
     fireEvent.click(copyButton)
 
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-    expect(call).toContain('gh workflow run run-eval.yml')
-    expect(call).toContain('--repo OpenHands/software-agent-sdk')
+    expect(call).toContain('gh workflow run eval-job.yml')
+    expect(call).toContain('--repo OpenHands/evaluation')
     expect(call).toContain('-f benchmark="swebench"')
-    expect(call).toContain('-f sdk_ref=""')
-    expect(call).toContain('-f allow_unreleased_branches="true"')
+    expect(call).toContain('-f sdk_commit=""')
+    expect(call).not.toContain('allow_unreleased_branches')
     expect(call).toContain('-f eval_limit="1"')
     expect(call).toContain('-f model_ids="minimax-m2.5"')
-    expect(call).toContain('-f reason="test eval-job-id"')
-    expect(call).toContain('-f eval_branch="main"')
+    expect(call).toContain('-f trigger_reason="test eval-job-id"')
+    expect(call).not.toContain('-f reason=')
+    expect(call).not.toContain('-f eval_branch=')
     expect(call).toContain('-f benchmarks_branch="main"')
     expect(call).toContain('-f extensions_branch=""')
     expect(call).toContain('-f instance_ids=""')
@@ -134,7 +135,6 @@ describe('CopyCommandButton', () => {
     const data = {
       benchmark: 'swebench',
       model_id: 'claude-sonnet-4',
-      evaluation_branch: 'refs/heads/feature-branch',
       benchmarks_branch: 'refs/heads/main',
     }
 
@@ -144,12 +144,13 @@ describe('CopyCommandButton', () => {
     fireEvent.click(copyButton)
 
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-    expect(call).toContain('-f eval_branch="feature-branch"')
     expect(call).toContain('-f benchmarks_branch="main"')
     expect(call).not.toContain('refs/heads')
+    // evaluation_branch no longer maps to a workflow input in the evaluation repo
+    expect(call).not.toContain('-f eval_branch=')
   })
 
-  it('uses sdk_commit value for sdk_ref parameter', () => {
+  it('uses sdk_commit value for sdk_commit parameter', () => {
     const data = {
       benchmark: 'swebench',
       model_id: 'claude-sonnet-4',
@@ -162,7 +163,7 @@ describe('CopyCommandButton', () => {
     fireEvent.click(copyButton)
 
     const call = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0]
-    expect(call).toContain('-f sdk_ref="abc123def456"')
+    expect(call).toContain('-f sdk_commit="abc123def456"')
   })
 
   it('extracts extensions_branch and strips refs/heads/', () => {
