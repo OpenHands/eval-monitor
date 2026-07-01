@@ -39,6 +39,93 @@ function mockFetchWithSummary(summary: Record<string, unknown>) {
       } as unknown as Response
     }
 
+    if (url.includes('efficiency_summary.json')) {
+      return {
+        ok: false,
+        status: 404,
+        headers: { get: () => null },
+      } as unknown as Response
+    }
+
+    throw new Error(`Unexpected fetch url: ${url}`)
+  })
+
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+  return fetchMock
+}
+
+interface FetchOptions {
+  /** Efficiency summary response body, or undefined to 404 it. */
+  efficiency?: Record<string, unknown> | null
+  /** Shape of the v1 cost_report.jsonl summary; defaults to a summary
+   *  without `cache_hit_rate` (the realistic OpenHands/benchmarks
+   *  producer on main today). Set to `null` to 404 the file. */
+  costReportSummary?: Record<string, unknown> | null
+}
+
+/** Build a fetch mock for the realistic post-#185 scenario: a v1
+ *  `cost_report.jsonl` (no cache_hit_rate) plus an optional
+ *  `efficiency_summary.json`. `cost_report_v2.json` is the missing
+ *  third file — only emitted by the separate recalculate-costs job. */
+function mockFetch(opts: FetchOptions = {}) {
+  const { efficiency, costReportSummary } = opts
+  const v1Summary = costReportSummary ?? {
+    total_cost: 1.7044946,
+    total_duration: 591.20869,
+    only_main_output_cost: 1.7044946,
+    sum_critic_files: 1.7044946,
+  }
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input)
+
+    if (url.includes('output.report.json')) {
+      return {
+        ok: false,
+        status: 404,
+        headers: { get: () => null },
+      } as unknown as Response
+    }
+
+    if (url.includes('cost_report_v2.json')) {
+      return {
+        ok: false,
+        status: 404,
+        headers: { get: () => null },
+      } as unknown as Response
+    }
+
+    if (url.includes('cost_report.jsonl')) {
+      if (costReportSummary === null) {
+        return {
+          ok: false,
+          status: 404,
+          headers: { get: () => null },
+        } as unknown as Response
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ summary: v1Summary }),
+      } as unknown as Response
+    }
+
+    if (url.includes('efficiency_summary.json')) {
+      if (efficiency === undefined || efficiency === null) {
+        return {
+          ok: false,
+          status: 404,
+          headers: { get: () => null },
+        } as unknown as Response
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => efficiency,
+      } as unknown as Response
+    }
+
     throw new Error(`Unexpected fetch url: ${url}`)
   })
 
@@ -216,6 +303,126 @@ describe('CompletedRunResults', () => {
       mockFetchWithSummary(summaryWith(undefined))
       render(<CompletedRunResults slug="swebench/model/123" />)
       await screen.findByText('Cost Report')
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
+    })
+  })
+
+  describe('efficiency_summary.json fallback', () => {
+    function efficiencyWith(rate: number | null | undefined) {
+      const tokens: Record<string, unknown> = {
+        prompt_tokens: 5418997,
+        completion_tokens: 22301,
+        cache_read_tokens: 4067968,
+      }
+      if (rate !== undefined) tokens.cache_hit_rate = rate
+      return {
+        schema_version: 6,
+        cost: { tokens },
+      }
+    }
+
+    it('surfaces the rate from efficiency_summary when v1 lacks cache_hit_rate', async () => {
+      // Realistic open-benchmarks-on-main scenario: v1 cost_report.jsonl
+      // exists (no cache_hit_rate), efficiency_summary.json carries
+      // cache_hit_rate = 0.7507, cost_report_v2.json absent.
+      mockFetch({ efficiency: efficiencyWith(0.7506865200331353) })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+
+      const banner = await screen.findByTestId('cache-hit-rate-from-efficiency')
+      expect(banner.textContent).toContain('Cache hit rate is 75.07%')
+      expect(banner.textContent).toContain('Sourced from')
+      expect(banner.textContent).toContain('efficiency_summary.json')
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
+    })
+
+    it('suppresses the missing warning when efficiency ships the rate as a number', async () => {
+      mockFetch({ efficiency: efficiencyWith(0.5) })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      await screen.findByTestId('cache-hit-rate-from-efficiency')
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
+    })
+
+    it('suppresses the missing warning when efficiency ships null (no input to measure)', async () => {
+      // null in efficiency_summary.json means "we measured, but there
+      // was no input to measure" — distinct from "key absent". Treat it
+      // as a valid measurement signal: no info banner (nothing to show)
+      // and no missing warning (we have a measurement).
+      mockFetch({ efficiency: efficiencyWith(null) })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      await screen.findByText('Cost Report')
+      expect(screen.queryByTestId('cache-hit-rate-from-efficiency')).toBeNull()
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
+    })
+
+    it('still warns when efficiency exists but lacks the rate (pre-schema-6 producer)', async () => {
+      // efficiency_summary exists, schema_version 6, but no
+      // `cost.tokens.cache_hit_rate` (e.g. a producer that hasn't been
+      // upgraded past schema_version 5).
+      mockFetch({
+        efficiency: {
+          schema_version: 6,
+          cost: { tokens: { prompt_tokens: 1, completion_tokens: 1 } },
+        },
+      })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      const warning = await screen.findByTestId('missing-cache-hit-warning')
+      expect(warning.textContent).toContain('Cache hit rate not reported')
+    })
+
+    it('still warns when both cost_report and efficiency_summary lack the rate', async () => {
+      mockFetch({ efficiency: undefined })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      const warning = await screen.findByTestId('missing-cache-hit-warning')
+      expect(warning.textContent).toContain('Cache hit rate not reported')
+    })
+
+    it('falls back gracefully when efficiency_summary.json is missing entirely', async () => {
+      mockFetch({ efficiency: null })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      const warning = await screen.findByTestId('missing-cache-hit-warning')
+      expect(warning.textContent).toContain('Cache hit rate not reported')
+      // Body should match the original PR #185 copy when no efficiency file exists.
+      expect(warning.textContent).toContain('cost_report_v2')
+      expect(warning.textContent).not.toContain('Neither')
+    })
+
+    it('does not show the missing warning for pre-cutoff runs even without efficiency', async () => {
+      mockFetch({ efficiency: null })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={BEFORE_CUTOFF_MS} />)
+      await screen.findByText('Cost Report')
+      expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
+      expect(screen.queryByTestId('cache-hit-rate-from-efficiency')).toBeNull()
+    })
+
+    it('does not show the info banner when v2 already carries cache_hit_rate', async () => {
+      // When v2 ships cache_hit_rate, the table itself shows it; the
+      // info banner must NOT double up.
+      const summaryWithRate = {
+        total_cost: 1.7,
+        total_duration: 591.2,
+        only_main_output_cost: 1.7,
+        sum_critic_files: 0,
+        cache_hit_rate: 0.9,
+      }
+      mockFetch({ efficiency: efficiencyWith(0.5), costReportSummary: summaryWithRate })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      await screen.findByText('90.00%')
+      expect(screen.queryByTestId('cache-hit-rate-from-efficiency')).toBeNull()
+    })
+
+    it('shows the zero-cache-hit warning when v2 ships 0 even if efficiency has 0 too', async () => {
+      const summaryWithRate = {
+        total_cost: 1.7,
+        total_duration: 591.2,
+        only_main_output_cost: 1.7,
+        sum_critic_files: 0,
+        cache_hit_rate: 0,
+      }
+      mockFetch({ efficiency: efficiencyWith(0), costReportSummary: summaryWithRate })
+      render(<CompletedRunResults slug="swebench/model/123" runCompletedAtMs={AFTER_CUTOFF_MS} />)
+      const warning = await screen.findByTestId('zero-cache-hit-warning')
+      expect(warning.textContent).toContain('Cache hit rate is 0%')
+      expect(screen.queryByTestId('cache-hit-rate-from-efficiency')).toBeNull()
       expect(screen.queryByTestId('missing-cache-hit-warning')).toBeNull()
     })
   })
